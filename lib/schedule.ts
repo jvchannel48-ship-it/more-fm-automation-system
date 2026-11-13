@@ -306,6 +306,14 @@ export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {
   return target
 }
 
+export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
+  const d = new Date(ms + MANILA_OFFSET_MS)
+  d.setUTCHours(signOffHour, 0, 0, 0)
+  let target = d.getTime() - MANILA_OFFSET_MS
+  if (target <= ms) target += 24 * 60 * 60 * 1000
+  return target
+}
+
 /**
  * Sunday 4 AM–1 PM: English and Tagalog senior classics. 1–3 PM: English love songs.
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.

@@ -24,7 +24,7 @@ export function RadioPlayer() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  const { buffering, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume)
   useEffect(() => {
     if (!playing || data?.offAir) return
     let id = localStorage.getItem('morefm-listener-id')
@@ -50,7 +50,7 @@ export function RadioPlayer() {
     }
   }, [playing, data?.offAir])
 
-  const offAir = data?.offAir ?? false
+  const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir
   const togglePlay = () => {
     unlock()

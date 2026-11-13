@@ -18,6 +18,7 @@ export interface AudioAsset {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  autoDjEnabled: boolean
   signOffHour: number
   signOnHour: number
   discoStartHour: number
@@ -49,6 +50,7 @@ export interface NowResponse {
   serverTime: number
   offAir: boolean
   nextOnAir: number | null
+  signOffAt: number | null
   tracks: Track[]
   nightVolumeActive: boolean
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 90_000
+const PRELOAD_AHEAD_MS = 180_000
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
@@ -25,16 +25,71 @@ function trackGain(track: Track, now: number) {
   return Math.min(fadeIn, fadeOut)
 }
 
+function playSignOffStatic(context: AudioContext, volume: number) {
+  const now = context.currentTime
+  const duration = 2.1
+  const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate)
+  const samples = buffer.getChannelData(0)
+  for (let i = 0; i < samples.length; i++) {
+    const crackle = Math.random() < 0.004 ? 0.08 : 1
+    const flutter = 0.72 + Math.sin(i / 137) * 0.18 + Math.sin(i / 43) * 0.1
+    samples[i] = (Math.random() * 2 - 1) * crackle * flutter
+  }
+
+  const noise = context.createBufferSource()
+  noise.buffer = buffer
+  const highPass = context.createBiquadFilter()
+  highPass.type = 'highpass'
+  highPass.frequency.value = 650
+  const lowPass = context.createBiquadFilter()
+  lowPass.type = 'lowpass'
+  lowPass.frequency.value = 5200
+  const noiseGain = context.createGain()
+  noiseGain.gain.setValueAtTime(0.0001, now)
+  noiseGain.gain.linearRampToValueAtTime(0.16 * volume, now + 0.08)
+  noiseGain.gain.setValueAtTime(0.16 * volume, now + duration - 0.25)
+  noiseGain.gain.linearRampToValueAtTime(0.0001, now + duration)
+  noise.connect(highPass)
+  highPass.connect(lowPass)
+  lowPass.connect(noiseGain)
+  noiseGain.connect(context.destination)
+  noise.start(now)
+  noise.stop(now + duration)
+
+  const sweep = context.createOscillator()
+  const sweepGain = context.createGain()
+  sweep.type = 'triangle'
+  sweep.frequency.setValueAtTime(1100, now)
+  sweep.frequency.exponentialRampToValueAtTime(260, now + 0.32)
+  sweepGain.gain.setValueAtTime(0.035 * volume, now)
+  sweepGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34)
+  sweep.connect(sweepGain)
+  sweepGain.connect(context.destination)
+  sweep.start(now)
+  sweep.stop(now + 0.35)
+}
+
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
   const offset = useRef(0)
-  const [state, setState] = useState({ onAir: false, buffering: false })
+  const signOffContext = useRef<AudioContext | null>(null)
+  const lastKnownSignOffAt = useRef<number | null>(null)
+  const lastPlayedSignOffAt = useRef<number | null>(null)
+  const previousOffAir = useRef<boolean | null>(null)
+  const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
 
   useEffect(() => {
-    if (data) offset.current = data.serverTime - Date.now()
+    if (!data) return
+    offset.current = data.serverTime - Date.now()
+    if (data.signOffAt !== null) lastKnownSignOffAt.current = data.signOffAt
   }, [data])
 
   const unlock = useCallback(() => {
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (AudioContextClass) {
+      signOffContext.current ??= new AudioContextClass()
+      if (signOffContext.current.state === 'suspended') void signOffContext.current.resume().catch(() => undefined)
+    }
     if (slots.current.length > 0) return
     slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
@@ -47,13 +102,43 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   }, [])
 
   useEffect(() => {
+    const signOffAt = data?.signOffAt
+    if (!playing || signOffAt == null || volume <= 0 || lastPlayedSignOffAt.current === signOffAt) return
+    const delay = signOffAt - (Date.now() + offset.current)
+    if (delay < -15_000) return
+    const timer = window.setTimeout(() => {
+      const context = signOffContext.current
+      if (!context || context.state !== 'running' || volume <= 0 || lastPlayedSignOffAt.current === signOffAt) return
+      lastPlayedSignOffAt.current = signOffAt
+      playSignOffStatic(context, volume)
+    }, Math.max(0, delay))
+    return () => window.clearTimeout(timer)
+  }, [data?.signOffAt, playing, volume])
+
+  useEffect(() => {
+    if (!data) return
+    const wasOnAir = previousOffAir.current === false
+    previousOffAir.current = data.offAir
+    if (!wasOnAir || !data.offAir || !playing || volume <= 0) return
+
+    const cueAt = data.signOffAt ?? lastKnownSignOffAt.current
+    const justSignedOff = data.signOffAt !== null || (cueAt !== null && Math.abs(Date.now() + offset.current - cueAt) <= 20_000)
+    const context = signOffContext.current
+    if (!justSignedOff || cueAt === null || !context || context.state !== 'running' || lastPlayedSignOffAt.current === cueAt) return
+
+    lastPlayedSignOffAt.current = cueAt
+    playSignOffStatic(context, volume)
+  }, [data?.offAir, data?.signOffAt, playing, volume])
+
+  useEffect(() => {
     const tick = () => {
       const now = Date.now() + offset.current
       const tracks = data?.tracks ?? []
-      const active = tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
+      const scheduleOffAir = Boolean(data?.offAir || (data?.signOffAt != null && now >= data.signOffAt))
+      const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const nightVolumeGain = data?.nightVolumeActive ? 0.72 : 1
-      const upcoming = tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
+      const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
@@ -104,8 +189,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
       const onAir = active.length > 0
       setState((prev) => {
-        const next = { onAir, buffering: playing && (buffering || !onAir) }
-        return prev.onAir === next.onAir && prev.buffering === next.buffering ? prev : next
+        const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir }
+        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir ? prev : next
       })
     }
 
@@ -131,6 +216,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         slot.el.removeAttribute('src')
       }
       slots.current = []
+      if (signOffContext.current && signOffContext.current.state !== 'closed') void signOffContext.current.close()
+      signOffContext.current = null
     },
     [],
   )

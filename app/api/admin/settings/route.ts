@@ -12,6 +12,7 @@ export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = (await request.json().catch(() => ({}))) as {
     broadcastEnabled?: unknown
+    autoDjEnabled?: unknown
     signOffHour?: unknown
     signOnHour?: unknown
     discoStartHour?: unknown
@@ -37,6 +38,7 @@ export async function PUT(request: NextRequest) {
   if (nightVolumeStartHour === nightVolumeEndHour) return NextResponse.json({ error: 'Night-volume start and end must be different.' }, { status: 400 })
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
+    autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
     signOffHour,
     signOnHour,
     discoStartHour,

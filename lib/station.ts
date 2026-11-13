@@ -1,7 +1,7 @@
 import 'server-only'
 import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -10,6 +10,10 @@ const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
+const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
+const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
+// Coalesce simultaneous listener polls that land in the same server runtime.
+let activeQueueFill: Promise<void> | null = null
 
 interface HistoryEntry {
   id: string
@@ -37,20 +41,43 @@ interface SearchItem {
   title: string
   url: string
   duration: string
+  channel?: string
+  author?: string
+  uploader?: string
+  source?: string
+  description?: string
+  live?: unknown
+  isLive?: unknown
+}
+
+function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
+  const titleText = typeof title === 'string' ? title : ''
+  const metadata = [title, ...values].filter((value): value is string => typeof value === 'string').join(' ')
+  const liveTitleTag = /(?:\(\s*live\s*\)|\[\s*live\s*\]|\blive\s*$)/i.test(titleText)
+  const rejectedMetadata = /\blive\s+(?:concert|performance|recording|version|session|show|set|stream|acoustic|cover|at|in|from|on|video|audio|blog)\b|\bconcert\s+(?:live|recording|version|video|audio|footage|performance)\b|\b(?:performed|performing)\s+live\b|\blivestream\b|\bvlog\b|\bwish\s*107(?:[.]?5)?\b|\bwishclusive\b|\bwish[\s-]*bus\b/i.test(metadata)
+  return liveTitleTag || rejectedMetadata
+}
+
+function isDisallowedSearchItem(item: SearchItem) {
+  const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
+  return liveFlag || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
 }
 
 async function findSongRequest(request: { title: string; artist: string }, history: HistoryEntry[]) {
-  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${request.title} ${request.artist}`)}`, 15_000)
+  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${request.title} ${request.artist}`)}`, 8_000)
   const playedIds = new Set(history.map((entry) => entry.id))
+  const playedKeys = new Set(history.map((entry) => entry.key))
   const requestedTitle = normalize(request.title)
-  const candidate = (data?.items ?? []).find((item) => {
+  const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id)
-  })
-  if (!candidate) return null
-  const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 30_000)
-  if (!download?.downloadUrl) return null
-  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
+    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+  }).slice(0, 4)
+  const downloads = await Promise.all(candidates.map(async (candidate) => {
+    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 12_000)
+    if (!download?.downloadUrl) return null
+    return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
+  }))
+  return downloads.find((song) => song !== null) ?? null
 }
 
 const AI_RULE =
@@ -144,42 +171,50 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     ? language === 'english' ? ['Christmas song', 'Christmas classic'] : ['Tagalog Christmas song', 'Pasko OPM']
     : program.variants[language]
 
-  for (const artist of candidatesArtists.slice(0, 5)) {
+  const searchResults = await Promise.all(candidatesArtists.slice(0, 5).map(async (artist) => {
     const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       `${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`,
-      15_000,
+      8_000,
     )
-    const candidates = (data?.items ?? []).filter((item) => {
+    return { artist, items: data?.items ?? [] }
+  }))
+
+  const candidates = shuffle(searchResults.flatMap(({ artist, items }) => items
+    .filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      if (!isAllowed(item.title, artist)) return false
+      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist)) return false
       if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
+    .map((item) => ({ artist, item }))))
 
-    for (const item of shuffle(candidates.slice(0, 10)).slice(0, 2)) {
-      const dl = await fetchJson<{ downloadUrl?: string }>(
-        `${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`,
-        30_000,
-      )
-      if (dl?.downloadUrl) {
-        return {
-          id: item.id,
-          key: songKey(item.title),
-          artist: artist.name,
-          title: item.title,
-          src: dl.downloadUrl,
-          duration: parseDuration(item.duration),
-        }
-      }
+  const downloadResults = await Promise.all(candidates.slice(0, 4).map(async ({ artist, item }) => {
+    const download = await fetchJson<{ downloadUrl?: string }>(
+      `${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`,
+      12_000,
+    )
+    if (!download?.downloadUrl) return null
+    return {
+      id: item.id,
+      key: songKey(item.title),
+      artist: artist.name,
+      title: item.title,
+      src: download.downloadUrl,
+      duration: parseDuration(item.duration),
     }
-  }
-  return null
+  }))
+  return downloadResults.find((result) => result !== null) ?? null
 }
 
 function trackEnd(track: Track) {
   return track.startAt + track.duration * 1000
+}
+
+function queueAheadTarget(state: StationState, now: number) {
+  const hasActiveTrack = state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
+  return hasActiveTrack ? PRELOAD_QUEUE_WITH_ACTIVE_TRACKS : PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK
 }
 
 function nextStart(state: StationState, now: number) {
@@ -189,8 +224,9 @@ function nextStart(state: StationState, now: number) {
 }
 
 async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
+  const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
-  while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
+  while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
     if (isGoldenSundayWindow(breakAt)) {
@@ -292,6 +328,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
     state.seasonalSongCount++
+    // One song per request keeps the now-playing endpoint responsive; subsequent polls
+    // fill the second queue slot well before the current track finishes.
+    break
   }
 }
 
@@ -307,14 +346,45 @@ async function loadState(now: number) {
     state.seasonalSongCount = 0
   }
   const before = state.tracks.length
-  state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
+  state.tracks = state.tracks.filter((track) => trackEnd(track) >= now - 1000 && (
+    track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || !hasRejectedRecordingLabel(track.title, track.src)
+  ))
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
 }
 
+async function fillQueueIfNeeded(settings: Awaited<ReturnType<typeof getSettings>>) {
+  if (activeQueueFill) return activeQueueFill
+
+  const fillPromise = (async () => {
+    const now = Date.now()
+    const { state, changed } = await loadState(now)
+    if (changed) await writeJson(STATE_PATH, state)
+    const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
+    if (!settings.autoDjEnabled || !needsFill || state.fillingUntil >= now) return
+
+    state.fillingUntil = now + FILL_LOCK_MS
+    await writeJson(STATE_PATH, state)
+    try {
+      await fill(state, now, settings)
+    } finally {
+      state.fillingUntil = 0
+      await writeJson(STATE_PATH, state)
+    }
+  })()
+
+  activeQueueFill = fillPromise
+  try {
+    await fillPromise
+  } finally {
+    if (activeQueueFill === fillPromise) activeQueueFill = null
+  }
+}
+
 export async function getNowPlaying(): Promise<NowResponse> {
   const now = Date.now()
-  const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
+  const [loaded, settings] = await Promise.all([loadState(now), getSettings()])
+  let { state, changed } = loaded
   const offAir = isOffAir(now, settings.signOffHour, settings.signOnHour) || !settings.broadcastEnabled
 
   if (offAir) {
@@ -326,23 +396,37 @@ export async function getNowPlaying(): Promise<NowResponse> {
       serverTime: Date.now(),
       offAir: true,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
+      signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
   }
 
-  const needsFill = state.tracks.filter((t) => t.startAt > now).length < 1
-  if (needsFill && state.fillingUntil < now) {
-    state.fillingUntil = now + FILL_LOCK_MS
+  const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
+  if (settings.autoDjEnabled && needsFill) {
+    await fillQueueIfNeeded(settings)
+    const refreshed = await loadState(Date.now())
+    state = refreshed.state
+    changed = refreshed.changed
+  }
+
+  const responseNow = Date.now()
+  if (isOffAir(responseNow, settings.signOffHour, settings.signOnHour) || !settings.broadcastEnabled) {
+    state.tracks = []
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings)
-    state.fillingUntil = 0
-    await writeJson(STATE_PATH, state)
+    return {
+      serverTime: responseNow,
+      offAir: true,
+      nextOnAir: settings.broadcastEnabled ? nextSignOn(responseNow, settings.signOnHour) : null,
+      signOffAt: settings.broadcastEnabled ? null : responseNow,
+      tracks: [],
+      nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
+    }
   } else if (changed) {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
+  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

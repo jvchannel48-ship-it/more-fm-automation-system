@@ -167,6 +167,12 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ picks tracks and avoids repeats for 7 days. OFF stops it from choosing new songs after anything already queued.</p></div>
+      <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
+        onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
+    </div>
+
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
         <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
