@@ -329,7 +329,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
       kind: 'music',
-      audioProfile: rotationProgram.id === 'disco' ? 'full-bass' : 'vocal',
       title: song.title,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })

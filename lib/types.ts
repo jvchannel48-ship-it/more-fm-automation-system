@@ -6,7 +6,6 @@ export interface Track {
   fadeIn: number
   fadeOut: number
   kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
-  audioProfile?: 'full-bass' | 'vocal'
   title?: string
 }
 
