@@ -95,7 +95,7 @@ export function RadioPlayer() {
           MOR 93.5 NAGA LIVESTREAM ONLY
         </p>
         <div className="mt-2">
-          <Equalizer active={live} />
+          <Equalizer active={active} />
         </div>
         {offAir && (
           <p className="text-sm text-muted-foreground">
