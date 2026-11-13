@@ -164,6 +164,21 @@ const ENGLISH_LOVE = artists('english', [
   'Peabo Bryson',
   'Brian McKnight',
   'Lionel Richie',
+  'Adele',
+  'John Legend',
+  'Sam Smith',
+  'Norah Jones',
+  'Sade',
+  'Simply Red',
+  'Chicago',
+  'The Righteous Brothers',
+  'The Corrs',
+  'James Blunt',
+  'Coldplay',
+  'Jason Mraz',
+  'Bruno Mars',
+  'Taylor Swift',
+  'Ed Sheeran',
 ])
 
 const NIGHT_LOVE = artists('english', [
@@ -193,6 +208,12 @@ const NIGHT_LOVE = artists('english', [
   'Deniece Williams',
   'Lionel Richie',
   'Dan Hill',
+  'Sade',
+  'Simply Red',
+  'Norah Jones',
+  'John Legend',
+  'Adele',
+  'The Righteous Brothers',
 ])
 
 const ENGLISH_DISCO = artists('english', [
@@ -223,7 +244,7 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Rico J. Puno|rico j',
 ])
 
-const LOVE_VARIANTS = ['', 'official audio', 'lyrics', 'greatest hits', 'love song']
+const LOVE_VARIANTS = ['', 'official audio', 'greatest hits', 'love song', 'soft pop', 'classic love song']
 const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
 
 export const PROGRAMS: Record<ProgramId, Program> = {

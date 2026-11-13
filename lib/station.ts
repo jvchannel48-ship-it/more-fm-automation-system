@@ -14,6 +14,7 @@ const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
+const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 // Coalesce simultaneous listener polls that land in the same server runtime.
 let activeQueueFill: Promise<void> | null = null
 
@@ -62,7 +63,7 @@ function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
 
 function isDisallowedSearchItem(item: SearchItem) {
   const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
-  return liveFlag || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
+  return liveFlag || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
 }
 
 async function findSongRequest(request: { title: string; artist: string }, history: HistoryEntry[]) {
@@ -130,7 +131,7 @@ function songKey(title: string) {
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
 function isAllowed(title: string, artist: Artist, requireTagalog = false, credits = '') {
   if (NON_LATIN.test(title)) return false
-  if (AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
+  if (REJECTED_TITLE_RULE.test(title) || AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
   if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
   if (requireTagalog && !TAGALOG_TITLE_RULE.test(title)) return false
   return ` ${normalize(`${title} ${credits}`)} `.includes(` ${normalize(artist.match)} `)
@@ -403,7 +404,7 @@ async function loadState(now: number) {
   }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((track) => trackEnd(track) >= now - 1000 && (
-    track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || !hasRejectedRecordingLabel(track.title, track.src)
+    track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
   ))
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
