@@ -1,0 +1,38 @@
+import 'server-only'
+import { get, put } from '@vercel/blob'
+import type { StationSettings } from './types'
+
+export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
+  try {
+    const result = await get(pathname, { access: 'private', useCache: false })
+    if (!result || !result.stream) return fallback
+    const text = await new Response(result.stream).text()
+    return JSON.parse(text) as T
+  } catch {
+    return fallback
+  }
+}
+
+export async function writeJson(pathname: string, data: unknown) {
+  await put(pathname, JSON.stringify(data), {
+    access: 'private',
+    allowOverwrite: true,
+    addRandomSuffix: false,
+    contentType: 'application/json',
+    cacheControlMaxAge: 60,
+  })
+}
+
+export const SETTINGS_PATH = 'station/settings.json'
+export const STATE_PATH = 'station/state-v2.json'
+
+export const DEFAULT_SETTINGS: StationSettings = {
+  broadcastEnabled: true,
+}
+
+export async function getSettings(): Promise<StationSettings> {
+  const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
+  return {
+    broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+  }
+}
