@@ -59,7 +59,6 @@ export function AdminPanel() {
   const [recording, setRecording] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
-  const recordingContextRef = useRef<AudioContext | null>(null)
 
   useEffect(() => {
     if (!data) return
@@ -78,7 +77,7 @@ export function AdminPanel() {
       const res = await fetch('/api/admin/settings', {
         method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
       })
-      const result = await res.json()
+      const result = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(result.error ?? 'Could not update settings.')
       mutate(result as AdminStatus, { revalidate: false })
     } catch (reason) {
@@ -94,7 +93,7 @@ export function AdminPanel() {
       const form = new FormData()
       form.set('file', file); form.set('kind', kind); form.set('slot', String(slot)); form.set('duration', String(duration))
       const res = await fetch('/api/admin/media', { method: 'POST', body: form })
-      const result = await res.json()
+      const result = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
       const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
@@ -111,40 +110,18 @@ export function AdminPanel() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      const context = AudioContextClass ? new AudioContextClass() : null
-      if (context) await context.resume()
-      const processedStream = context ? (() => {
-        const source = context.createMediaStreamSource(stream)
-        const compressor = context.createDynamicsCompressor()
-        compressor.threshold.value = -24
-        compressor.knee.value = 18
-        compressor.ratio.value = 4
-        compressor.attack.value = 0.003
-        compressor.release.value = 0.25
-        const gain = context.createGain()
-        gain.gain.value = 1.08
-        const destination = context.createMediaStreamDestination()
-        source.connect(compressor)
-        compressor.connect(gain)
-        gain.connect(destination)
-        return destination.stream
-      })() : stream
       const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
-      const recorder = new MediaRecorder(processedStream, mimeType ? { mimeType } : undefined)
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       const chunks: Blob[] = []
       recorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data) }
       recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop())
-        void context?.close()
-        recordingContextRef.current = null
         recordingStreamRef.current = null
         const type = recorder.mimeType || 'audio/webm'
         void upload('dj-mic', new File(chunks, `dj-mic-${Date.now()}.webm`, { type }))
       }
       recorderRef.current = recorder
       recordingStreamRef.current = stream
-      recordingContextRef.current = context
       recorder.start()
       setRecording(true)
       setError('')

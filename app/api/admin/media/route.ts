@@ -12,6 +12,7 @@ const AUDIO_EXTENSIONS = new Set(['mp3', 'm4a', 'mp4', 'aac', 'wav', 'ogg', 'web
 const MIME_BY_EXTENSION: Record<string, string> = { mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac' }
 
 export async function POST(request: NextRequest) {
+  try {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const form = await request.formData().catch(() => null)
   if (!form) return NextResponse.json({ error: 'Please select an audio file.' }, { status: 400 })
@@ -65,5 +66,9 @@ export async function POST(request: NextRequest) {
     const detail = error instanceof Error ? error.message.slice(0, 180) : 'Unknown storage error'
     console.error('[morefm] audio upload failed:', detail)
     return NextResponse.json({ error: `Audio upload failed: ${detail}` }, { status: 500 })
+  }
+  } catch (error) {
+    console.error('[morefm] admin media request failed', error)
+    return NextResponse.json({ error: 'Audio request failed.' }, { status: 500 })
   }
 }

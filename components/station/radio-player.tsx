@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
-import { Equalizer } from './equalizer'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -118,9 +117,6 @@ export function RadioPlayer() {
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           MOR 93.5 NAGA LIVESTREAM ONLY
         </p>
-        <div className="mt-2">
-          <Equalizer active={live} speaking={data?.tracks?.[0]?.kind === 'dj-mic'} />
-        </div>
         {offAir && (
           <p className="text-sm text-muted-foreground">
             {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
