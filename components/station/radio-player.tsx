@@ -14,6 +14,21 @@ const fetcher = (url: string) =>
     return r.json() as Promise<NowResponse>
   })
 
+function StationVerifiedBadge() {
+  return (
+    <svg
+      aria-label="MOR 93.5 station badge"
+      role="img"
+      viewBox="0 0 24 24"
+      className="inline-block size-6 shrink-0 align-middle drop-shadow-[0_2px_8px_rgba(24,119,242,0.35)]"
+    >
+      <circle cx="12" cy="12" r="10" fill="#1877F2" />
+      <path d="m7.3 12.1 3.05 3.05 6.45-6.4" fill="none" stroke="white" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <title>MOR 93.5 station badge</title>
+    </svg>
+  )
+}
+
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [checkingCapacity, setCheckingCapacity] = useState(false)
@@ -162,7 +177,7 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          MOR <span className="text-primary">93.5</span> Naga
+          MOR <span className="text-primary">93.5</span> Naga <StationVerifiedBadge />
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           MOR 93.5 NAGA LIVESTREAM ONLY
