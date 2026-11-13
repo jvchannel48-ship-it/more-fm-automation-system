@@ -50,6 +50,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const now = Date.now() + offset.current
       const tracks = data?.tracks ?? []
       const active = tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
+      const voiceActive = active.some((t) => t.kind === 'dj-mic')
+      const nightVolumeGain = data?.nightVolumeActive ? 0.72 : 1
       const upcoming = tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
@@ -91,7 +93,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           }
         }
         if (el.readyState < 3 && !el.ended) buffering = true
-        el.volume = clamp01(trackGain(track, now) * volume)
+        const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
+        el.volume = clamp01(trackGain(track, now) * volume * nightVolumeGain * duckGain)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           el.play().catch(() => undefined)

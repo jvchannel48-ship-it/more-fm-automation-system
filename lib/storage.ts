@@ -2,9 +2,11 @@ import 'server-only'
 import { get, put } from '@vercel/blob'
 import type { SongRequest, StationSettings } from './types'
 
+const blobToken = process.env.BLOB_READ_WRITE_TOKEN ?? process.env.VERCEL_BLOB_READ_WRITE_TOKEN
+
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   try {
-    const result = await get(pathname, { access: 'private', useCache: false })
+    const result = await get(pathname, { access: 'private', useCache: false, ...(blobToken ? { token: blobToken } : {}) })
     if (!result || !result.stream) return fallback
     const text = await new Response(result.stream).text()
     return JSON.parse(text) as T
@@ -20,6 +22,7 @@ export async function writeJson(pathname: string, data: unknown) {
     addRandomSuffix: false,
     contentType: 'application/json',
     cacheControlMaxAge: 60,
+    ...(blobToken ? { token: blobToken } : {}),
   })
 }
 
@@ -36,12 +39,18 @@ export const DEFAULT_SETTINGS: StationSettings = {
   discoStartHour: 16,
   discoEndHour: 20,
   christmasEnabled: true,
-  djEnabled: false,
+  djMicEnabled: false,
+  newsEnabled: true,
+  nightVolumeEnabled: false,
+  nightVolumeStartHour: 22,
+  nightVolumeEndHour: 6,
   jingleEnabled: false,
   commercialEnabled: false,
   jingle: null,
   commercials: [null, null, null],
   goldenSunday: null,
+  news: null,
+  djMic: null,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -53,7 +62,11 @@ export async function getSettings(): Promise<StationSettings> {
     discoStartHour: typeof saved.discoStartHour === 'number' && saved.discoStartHour >= 0 && saved.discoStartHour <= 23 ? saved.discoStartHour : 16,
     discoEndHour: typeof saved.discoEndHour === 'number' && saved.discoEndHour >= 0 && saved.discoEndHour <= 23 ? saved.discoEndHour : 20,
     christmasEnabled: typeof saved.christmasEnabled === 'boolean' ? saved.christmasEnabled : true,
-    djEnabled: typeof saved.djEnabled === 'boolean' ? saved.djEnabled : false,
+    djMicEnabled: typeof saved.djMicEnabled === 'boolean' ? saved.djMicEnabled : false,
+    newsEnabled: typeof saved.newsEnabled === 'boolean' ? saved.newsEnabled : true,
+    nightVolumeEnabled: typeof saved.nightVolumeEnabled === 'boolean' ? saved.nightVolumeEnabled : false,
+    nightVolumeStartHour: typeof saved.nightVolumeStartHour === 'number' && saved.nightVolumeStartHour >= 0 && saved.nightVolumeStartHour <= 23 ? saved.nightVolumeStartHour : 22,
+    nightVolumeEndHour: typeof saved.nightVolumeEndHour === 'number' && saved.nightVolumeEndHour >= 0 && saved.nightVolumeEndHour <= 23 ? saved.nightVolumeEndHour : 6,
     jingleEnabled: typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
     jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : null,
@@ -62,6 +75,8 @@ export async function getSettings(): Promise<StationSettings> {
       return asset && typeof asset.url === 'string' ? asset : null
     }),
     goldenSunday: saved.goldenSunday && typeof saved.goldenSunday.url === 'string' ? saved.goldenSunday : null,
+    news: saved.news && typeof saved.news.url === 'string' ? saved.news : null,
+    djMic: saved.djMic && typeof saved.djMic.url === 'string' ? saved.djMic : null,
   }
 }
 

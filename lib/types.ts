@@ -5,7 +5,7 @@ export interface Track {
   duration: number
   fadeIn: number
   fadeOut: number
-  kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday'
+  kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
   title?: string
 }
 
@@ -22,12 +22,18 @@ export interface StationSettings {
   discoStartHour: number
   discoEndHour: number
   christmasEnabled: boolean
-  djEnabled: boolean
+  djMicEnabled: boolean
+  newsEnabled: boolean
+  nightVolumeEnabled: boolean
+  nightVolumeStartHour: number
+  nightVolumeEndHour: number
   jingleEnabled: boolean
   commercialEnabled: boolean
   jingle: AudioAsset | null
   commercials: Array<AudioAsset | null>
   goldenSunday: AudioAsset | null
+  news: AudioAsset | null
+  djMic: AudioAsset | null
 }
 
 export interface SongRequest {
@@ -43,7 +49,7 @@ export interface NowResponse {
   offAir: boolean
   nextOnAir: number | null
   tracks: Track[]
-  djEnabled: boolean
+  nightVolumeActive: boolean
 }
 
 export interface AdminStatus extends StationSettings {

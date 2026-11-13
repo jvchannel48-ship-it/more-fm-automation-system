@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -258,6 +258,11 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
     variants: { english: ['', 'official audio', 'hits', 'official video'], tagalog: ['', 'official audio', 'disco'] },
   },
+  news: {
+    id: 'news',
+    pools: { english: [], tagalog: [] },
+    variants: { english: [], tagalog: [] },
+  },
   'night-love': {
     id: 'night-love',
     pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
@@ -277,12 +282,13 @@ export const PROGRAMS: Record<ProgramId, Program> = {
 
 export interface ManilaTime {
   hour: number
+  minute: number
   day: number
 }
 
 export function manilaTime(ms: number): ManilaTime {
   const d = new Date(ms + MANILA_OFFSET_MS)
-  return { hour: d.getUTCHours(), day: d.getUTCDay() }
+  return { hour: d.getUTCHours(), minute: d.getUTCMinutes(), day: d.getUTCDay() }
 }
 
 export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {
@@ -305,11 +311,12 @@ export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
-export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20): Program {
-  const { hour, day } = manilaTime(ms)
+export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20, newsEnabled = true): Program {
+  const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
   if (day === 0 && hour >= 4 && hour < 13) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
+  if (newsEnabled && hour === 16 && minute < 50) return PROGRAMS.news
   const inDiscoWindow = discoStartHour < discoEndHour
     ? hour >= discoStartHour && hour < discoEndHour
     : hour >= discoStartHour || hour < discoEndHour
@@ -331,6 +338,16 @@ export function manilaMonth(ms: number): number {
 export function manilaMonthKey(ms: number): string {
   const date = new Date(ms + MANILA_OFFSET_MS)
   return `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`
+}
+
+export function manilaDateKey(ms: number): string {
+  const date = new Date(ms + MANILA_OFFSET_MS)
+  return `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`
+}
+
+export function isNightVolumeWindow(ms: number, startHour: number, endHour: number): boolean {
+  const { hour } = manilaTime(ms)
+  return startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour
 }
 
 export function isGoldenSundayWindow(ms: number): boolean {

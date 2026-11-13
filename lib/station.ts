@@ -1,7 +1,7 @@
 import 'server-only'
 import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isOffAir, languageForSlot, manilaMonthKey, MANILA_OFFSET_MS, nextSignOn, programAt, type Artist, type Program } from './schedule'
+import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -25,11 +25,12 @@ interface StationState {
   fillingUntil: number
   lastBreakSongCount: number
   lastGoldenSundayBreakSongCount: number
+  lastNewsDate: string
   seasonalSongCount: number
   seasonalMonthKey: string
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastGoldenSundayBreakSongCount: 0, seasonalSongCount: 0, seasonalMonthKey: '' }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastGoldenSundayBreakSongCount: 0, lastNewsDate: '', seasonalSongCount: 0, seasonalMonthKey: '' }
 
 interface SearchItem {
   id: string
@@ -244,7 +245,25 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     }
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
-    const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour)
+    const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
+    if (program.id === 'news' && settings.news) {
+      const newsDate = manilaDateKey(startAt)
+      if (state.lastNewsDate !== newsDate) {
+        state.lastNewsDate = newsDate
+        state.tracks.push({
+          uid: `news-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
+          src: settings.news.url,
+          startAt,
+          duration: settings.news.duration,
+          fadeIn: 0,
+          fadeOut: 0,
+          kind: 'news',
+          title: settings.news.name,
+        })
+        continue
+      }
+    }
+    const rotationProgram = program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
@@ -254,9 +273,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       if (song) await updateSongRequest(requested.id, 'played')
     }
     if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
-      song = await findSong(program, state.songCount, state.history, startAt, true)
+      song = await findSong(rotationProgram, state.songCount, state.history, startAt, true)
     }
-    if (!song) song = await findSong(program, state.songCount, state.history, startAt)
+    if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -280,6 +299,7 @@ async function loadState(now: number) {
   const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
   state.lastBreakSongCount = state.lastBreakSongCount ?? 0
   state.lastGoldenSundayBreakSongCount = state.lastGoldenSundayBreakSongCount ?? 0
+  state.lastNewsDate = state.lastNewsDate ?? ''
   state.seasonalSongCount = state.seasonalSongCount ?? 0
   const monthKey = manilaMonthKey(now)
   if (state.seasonalMonthKey !== monthKey) {
@@ -307,7 +327,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       offAir: true,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       tracks: [],
-      djEnabled: settings.djEnabled,
+      nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
   }
 
@@ -322,7 +342,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks, djEnabled: settings.djEnabled }
+  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {
@@ -346,5 +366,24 @@ export async function refreshQueue() {
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
+  await writeJson(STATE_PATH, state)
+}
+
+export async function queueDjMic(asset: { url: string; name: string; duration: number }) {
+  const now = Date.now()
+  const { state } = await loadState(now)
+  const current = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now).at(-1)
+  state.tracks = current ? [current] : []
+  const startAt = current ? trackEnd(current) : now
+  state.tracks.push({
+    uid: `dj-mic-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
+    src: asset.url,
+    startAt,
+    duration: asset.duration,
+    fadeIn: 0,
+    fadeOut: 0,
+    kind: 'dj-mic',
+    title: asset.name,
+  })
   await writeJson(STATE_PATH, state)
 }
