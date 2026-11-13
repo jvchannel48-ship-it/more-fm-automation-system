@@ -13,8 +13,6 @@ interface Slot {
   src: string | null
   synced: boolean
   lastPlayAttemptAt: number
-  gainNode: GainNode | null
-  bassFilter: BiquadFilterNode | null
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -45,7 +43,6 @@ function trackGain(track: Track, now: number, enabled: boolean, curveName: strin
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
-  const audioContext = useRef<AudioContext | null>(null)
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
 
@@ -56,26 +53,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
   const unlock = useCallback(() => {
     if (slots.current.length > 0) return
-    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    audioContext.current ??= AudioContextClass ? new AudioContextClass() : null
-    void audioContext.current?.resume()
     slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      let gainNode: GainNode | null = null
-      let bassFilter: BiquadFilterNode | null = null
-      if (audioContext.current) {
-        const source = audioContext.current.createMediaElementSource(el)
-        bassFilter = audioContext.current.createBiquadFilter()
-        bassFilter.type = 'lowshelf'
-        bassFilter.frequency.value = 120
-        gainNode = audioContext.current.createGain()
-        source.connect(bassFilter).connect(gainNode).connect(audioContext.current.destination)
-      }
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, gainNode, bassFilter }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0 }
     })
   }, [])
 
@@ -152,9 +136,9 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         if (el.readyState < 2 && !el.ended) buffering = true
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
         const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
-        if (slot.bassFilter) slot.bassFilter.gain.value = config?.bassGainDb ?? 0
-        if (slot.gainNode) slot.gainNode.gain.value = outputGain
-        else el.volume = outputGain
+        // Keep playback on the native element: third-party MP3 hosts may not send
+        // CORS headers, and routing those sources through Web Audio can mute them.
+        el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           el.play().catch(() => undefined)
@@ -190,8 +174,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         slot.el.removeAttribute('src')
       }
       slots.current = []
-      void audioContext.current?.close().catch(() => undefined)
-      audioContext.current = null
     },
     [],
   )
