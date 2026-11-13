@@ -200,42 +200,26 @@ const ENGLISH_DISCO = artists('english', [
   'Donna Summer',
   'ABBA',
   'Boney M',
-  'Village People',
-  'KC and the Sunshine Band|sunshine band',
-  'Gloria Gaynor',
   'Earth Wind and Fire|earth wind',
   'Kool and the Gang|kool',
-  'Sister Sledge',
-  'Madonna',
-  'Modern Talking',
-  'Sandra',
-  'C.C. Catch|catch',
-  'Bad Boys Blue',
+  'Diana Ross',
+  'Lionel Richie',
+  'Stevie Wonder',
   'Michael Jackson',
-  'Ace of Base',
-  'La Bouche',
-  'Real McCoy',
-  'Haddaway',
-  'Dr. Alban|alban',
-  'Pet Shop Boys',
-  'Rick Astley',
-  'Samantha Fox',
   'Laura Branigan',
-  'Eruption',
-  'Whigfield',
-  'Corona',
+  'Commodores',
+  'Olivia Newton-John',
 ])
 
 const TAGALOG_DISCO = artists('tagalog', [
-  'VST & Company|vst',
-  'Hotdog',
+  'Rey Valera',
+  'Basil Valdez',
+  'Martin Nievera',
   'Sharon Cuneta',
   'Pops Fernandez',
   'Gary Valenciano',
   'Vina Morales',
-  'Manilyn Reynes',
-  'Jaya',
-  'Andrew E',
+  'Joey Albert',
   'Rico J. Puno|rico j',
 ])
 
@@ -272,7 +256,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   disco: {
     id: 'disco',
     pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
-    variants: { english: ['', 'official audio', 'hits', 'official video'], tagalog: ['', 'official audio', 'disco'] },
+    variants: { english: ['', 'soft disco', 'classic hits', 'soul hits'], tagalog: ['', 'official audio', 'OPM love songs'] },
   },
   news: {
     id: 'news',
@@ -335,7 +319,7 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
 /**
  * Sunday 1–4 AM: English favorites; 4–8 AM: English senior classics; 8–11 AM: Tagalog senior classics.
  * 11:01 AM–midnight: Tagalog favorites. Sunday runs continuously with no sign-off.
- * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
+ * 4–7 PM (incl. the 7 o'clock hour): mellow classic pop, soft disco, and soul hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
 export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20, newsEnabled = true): Program {

@@ -173,6 +173,12 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
     </div>
 
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only mode</Label><p className="text-xs text-muted-foreground">ON plays Tagalog songs continuously with no English songs mixed in. English requests wait until this mode is OFF. The current song finishes; upcoming tracks are refreshed.</p></div>
+      <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? false} disabled={!data || busy}
+        onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
+    </div>
+
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
         <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
@@ -201,7 +207,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Disco schedule</Label><p className="text-xs text-muted-foreground">Choose when the Disco program starts and ends, Manila time.</p></div>
+      <div><Label>Afternoon classics schedule</Label><p className="text-xs text-muted-foreground">Choose when mellow classic pop, soft disco, and soul hits play, Manila time.</p></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Disco start
           <select value={discoStartHour} onChange={(event) => setDiscoStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
@@ -210,7 +216,7 @@ export function AdminPanel() {
           <select value={discoEndHour} onChange={(event) => setDiscoEndHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
         </label>
       </div>
-      <Button variant="secondary" disabled={!data || busy || discoStartHour === discoEndHour} onClick={() => send('PUT', { discoStartHour: Number(discoStartHour), discoEndHour: Number(discoEndHour) })}>Save Disco schedule</Button>
+      <Button variant="secondary" disabled={!data || busy || discoStartHour === discoEndHour} onClick={() => send('PUT', { discoStartHour: Number(discoStartHour), discoEndHour: Number(discoEndHour) })}>Save afternoon schedule</Button>
       {discoStartHour === discoEndHour && <p className="text-xs text-destructive">Disco start and end must be different.</p>}
     </div>
 

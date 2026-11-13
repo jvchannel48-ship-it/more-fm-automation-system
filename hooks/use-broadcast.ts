@@ -12,6 +12,10 @@ interface Slot {
   uid: string | null
   synced: boolean
   lastPlayAttemptAt: number
+  audioProfile: Track['audioProfile'] | null
+  bassShelf: BiquadFilterNode | null
+  vocalPresence: BiquadFilterNode | null
+  trebleShelf: BiquadFilterNode | null
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -100,7 +104,43 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, synced: false, lastPlayAttemptAt: 0 }
+      const slot: Slot = { el, uid: null, synced: false, lastPlayAttemptAt: 0, audioProfile: null, bassShelf: null, vocalPresence: null, trebleShelf: null }
+      const context = signOffContext.current
+      if (context) {
+        try {
+          const bassShelf = context.createBiquadFilter()
+          bassShelf.type = 'lowshelf'
+          bassShelf.frequency.value = 105
+          bassShelf.gain.value = 0
+          const vocalPresence = context.createBiquadFilter()
+          vocalPresence.type = 'peaking'
+          vocalPresence.frequency.value = 2700
+          vocalPresence.Q.value = 0.85
+          vocalPresence.gain.value = 0
+          const trebleShelf = context.createBiquadFilter()
+          trebleShelf.type = 'highshelf'
+          trebleShelf.frequency.value = 8500
+          trebleShelf.gain.value = 0
+          const limiter = context.createDynamicsCompressor()
+          limiter.threshold.value = -14
+          limiter.knee.value = 12
+          limiter.ratio.value = 2.5
+          limiter.attack.value = 0.004
+          limiter.release.value = 0.18
+          const source = context.createMediaElementSource(el)
+          source.connect(bassShelf)
+          bassShelf.connect(vocalPresence)
+          vocalPresence.connect(trebleShelf)
+          trebleShelf.connect(limiter)
+          limiter.connect(context.destination)
+          slot.bassShelf = bassShelf
+          slot.vocalPresence = vocalPresence
+          slot.trebleShelf = trebleShelf
+        } catch {
+          // Keep direct HTML audio playback if this browser cannot route media through Web Audio.
+        }
+      }
+      return slot
     })
   }, [])
 
@@ -162,6 +202,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.uid = track.uid
           slot.synced = false
           slot.lastPlayAttemptAt = 0
+          slot.audioProfile = null
           slot.el.src = track.src
           slot.el.load()
         }
@@ -171,6 +212,17 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         if (!playing || !isActive) {
           if (!el.paused) el.pause()
           continue
+        }
+
+        const profile = track.audioProfile ?? 'vocal'
+        const audioContext = signOffContext.current
+        if (audioContext?.state === 'running' && slot.audioProfile !== profile && slot.bassShelf && slot.vocalPresence && slot.trebleShelf) {
+          const eqNow = audioContext.currentTime
+          const fullBass = profile === 'full-bass'
+          slot.bassShelf.gain.setTargetAtTime(fullBass ? 6 : -1.5, eqNow, 0.12)
+          slot.vocalPresence.gain.setTargetAtTime(fullBass ? 0.5 : 3.5, eqNow, 0.12)
+          slot.trebleShelf.gain.setTargetAtTime(fullBass ? 0.5 : 1.5, eqNow, 0.12)
+          slot.audioProfile = profile
         }
 
         const expected = (now - track.startAt) / 1000
@@ -207,7 +259,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     navigator.mediaSession.metadata = new MediaMetadata({
       title: 'MOR 93.5 Naga',
       artist: 'MOR 93.5 NAGA LIVESTREAM ONLY',
-      album: 'MOR 93.5 Naga — Enjoy the music',
+      album: 'MOR 93.5 Naga Livestream',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })
   }, [playing])

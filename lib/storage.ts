@@ -35,6 +35,7 @@ export const REQUESTS_PATH = 'station/requests-v1.json'
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   autoDjEnabled: true,
+  tagalogOnlyEnabled: false,
   signOffHour: 1,
   signOnHour: 4,
   discoStartHour: 16,
@@ -59,6 +60,7 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
+    tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : false,
     signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? saved.signOffHour : 1,
     signOnHour: typeof saved.signOnHour === 'number' && saved.signOnHour >= 0 && saved.signOnHour <= 23 ? saved.signOnHour : 4,
     discoStartHour: typeof saved.discoStartHour === 'number' && saved.discoStartHour >= 0 && saved.discoStartHour <= 23 ? saved.discoStartHour : 16,

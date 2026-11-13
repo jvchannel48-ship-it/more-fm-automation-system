@@ -1,5 +1,6 @@
 import { AdminMenu } from '@/components/station/admin-menu'
 import { EngagePanel } from '@/components/station/engage-panel'
+import { FeedbackForm } from '@/components/station/feedback-form'
 import { RadioPlayer } from '@/components/station/radio-player'
 
 export default function Home() {
@@ -18,7 +19,10 @@ export default function Home() {
             MOR <span className="text-primary">93.5</span>
           </span>
         </div>
-        <AdminMenu />
+        <div className="flex items-center gap-2">
+          <FeedbackForm />
+          <AdminMenu />
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
@@ -29,7 +33,6 @@ export default function Home() {
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/80"><span className="size-1.5 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" /> On air from Naga</div>
-        <p className="text-xs text-muted-foreground">Enjoy the music.</p>
       </footer>
     </div>
   )

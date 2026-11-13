@@ -13,6 +13,7 @@ export async function PUT(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as {
     broadcastEnabled?: unknown
     autoDjEnabled?: unknown
+    tagalogOnlyEnabled?: unknown
     signOffHour?: unknown
     signOnHour?: unknown
     discoStartHour?: unknown
@@ -39,6 +40,7 @@ export async function PUT(request: NextRequest) {
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
     autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
+    tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
     signOffHour,
     signOnHour,
     discoStartHour,
@@ -58,6 +60,7 @@ export async function PUT(request: NextRequest) {
     djMic: current.djMic,
   }
   await writeJson(SETTINGS_PATH, next)
+  if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled) await refreshQueue()
   return NextResponse.json(await getAdminStatus())
 }
 

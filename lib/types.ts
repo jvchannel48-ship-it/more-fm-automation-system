@@ -6,6 +6,7 @@ export interface Track {
   fadeIn: number
   fadeOut: number
   kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
+  audioProfile?: 'full-bass' | 'vocal'
   title?: string
 }
 
@@ -19,6 +20,7 @@ export interface AudioAsset {
 export interface StationSettings {
   broadcastEnabled: boolean
   autoDjEnabled: boolean
+  tagalogOnlyEnabled: boolean
   signOffHour: number
   signOnHour: number
   discoStartHour: number

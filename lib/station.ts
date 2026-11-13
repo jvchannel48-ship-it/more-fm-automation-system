@@ -70,7 +70,7 @@ async function findSongRequest(request: { title: string; artist: string }, histo
   const requestedTitle = normalize(request.title)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
   }).slice(0, 4)
   const downloads = await Promise.all(candidates.map(async (candidate) => {
     const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 12_000)
@@ -84,12 +84,15 @@ const AI_RULE =
   /\bai\b|a\.i\.|artificial intelligence|suno|udio|voice ?clon|cloned|\bclone\b|deepfake|synthetic|generated|remake|re-?imagined|\bcover\b|covered by|tribute|version|parody|impersonat|soundalike/i
 
 const ROCK_RULE = /rock|metal|punk|grunge|emo\b|screamo|hardcore|headbang/i
+const HIGH_ENERGY_DANCE_RULE = /\b(?:edm|techno|trance|dubstep|rave|club mix|dance remix|dance mix|dance version|house music|eurodance|electro dance|hands up)\b/i
 
 const QUALITY_RULE =
   /karaoke|instrumental|minus one|full album|nonstop|non-stop|medley|reaction|tutorial|remix|sped ?up|slowed|nightcore|8d|reverb|bass ?boost|mashup|playlist|compilation|1 hour|loop|ringtone|lesson|chords|piano|guitar|violin|saxophone|acoustic|sing-?along|with lyrics in/i
 
 const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
+
+const TAGALOG_TITLE_RULE = /\b(?:maging\s+sino\s+ka\s+man|pag[\s-]?ibig|mahal|bakit|puso|sana|nang|wala|walang|hanggang|ikaw|aking|mga|ang|ng|sa|ako|siya|tayo|ito|dahil|paano|huwag|ko|mo|ka|ay|ba|sino|unang|huling|kasama|kita|pangarap|pag-asa|tadhana|sinta|ligaya|buhay|kahit|lahat|minsan|tanging|ngayon|basta|naman|saan|mundo|alaala|na|at|pag|tao|pasko|himig|maligayang)\b/i
 
 const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
 const CHRISTMAS_TITLE_RULE = /\bchristmas\b|\bxmas\b|\bpasko\b|\bsanta claus\b|\bsilent night\b|\bjingle bells?\b|\bholly\b|\bwinter wonderland\b|\bmaligayang pasko\b|\bhimig ng pasko\b|\bsa araw ng pasko\b|\bdeck the halls\b|\bo holy night\b|\bjoy to the world\b|\bwe wish you\b|\blet it snow\b|\bwhite christmas\b|\brudolph\b|\bsleigh ride\b|\bfirst noel\b|\bfeliz navidad\b/i
@@ -120,10 +123,11 @@ function songKey(title: string) {
 }
 
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
-function isAllowed(title: string, artist: Artist) {
+function isAllowed(title: string, artist: Artist, requireTagalog = false) {
   if (NON_LATIN.test(title)) return false
-  if (AI_RULE.test(title) || ROCK_RULE.test(title)) return false
+  if (AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
   if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
+  if (requireTagalog && !TAGALOG_TITLE_RULE.test(title)) return false
   return ` ${normalize(title)} `.includes(` ${normalize(artist.match)} `)
 }
 
@@ -184,7 +188,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     .filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist)) return false
+      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist, program.tagalogOnly)) return false
       if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
@@ -282,7 +286,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
-    if (program.id === 'news' && settings.news) {
+    if (!settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
       const newsDate = manilaDateKey(startAt)
       if (state.lastNewsDate !== newsDate) {
         state.lastNewsDate = newsDate
@@ -299,11 +303,13 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    const rotationProgram = program.id === 'news' ? PROGRAMS['love-mix'] : program
+    const rotationProgram = settings.tagalogOnlyEnabled
+      ? PROGRAMS['sunday-tagalog']
+      : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
-    const requested = (await getSongRequests()).find((request) => request.status === 'pending')
+    const requested = settings.tagalogOnlyEnabled ? undefined : (await getSongRequests()).find((request) => request.status === 'pending')
     if (requested) {
       song = await findSongRequest(requested, state.history)
       if (song) await updateSongRequest(requested.id, 'played')
@@ -323,6 +329,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
       kind: 'music',
+      audioProfile: rotationProgram.id === 'disco' ? 'full-bass' : 'vocal',
       title: song.title,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
