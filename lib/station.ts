@@ -10,6 +10,8 @@ const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
+const SOURCE_REFRESH_WINDOW_MS = 110_000
+const SOURCE_REFRESH_RETRY_MS = 45_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
 // Coalesce simultaneous listener polls that land in the same server runtime.
@@ -68,14 +70,17 @@ async function findSongRequest(request: { title: string; artist: string }, histo
   const playedIds = new Set(history.map((entry) => entry.id))
   const playedKeys = new Set(history.map((entry) => entry.key))
   const requestedTitle = normalize(request.title)
+  const requestedWords = requestedTitle.split(' ').filter((word) => word.length > 1)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
-  }).slice(0, 4)
+    const normalizedTitle = normalize(item.title)
+    const titleMatches = normalizedTitle.includes(requestedTitle) || requestedWords.every((word) => normalizedTitle.includes(word))
+    return seconds >= 90 && seconds <= 540 && titleMatches && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+  }).slice(0, 8)
   const downloads = await Promise.all(candidates.map(async (candidate) => {
     const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 12_000)
     if (!download?.downloadUrl) return null
-    return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
+    return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, sourceUrl: candidate.url, sourceRefreshedAt: Date.now(), duration: parseDuration(candidate.duration) }
   }))
   return downloads.find((song) => song !== null) ?? null
 }
@@ -123,12 +128,12 @@ function songKey(title: string) {
 }
 
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
-function isAllowed(title: string, artist: Artist, requireTagalog = false) {
+function isAllowed(title: string, artist: Artist, requireTagalog = false, credits = '') {
   if (NON_LATIN.test(title)) return false
   if (AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
   if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
   if (requireTagalog && !TAGALOG_TITLE_RULE.test(title)) return false
-  return ` ${normalize(title)} `.includes(` ${normalize(artist.match)} `)
+  return ` ${normalize(`${title} ${credits}`)} `.includes(` ${normalize(artist.match)} `)
 }
 
 function shuffle<T>(list: T[]): T[] {
@@ -141,13 +146,17 @@ function shuffle<T>(list: T[]): T[] {
 }
 
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' })
-    if (!res.ok) return null
-    return (await res.json()) as T
-  } catch {
-    return null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' })
+      if (res.ok) return (await res.json()) as T
+      if (attempt > 0 || (res.status !== 429 && res.status < 500)) return null
+    } catch {
+      if (attempt > 0) return null
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
   }
+  return null
 }
 
 function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
@@ -175,7 +184,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     ? language === 'english' ? ['Christmas song', 'Christmas classic'] : ['Tagalog Christmas song', 'Pasko OPM']
     : program.variants[language]
 
-  const searchResults = await Promise.all(candidatesArtists.slice(0, 5).map(async (artist) => {
+  const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
     const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       `${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`,
@@ -187,14 +196,15 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const candidates = shuffle(searchResults.flatMap(({ artist, items }) => items
     .filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
-      if (seconds < 120 || seconds > 420) return false
-      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist, program.tagalogOnly)) return false
+      if (seconds < 90 || seconds > 540) return false
+      const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
+      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
       if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
     .map((item) => ({ artist, item }))))
 
-  const downloadResults = await Promise.all(candidates.slice(0, 4).map(async ({ artist, item }) => {
+  const downloadResults = await Promise.all(candidates.slice(0, 8).map(async ({ artist, item }) => {
     const download = await fetchJson<{ downloadUrl?: string }>(
       `${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`,
       12_000,
@@ -206,10 +216,29 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       artist: artist.name,
       title: item.title,
       src: download.downloadUrl,
+      sourceUrl: item.url,
+      sourceRefreshedAt: Date.now(),
       duration: parseDuration(item.duration),
     }
   }))
   return downloadResults.find((result) => result !== null) ?? null
+}
+
+async function refreshUpcomingSongSources(state: StationState, now: number) {
+  const due = state.tracks.filter((track) =>
+    track.kind === 'music' && track.sourceUrl && track.startAt > now && track.startAt - now <= SOURCE_REFRESH_WINDOW_MS &&
+    (track.sourceRefreshedAt === undefined || now - track.sourceRefreshedAt >= SOURCE_REFRESH_RETRY_MS),
+  )
+  if (due.length === 0) return false
+  const refreshed = await Promise.all(due.map(async (track) => ({
+    track,
+    download: await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(track.sourceUrl!)}&type=mp3`, 8_000),
+  })))
+  for (const { track, download } of refreshed) {
+    track.sourceRefreshedAt = now
+    if (download?.downloadUrl) track.src = download.downloadUrl
+  }
+  return true
 }
 
 function trackEnd(track: Track) {
@@ -256,11 +285,11 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
           continue
         }
       }
-    } else if (state.songCount > 0 && state.songCount % 4 === 0 && state.lastBreakSongCount !== state.songCount) {
+    } else if (state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
       if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
-      if (settings.commercialEnabled) {
+      if (settings.jingleEnabled && settings.commercialEnabled) {
         for (const asset of settings.commercials) if (asset) spots.push({ asset, kind: 'commercial' })
       }
       if (spots.length > 0) {
@@ -328,6 +357,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       duration: song.duration,
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
+      sourceUrl: song.sourceUrl,
+      sourceRefreshedAt: song.sourceRefreshedAt,
       kind: 'music',
       title: song.title,
     })
@@ -404,7 +435,6 @@ export async function getNowPlaying(): Promise<NowResponse> {
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
-      transmitterWatts: settings.transmitterWatts,
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
   }
@@ -427,14 +457,14 @@ export async function getNowPlaying(): Promise<NowResponse> {
       nextOnAir: settings.broadcastEnabled ? nextSignOn(responseNow, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : responseNow,
       tracks: [],
-      transmitterWatts: settings.transmitterWatts,
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
-  } else if (changed) {
-    await writeJson(STATE_PATH, state)
+  } else {
+    const sourcesChanged = await refreshUpcomingSongSources(state, responseNow)
+    if (changed || sourcesChanged) await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, transmitterWatts: settings.transmitterWatts, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
+  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

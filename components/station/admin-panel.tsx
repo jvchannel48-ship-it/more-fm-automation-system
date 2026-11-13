@@ -180,14 +180,14 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="transmitter-watts">Simulated transmitter power</Label><p className="text-xs text-muted-foreground">Choose a simulated reception level for the player. This does not change real transmitter output or actual internet coverage.</p></div>
+      <div><Label htmlFor="transmitter-watts">Transmitter power profile</Label><p className="text-xs text-muted-foreground">Choose a profile label only. It will not add static, change song volume, affect real transmitter output, or change actual internet coverage.</p></div>
       <select id="transmitter-watts" value={data?.transmitterWatts ?? 100000} disabled={!data || busy}
         onChange={(event) => send('PUT', { transmitterWatts: Number(event.target.value) })}
         className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
-        <option value={0}>0 watts — no song signal, loud static</option>
-        <option value={5000}>5,000 watts — Naga City only, slight static</option>
-        <option value={20000}>20,000 watts — weak signal, noticeable static</option>
-        <option value={100000}>100,000 watts — wider/clearer simulation, faint static</option>
+        <option value={0}>0 watts — no-transmitter profile</option>
+        <option value={5000}>5,000 watts — Naga City/local profile</option>
+        <option value={20000}>20,000 watts — medium-power profile</option>
+        <option value={100000}>100,000 watts — wider-coverage profile</option>
       </select>
     </div>
 
@@ -279,7 +279,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">One jingle after every 4 songs, except during Golden Sunday. MP3 supported · max 4 MB.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">ON plays the station jingle after every 3 songs, then returns to music. OFF skips the break and keeps music continuous. Sunday Golden Sunday is unchanged. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -290,7 +290,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle, except during Golden Sunday. MP3 supported · max 4 MB per file.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle only when Jingle is ON; skipped during Golden Sunday. MP3 supported · max 4 MB per file.</p></div>
         <Switch id="commercial-enabled" checked={data?.commercialEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { commercialEnabled: checked })} /></div>
       {[0, 1, 2].map((slot) => {
@@ -309,6 +309,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Outside Golden Sunday, after every four songs, enabled and uploaded spots play once in order; missing or disabled spots are skipped. Music resumes automatically afterward. Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, no repeat song within 7 days, max 2 plays per artist per hour.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Outside Golden Sunday, Jingle ON plays the jingle after every three songs and music resumes automatically; Jingle OFF skips the break for continuous music. Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, no repeat song within 7 days, max 2 plays per artist per hour.</p>
   </div>
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
@@ -95,11 +95,12 @@ export function RadioPlayer() {
         <Button
           size="icon"
           onClick={togglePlay}
-          aria-label={offAir ? (playing ? 'Pause off-air effect' : 'Play off-air effect') : playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
+          disabled={offAir}
+          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
-            playing ? <Pause aria-hidden="true" /> : <Play className="translate-x-0.5" aria-hidden="true" />
+            <Moon aria-hidden="true" />
           ) : playing && buffering ? (
             <Loader2 className="animate-spin" aria-hidden="true" />
           ) : playing ? (

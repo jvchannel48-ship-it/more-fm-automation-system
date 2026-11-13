@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest) {
     djMic: current.djMic,
   }
   await writeJson(SETTINGS_PATH, next)
-  if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled) await refreshQueue()
+  if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled) await refreshQueue()
   return NextResponse.json(await getAdminStatus())
 }
 

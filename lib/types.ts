@@ -7,6 +7,8 @@ export interface Track {
   duration: number
   fadeIn: number
   fadeOut: number
+  sourceUrl?: string
+  sourceRefreshedAt?: number
   kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
   title?: string
 }
@@ -56,7 +58,6 @@ export interface NowResponse {
   nextOnAir: number | null
   signOffAt: number | null
   tracks: Track[]
-  transmitterWatts: TransmitterWatts
   nightVolumeActive: boolean
 }
 

@@ -50,7 +50,10 @@ export async function POST(request: NextRequest) {
       duration,
     }
     const settings = await getSettings()
-    if (kind === 'jingle') settings.jingle = asset
+    if (kind === 'jingle') {
+      settings.jingle = asset
+      settings.jingleEnabled = true
+    }
     else if (kind === 'commercial') settings.commercials[slot] = asset
     else if (kind === 'golden-sunday') settings.goldenSunday = asset
     else settings.djMic = asset

@@ -47,9 +47,9 @@ export const DEFAULT_SETTINGS: StationSettings = {
   nightVolumeEnabled: false,
   nightVolumeStartHour: 22,
   nightVolumeEndHour: 6,
-  jingleEnabled: false,
+  jingleEnabled: true,
   commercialEnabled: false,
-  jingle: null,
+  jingle: { url: '/my-only-radio-for-life.mp3', name: 'MyOnlyRadioforLife-usesuno.com.mp3', duration: 11.833 },
   commercials: [null, null, null],
   goldenSunday: null,
   news: null,
@@ -73,9 +73,9 @@ export async function getSettings(): Promise<StationSettings> {
     nightVolumeEnabled: typeof saved.nightVolumeEnabled === 'boolean' ? saved.nightVolumeEnabled : false,
     nightVolumeStartHour: typeof saved.nightVolumeStartHour === 'number' && saved.nightVolumeStartHour >= 0 && saved.nightVolumeStartHour <= 23 ? saved.nightVolumeStartHour : 22,
     nightVolumeEndHour: typeof saved.nightVolumeEndHour === 'number' && saved.nightVolumeEndHour >= 0 && saved.nightVolumeEndHour <= 23 ? saved.nightVolumeEndHour : 6,
-    jingleEnabled: typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
+    jingleEnabled: saved.jingle && typeof saved.jingle.url === 'string' && typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : true,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
-    jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : null,
+    jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : DEFAULT_SETTINGS.jingle,
     commercials: Array.from({ length: 3 }, (_, i) => {
       const asset = saved.commercials?.[i]
       return asset && typeof asset.url === 'string' ? asset : null
