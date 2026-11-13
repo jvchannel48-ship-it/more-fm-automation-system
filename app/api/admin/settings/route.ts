@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as {
       broadcastEnabled?: unknown; autoDjEnabled?: unknown; shuffleEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
-      christmasEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
+      christmasEnabled?: unknown; autoVoiceEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
     }
     const current = await getSettings()
@@ -44,6 +44,8 @@ export async function PUT(request: NextRequest) {
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
       transmitterWatts, signOffHour, signOnHour, discoStartHour, discoEndHour,
       christmasEnabled: typeof body.christmasEnabled === 'boolean' ? body.christmasEnabled : current.christmasEnabled,
+      autoVoiceEnabled: typeof body.autoVoiceEnabled === 'boolean' ? body.autoVoiceEnabled : current.autoVoiceEnabled,
+      autoVoiceAnnouncement: current.autoVoiceAnnouncement,
       djMicEnabled: typeof body.djMicEnabled === 'boolean' ? body.djMicEnabled : current.djMicEnabled,
       newsEnabled: typeof body.newsEnabled === 'boolean' ? body.newsEnabled : current.newsEnabled,
       nightVolumeEnabled: typeof body.nightVolumeEnabled === 'boolean' ? body.nightVolumeEnabled : current.nightVolumeEnabled,

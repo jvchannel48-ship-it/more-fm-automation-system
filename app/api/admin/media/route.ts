@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const kind = String(form.get('kind') ?? '')
     const slot = Number(form.get('slot'))
     const duration = Number(form.get('duration'))
-    if (!(file instanceof File) || !['jingle', 'commercial', 'golden-sunday', 'dj-mic'].includes(kind)) {
+    if (!(file instanceof File) || !['jingle', 'commercial', 'golden-sunday', 'dj-mic', 'auto-voice'].includes(kind)) {
       return NextResponse.json({ error: 'Invalid audio upload.' }, { status: 400 })
     }
 
@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
       settings.commercials[slot] = asset
     } else if (kind === 'golden-sunday') {
       settings.goldenSunday = asset
+    } else if (kind === 'auto-voice') {
+      settings.autoVoiceAnnouncement = asset
     } else {
       settings.djMic = asset
     }

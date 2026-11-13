@@ -76,7 +76,7 @@ export function AdminPanel() {
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [rotationPoolSize, setRotationPoolSize] = useState('100')
   const [listenerLimit, setListenerLimit] = useState('0')
-  const [recording, setRecording] = useState(false)
+  const [recordingKind, setRecordingKind] = useState<'dj-mic' | 'auto-voice' | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
 
@@ -107,7 +107,7 @@ export function AdminPanel() {
     } finally { setBusy(false) }
   }
 
-  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic', file: File | undefined, slot = 0) => {
+  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic' | 'auto-voice', file: File | undefined, slot = 0) => {
     if (!file) return
     setBusy(true); setError(''); setMessage('')
     try {
@@ -119,14 +119,14 @@ export function AdminPanel() {
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
       void mutateUsage()
-      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
+      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : kind === 'auto-voice' ? 'Auto Voice' : `Commercial ${slot + 1}`
       setMessage(`${label} uploaded. A new selection replaces the previous file.`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Audio upload failed.')
     } finally { setBusy(false) }
   }
 
-  const startDjRecording = async () => {
+  const startDjRecording = async (kind: 'dj-mic' | 'auto-voice') => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setError('This browser does not support microphone recording.')
       return
@@ -141,12 +141,12 @@ export function AdminPanel() {
         stream.getTracks().forEach((track) => track.stop())
         recordingStreamRef.current = null
         const type = recorder.mimeType || 'audio/webm'
-        void upload('dj-mic', new File(chunks, `dj-mic-${Date.now()}.webm`, { type }))
+        void upload(kind, new File(chunks, `${kind}-${Date.now()}.webm`, { type }))
       }
       recorderRef.current = recorder
       recordingStreamRef.current = stream
       recorder.start()
-      setRecording(true)
+      setRecordingKind(kind)
       setError('')
     } catch {
       setError('Microphone access was denied or is unavailable.')
@@ -156,7 +156,7 @@ export function AdminPanel() {
   const stopDjRecording = () => {
     recorderRef.current?.stop()
     recorderRef.current = null
-    setRecording(false)
+    setRecordingKind(null)
   }
 
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
@@ -215,6 +215,8 @@ export function AdminPanel() {
         <Switch id="news-enabled" checked={data?.newsEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { newsEnabled: checked })} /></div>
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="dj-mic-enabled">DJ Mic</Label><p className="text-xs text-muted-foreground">Play a recorded microphone announcement to every listener after the current track.</p></div>
         <Switch id="dj-mic-enabled" checked={data?.djMicEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djMicEnabled: checked })} /></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="auto-voice-enabled">Auto Voice for song requests</Label><p className="text-xs text-muted-foreground">When ON, play your real recorded voice clip before newly matched listener requests. No AI voice is generated; already queued tracks are unchanged.</p></div>
+        <Switch id="auto-voice-enabled" checked={data?.autoVoiceEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { autoVoiceEnabled: checked })} /></div>
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -298,10 +300,21 @@ export function AdminPanel() {
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a smooth microphone clip. It is uploaded and queued after the current track so every listener hears it.</p></div>
       <div className="flex flex-wrap gap-2">
-        {!recording ? <Button type="button" variant="secondary" disabled={!data?.djMicEnabled || busy} onClick={() => void startDjRecording()}><Mic2 aria-hidden="true" /> Record DJ Mic</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop and broadcast</Button>}
+        {recordingKind !== 'dj-mic' ? <Button type="button" variant="secondary" disabled={!data?.djMicEnabled || busy || recordingKind !== null} onClick={() => void startDjRecording('dj-mic')}><Mic2 aria-hidden="true" /> Record DJ Mic</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop and broadcast</Button>}
         {!data?.djMicEnabled && <span className="self-center text-xs text-muted-foreground">Turn on DJ Mic above first.</span>}
       </div>
       {data?.djMic && <p className="truncate text-xs text-muted-foreground">Last clip: {data.djMic.name}</p>}
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>Auto Voice announcement</Label><p className="text-xs text-muted-foreground">Record a real human announcement such as “A song request is coming up.” It will play before a matched request. It cannot speak changing song names unless you record a new clip each time.</p></div>
+      <div className="flex flex-wrap gap-2">
+        {recordingKind !== 'auto-voice' ? <Button type="button" variant="secondary" disabled={busy || recordingKind !== null} onClick={() => void startDjRecording('auto-voice')}><Mic2 aria-hidden="true" /> Record real voice announcement</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop and save voice</Button>}
+        <label htmlFor="upload-auto-voice" className={`flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary ${busy || recordingKind !== null ? 'pointer-events-none opacity-50' : ''}`}><Upload className="size-4" aria-hidden="true" /> Upload recorded voice</label>
+        <input id="upload-auto-voice" type="file" accept="audio/*" className="sr-only" disabled={busy || recordingKind !== null} onChange={(event) => { void upload('auto-voice', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
+      </div>
+      {data?.autoVoiceAnnouncement && <a href={data.autoVoiceAnnouncement.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current announcement: {data.autoVoiceAnnouncement.name}</a>}
+      {data?.autoVoiceEnabled && !data.autoVoiceAnnouncement && <p className="text-xs text-amber-300" role="status">Auto Voice is ON; record or upload a real voice clip before it can play.</p>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">

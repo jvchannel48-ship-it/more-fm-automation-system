@@ -33,6 +33,8 @@ export interface StationSettings {
   discoStartHour: number
   discoEndHour: number
   christmasEnabled: boolean
+  autoVoiceEnabled: boolean
+  autoVoiceAnnouncement: AudioAsset | null
   djMicEnabled: boolean
   newsEnabled: boolean
   nightVolumeEnabled: boolean

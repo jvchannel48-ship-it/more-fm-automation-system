@@ -28,6 +28,7 @@ export async function GET(
       settings.goldenSunday,
       settings.news,
       settings.djMic,
+      settings.autoVoiceAnnouncement,
     ]
     if (!configuredAssets.some((asset) => asset?.pathname === pathname)) {
       return NextResponse.json({ error: 'Audio not found.' }, { status: 404 })

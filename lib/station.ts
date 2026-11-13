@@ -337,12 +337,28 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const rotationProgram = settings.tagalogOnlyEnabled
       ? PROGRAMS['sunday-tagalog']
       : program.id === 'news' ? PROGRAMS['love-mix'] : program
-    const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
+    let fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
     const requested = settings.tagalogOnlyEnabled ? undefined : (await getSongRequests()).find((request) => request.status === 'pending')
     if (requested) {
       song = await findSongRequest(requested, state.history)
+      if (song && settings.autoVoiceEnabled && settings.autoVoiceAnnouncement) {
+        const announcementStart = nextStart(state, now)
+        const previous = state.tracks.at(-1)
+        if (previous) previous.fadeOut = 0
+        state.tracks.push({
+          uid: `auto-voice-${requested.id}-${announcementStart}`,
+          src: settings.autoVoiceAnnouncement.url,
+          startAt: announcementStart,
+          duration: settings.autoVoiceAnnouncement.duration,
+          fadeIn: 0,
+          fadeOut: 0,
+          kind: 'dj-mic',
+          title: settings.autoVoiceAnnouncement.name,
+        })
+        fadeIn = 0
+      }
       if (song) await updateSongRequest(requested.id, 'played')
     }
     if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
@@ -351,7 +367,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt, false, settings.shuffleEnabled)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
-    const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
