@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -244,7 +244,31 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Rico J. Puno|rico j',
 ])
 
+const GOOD_VIBES_ENGLISH = artists('english', [
+  'Ava Max',
+  'Dua Lipa',
+  'Sia',
+  'Katy Perry',
+  'Lady Gaga',
+  'Miley Cyrus',
+  'Kelly Clarkson',
+  'P!nk|pink',
+  'OneRepublic',
+  'Maroon 5|maroon five',
+  'Bruno Mars',
+  'Taylor Swift',
+  'Ed Sheeran',
+  'Harry Styles',
+  'Shawn Mendes',
+  'Jason Mraz',
+  'The Script',
+  'Imagine Dragons',
+  'One Direction',
+  'Ellie Goulding',
+])
+
 const LOVE_VARIANTS = ['', 'official audio', 'greatest hits', 'love song', 'soft pop', 'classic love song']
+const GOOD_VIBES_VARIANTS = ['', 'official audio', 'pop hits', 'feel good hits', 'greatest hits']
 const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
@@ -273,6 +297,11 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     id: 'english-love',
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+  },
+  'good-vibes': {
+    id: 'good-vibes',
+    pools: { english: GOOD_VIBES_ENGLISH, tagalog: [] },
+    variants: { english: GOOD_VIBES_VARIANTS, tagalog: [] },
   },
   disco: {
     id: 'disco',

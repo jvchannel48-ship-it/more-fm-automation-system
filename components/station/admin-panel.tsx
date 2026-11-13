@@ -192,8 +192,14 @@ export function AdminPanel() {
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label htmlFor="tagalog-only-enabled">Tagalog-only mode</Label><p className="text-xs text-muted-foreground">ON plays Tagalog songs continuously with no English songs mixed in. English requests wait until this mode is OFF. The current song finishes; upcoming tracks are refreshed.</p></div>
-      <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? false} disabled={!data || busy}
+        <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? false} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
+    </div>
+
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label htmlFor="good-vibes-enabled">Good Vibes mode</Label><p className="text-xs text-muted-foreground">ON gives priority to beautiful English pop and feel-good hits from artists like Ava Max, Dua Lipa, Sia, Katy Perry, and more. Turning it ON refreshes upcoming tracks.</p></div>
+      <Switch id="good-vibes-enabled" checked={data?.goodVibesEnabled ?? false} disabled={!data || busy}
+        onCheckedChange={(checked) => send('PUT', { goodVibesEnabled: checked })} />
     </div>
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">

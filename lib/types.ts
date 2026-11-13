@@ -24,6 +24,7 @@ export interface StationSettings {
   broadcastEnabled: boolean
   autoDjEnabled: boolean
   shuffleEnabled: boolean
+  goodVibesEnabled: boolean
   rotationPoolSize: number
   listenerLimit: number
   tagalogOnlyEnabled: boolean

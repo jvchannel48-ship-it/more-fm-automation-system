@@ -337,6 +337,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     }
     const rotationProgram = settings.tagalogOnlyEnabled
       ? PROGRAMS['sunday-tagalog']
+      : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
       : program.id === 'news' ? PROGRAMS['love-mix'] : program
     let fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 

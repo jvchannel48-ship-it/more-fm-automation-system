@@ -16,7 +16,7 @@ export async function PUT(request: NextRequest) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const body = (await request.json().catch(() => ({}))) as {
-      broadcastEnabled?: unknown; autoDjEnabled?: unknown; shuffleEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
+      broadcastEnabled?: unknown; autoDjEnabled?: unknown; shuffleEnabled?: unknown; goodVibesEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
       christmasEnabled?: unknown; autoVoiceEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
@@ -39,6 +39,7 @@ export async function PUT(request: NextRequest) {
       broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
       shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,
+      goodVibesEnabled: typeof body.goodVibesEnabled === 'boolean' ? body.goodVibesEnabled : current.goodVibesEnabled,
       rotationPoolSize: typeof body.rotationPoolSize === 'number' ? body.rotationPoolSize : current.rotationPoolSize,
       listenerLimit: typeof body.listenerLimit === 'number' ? body.listenerLimit : current.listenerLimit,
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
@@ -55,7 +56,7 @@ export async function PUT(request: NextRequest) {
       jingle: current.jingle, commercials: current.commercials, goldenSunday: current.goldenSunday, news: current.news, djMic: current.djMic,
     }
     await writeJson(SETTINGS_PATH, next)
-    if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled) await refreshQueue()
+    if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.goodVibesEnabled !== current.goodVibesEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled) await refreshQueue()
     return NextResponse.json(await getAdminStatus())
   } catch (error) {
     console.error('[morefm] admin settings PUT failed', error)

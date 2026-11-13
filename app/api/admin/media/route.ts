@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
 import { getAdminStatus, queueDjMic } from '@/lib/station'
 import { getSettings, SETTINGS_PATH, writeJson } from '@/lib/storage'
-import { uploadSupabaseAudio } from '@/lib/supabase-media'
+import { deleteSupabaseAudio, uploadSupabaseAudio } from '@/lib/supabase-media'
 import type { AudioAsset } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
 
     const ext = extension.replace(/[^a-z0-9]/g, '').slice(0, 8) || 'audio'
     const slotSuffix = kind === 'commercial' ? `-${slot + 1}` : ''
-    const pathname = `station/audio/${kind}${slotSuffix}-${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
+    const contentHash = createHash('sha256').update(Buffer.from(await file.arrayBuffer())).digest('hex').slice(0, 16)
+    const pathname = `station/audio/${kind}${slotSuffix}-${contentHash}.${ext}`
     await uploadSupabaseAudio(pathname, file, contentType)
 
     const asset: AudioAsset = {
@@ -53,6 +54,11 @@ export async function POST(request: NextRequest) {
       duration,
     }
     const settings = await getSettings()
+    const previousPathname = kind === 'jingle' ? settings.jingle?.pathname
+      : kind === 'commercial' ? settings.commercials[slot]?.pathname
+      : kind === 'golden-sunday' ? settings.goldenSunday?.pathname
+      : kind === 'auto-voice' ? settings.autoVoiceAnnouncement?.pathname
+      : settings.djMic?.pathname
     if (kind === 'jingle') {
       settings.jingle = asset
       settings.jingleEnabled = true
@@ -66,6 +72,11 @@ export async function POST(request: NextRequest) {
       settings.djMic = asset
     }
     await writeJson(SETTINGS_PATH, settings)
+    if (previousPathname && previousPathname !== pathname) {
+      await deleteSupabaseAudio(previousPathname).catch((error) => {
+        console.error('[morefm] old audio cleanup failed', error)
+      })
+    }
     if (kind === 'dj-mic' && settings.djMicEnabled) await queueDjMic(asset)
     return NextResponse.json({ asset, status: await getAdminStatus() })
   } catch (error) {

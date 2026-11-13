@@ -68,6 +68,19 @@ export async function uploadSupabaseAudio(pathname: string, file: File, contentT
   }
 }
 
+export async function deleteSupabaseAudio(pathname: string) {
+  await ensureSupabaseMediaBucket()
+  const { url, key } = config()
+  const response = await fetch(`${url}/storage/v1/object/${BUCKET}/${encodedPath(pathname)}`, {
+    method: 'DELETE',
+    headers: authHeaders(key),
+    cache: 'no-store',
+  })
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Supabase Storage delete failed (${response.status}).`)
+  }
+}
+
 export async function fetchSupabaseAudio(pathname: string) {
   const { url, key } = config()
   return fetch(`${url}/storage/v1/object/${BUCKET}/${encodedPath(pathname)}`, {
