@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,30 @@ export function RadioPlayer() {
     keepPreviousData: true,
   })
   const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  useEffect(() => {
+    if (!playing || data?.offAir) return
+    let id = localStorage.getItem('morefm-listener-id')
+    if (!id) {
+      id = typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `listener-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      localStorage.setItem('morefm-listener-id', id)
+    }
+    const send = (active: boolean) => {
+      void fetch('/api/listeners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, active }),
+        keepalive: !active,
+      }).catch(() => undefined)
+    }
+    send(true)
+    const interval = window.setInterval(() => send(true), 20_000)
+    return () => {
+      window.clearInterval(interval)
+      send(false)
+    }
+  }, [playing, data?.offAir])
 
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir
@@ -95,7 +119,7 @@ export function RadioPlayer() {
           MOR 93.5 NAGA LIVESTREAM ONLY
         </p>
         <div className="mt-2">
-          <Equalizer active={active} />
+          <Equalizer active={live} />
         </div>
         {offAir && (
           <p className="text-sm text-muted-foreground">

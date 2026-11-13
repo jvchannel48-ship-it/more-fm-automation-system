@@ -88,7 +88,52 @@ const PINOY_LOVE = artists('tagalog', [
   'Lani Misalucha',
   'Jamie Rivera',
   'Jaya',
+  'Moira Dela Torre',
+  'Sarah Geronimo',
+  'Yeng Constantino',
+  'Ben&Ben',
+  'Zack Tabudlo',
 ])
+
+const SUNDAY_ENGLISH_OLDIES = artists('english', [
+  'Victor Wood',
+  'Engelbert Humperdinck|engelbert',
+  'Tom Jones',
+  'Andy Williams',
+  'Perry Como',
+  'Elvis Presley',
+  'Frank Sinatra',
+  'Nat King Cole',
+  'Bing Crosby',
+])
+
+const SUNDAY_TAGALOG_OLDIES = [
+  ...artists('tagalog', [
+  'Imelda Papin',
+  'Claire dela Fuente|dela fuente',
+  'Victor Wood',
+  'Eddie Peregrina',
+  'Pilita Corrales',
+  'Nora Aunor',
+  'Bing Rodrigo',
+  'Diomedes Maturan',
+  'Basil Valdez',
+  'Marco Sison',
+  'Rey Valera',
+  ]),
+  ...PINOY_OLDIES,
+]
+
+export const CHRISTMAS_ARTISTS: Record<Language, Artist[]> = {
+  english: artists('english', [
+    'Andy Williams', 'Nat King Cole', 'Bing Crosby', 'Brenda Lee', 'Frank Sinatra',
+    'Carpenters', 'Elvis Presley', 'Perry Como', 'Jose Mari Chan',
+  ]),
+  tagalog: artists('tagalog', [
+    'Jose Mari Chan', 'APO Hiking Society|apo hiking', 'Gary Valenciano',
+    'Sharon Cuneta', 'Regine Velasquez|regine', 'Kuh Ledesma', 'Imelda Papin',
+  ]),
+}
 
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
@@ -200,9 +245,8 @@ const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
-    pools: { english: [], tagalog: PINOY_OLDIES },
-    variants: { english: [], tagalog: ['', 'official audio', 'lyrics', 'greatest hits'] },
-    tagalogOnly: true,
+    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: SUNDAY_TAGALOG_OLDIES },
+    variants: { english: ['', 'oldies', 'classic hits'], tagalog: ['', 'official audio', 'OPM oldies'] },
   },
   'english-love': {
     id: 'english-love',
@@ -255,14 +299,14 @@ export function nextSignOn(ms: number): number {
 }
 
 /**
- * Sunday 4–9 AM: old OPM for seniors. 10 AM–3 PM: English love songs.
+ * Sunday 4 AM–1 PM: English and Tagalog senior classics. 1–3 PM: English love songs.
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
 export function programAt(ms: number): Program {
   const { hour, day } = manilaTime(ms)
   if (hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR) return PROGRAMS['off-air']
-  if (day === 0 && hour >= 4 && hour < 9) return PROGRAMS['sunday-oldies']
+  if (day === 0 && hour >= 4 && hour < 13) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   if (hour >= 16 && hour < 20) return PROGRAMS.disco
   if (hour >= 20) return PROGRAMS['night-love']
@@ -273,4 +317,27 @@ export function programAt(ms: number): Program {
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
+}
+
+export function manilaMonth(ms: number): number {
+  return new Date(ms + MANILA_OFFSET_MS).getUTCMonth() + 1
+}
+
+export function manilaMonthKey(ms: number): string {
+  const date = new Date(ms + MANILA_OFFSET_MS)
+  return `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`
+}
+
+export function isGoldenSundayWindow(ms: number): boolean {
+  const { hour, day } = manilaTime(ms)
+  return day === 0 && hour >= 4 && hour < 13
+}
+
+/** Seasonal cadence: one Christmas song per five in Sep–Oct; three in a row in Nov; three of every four in Dec. */
+export function isChristmasSlot(monthlySongIndex: number, ms: number): boolean {
+  const month = manilaMonth(ms)
+  if (month === 9 || month === 10) return monthlySongIndex % 5 === 4
+  if (month === 11) return monthlySongIndex % 7 < 3
+  if (month === 12) return monthlySongIndex % 4 < 3
+  return false
 }

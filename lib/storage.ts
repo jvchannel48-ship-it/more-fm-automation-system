@@ -25,14 +25,28 @@ export async function writeJson(pathname: string, data: unknown) {
 
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = 'station/state-v2.json'
+export const LISTENERS_PATH = 'station/listeners-v1.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
+  jingleEnabled: false,
+  commercialEnabled: false,
+  jingle: null,
+  commercials: [null, null, null],
+  goldenSunday: null,
 }
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+    jingleEnabled: typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
+    commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
+    jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : null,
+    commercials: Array.from({ length: 3 }, (_, i) => {
+      const asset = saved.commercials?.[i]
+      return asset && typeof asset.url === 'string' ? asset : null
+    }),
+    goldenSunday: saved.goldenSunday && typeof saved.goldenSunday.url === 'string' ? saved.goldenSunday : null,
   }
 }
