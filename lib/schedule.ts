@@ -285,14 +285,16 @@ export function manilaTime(ms: number): ManilaTime {
   return { hour: d.getUTCHours(), day: d.getUTCDay() }
 }
 
-export function isOffAir(ms: number): boolean {
+export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {
   const { hour } = manilaTime(ms)
-  return hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
+  return signOffHour < signOnHour
+    ? hour >= signOffHour && hour < signOnHour
+    : hour >= signOffHour || hour < signOnHour
 }
 
-export function nextSignOn(ms: number): number {
+export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {
   const d = new Date(ms + MANILA_OFFSET_MS)
-  d.setUTCHours(SIGN_ON_HOUR, 0, 0, 0)
+  d.setUTCHours(signOnHour, 0, 0, 0)
   let target = d.getTime() - MANILA_OFFSET_MS
   if (target <= ms) target += 24 * 60 * 60 * 1000
   return target
@@ -303,9 +305,9 @@ export function nextSignOn(ms: number): number {
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
-export function programAt(ms: number): Program {
+export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): Program {
   const { hour, day } = manilaTime(ms)
-  if (hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR) return PROGRAMS['off-air']
+  if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
   if (day === 0 && hour >= 4 && hour < 13) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   if (hour >= 16 && hour < 20) return PROGRAMS.disco

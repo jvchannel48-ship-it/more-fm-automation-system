@@ -29,6 +29,8 @@ export const LISTENERS_PATH = 'station/listeners-v1.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
+  signOffHour: 1,
+  signOnHour: 4,
   jingleEnabled: false,
   commercialEnabled: false,
   jingle: null,
@@ -40,6 +42,8 @@ export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+    signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? saved.signOffHour : 1,
+    signOnHour: typeof saved.signOnHour === 'number' && saved.signOnHour >= 0 && saved.signOnHour <= 23 ? saved.signOnHour : 4,
     jingleEnabled: typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
     jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : null,

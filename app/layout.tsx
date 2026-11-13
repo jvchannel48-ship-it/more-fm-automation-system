@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 export const metadata: Metadata = {
   title: 'MOR 93.5 Naga — Livestream Only',
   description:
-    'MOR 93.5 Naga livestream only. 24/7 automated English at Tagalog music. created by DWLC — this app enjoy the music.',
+    'MOR 93.5 Naga livestream only. 24/7 automated English and Tagalog music. Enjoy the music.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
-  themeColor: '#14161f',
+  themeColor: '#0b1220',
 }
 
 export default function RootLayout({

@@ -212,7 +212,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         if (previous) previous.fadeOut = 0
         for (const { asset, kind } of spots) {
           const startAt = nextStart(state, now)
-          if (isOffAir(startAt)) break
+          if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
           state.tracks.push({
             uid: `${kind}-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
             src: asset.url,
@@ -228,8 +228,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       }
     }
     const startAt = nextStart(state, now)
-    if (isOffAir(startAt)) break
-    const program = programAt(startAt)
+    if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
+    const program = programAt(startAt, settings.signOffHour, settings.signOnHour)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
@@ -274,7 +274,7 @@ async function loadState(now: number) {
 export async function getNowPlaying(): Promise<NowResponse> {
   const now = Date.now()
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
-  const offAir = isOffAir(now) || !settings.broadcastEnabled
+  const offAir = isOffAir(now, settings.signOffHour, settings.signOnHour) || !settings.broadcastEnabled
 
   if (offAir) {
     if (state.tracks.length > 0) {
@@ -284,7 +284,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     return {
       serverTime: Date.now(),
       offAir: true,
-      nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null,
+      nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       tracks: [],
     }
   }

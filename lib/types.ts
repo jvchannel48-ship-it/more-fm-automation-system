@@ -17,6 +17,8 @@ export interface AudioAsset {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  signOffHour: number
+  signOnHour: number
   jingleEnabled: boolean
   commercialEnabled: boolean
   jingle: AudioAsset | null

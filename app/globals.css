@@ -34,25 +34,25 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.15 0.015 265);
+  --background: oklch(0.11 0.025 255);
   --foreground: oklch(0.96 0.01 85);
-  --card: oklch(0.2 0.018 265);
+  --card: oklch(0.17 0.03 255);
   --card-foreground: oklch(0.96 0.01 85);
-  --popover: oklch(0.2 0.018 265);
+  --popover: oklch(0.17 0.03 255);
   --popover-foreground: oklch(0.96 0.01 85);
-  --primary: oklch(0.8 0.15 75);
+  --primary: oklch(0.82 0.16 78);
   --primary-foreground: oklch(0.18 0.02 265);
-  --secondary: oklch(0.26 0.02 265);
+  --secondary: oklch(0.23 0.035 255);
   --secondary-foreground: oklch(0.96 0.01 85);
-  --muted: oklch(0.26 0.02 265);
+  --muted: oklch(0.23 0.035 255);
   --muted-foreground: oklch(0.72 0.02 265);
-  --accent: oklch(0.3 0.03 265);
+  --accent: oklch(0.3 0.05 255);
   --accent-foreground: oklch(0.96 0.01 85);
   --destructive: oklch(0.64 0.21 25);
   --live: oklch(0.64 0.22 25);
-  --border: oklch(0.3 0.02 265);
-  --input: oklch(0.32 0.02 265);
-  --ring: oklch(0.8 0.15 75);
+  --border: oklch(0.32 0.04 255);
+  --input: oklch(0.3 0.04 255);
+  --ring: oklch(0.82 0.16 78);
 }
 
 @layer base {
@@ -61,6 +61,8 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    background-image: radial-gradient(circle at 15% 10%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 28rem), radial-gradient(circle at 85% 90%, color-mix(in oklab, #3b82f6 8%, transparent), transparent 30rem);
+    background-attachment: fixed;
   }
 }
 

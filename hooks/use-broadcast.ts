@@ -115,7 +115,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     navigator.mediaSession.metadata = new MediaMetadata({
       title: 'MOR 93.5 Naga',
       artist: 'MOR 93.5 NAGA LIVESTREAM ONLY',
-      album: 'created by DWLC',
+      album: 'MOR 93.5 Naga — Enjoy the music',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })
   }, [playing])

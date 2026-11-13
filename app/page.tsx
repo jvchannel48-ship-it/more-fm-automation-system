@@ -3,7 +3,7 @@ import { RadioPlayer } from '@/components/station/radio-player'
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(245,183,65,0.12),transparent_32%),linear-gradient(135deg,#090b13_0%,#111827_52%,#0b1220_100%)]">
       <div
         className="pointer-events-none absolute left-1/2 top-1/3 -z-10 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl"
         aria-hidden="true"
@@ -20,9 +20,9 @@ export default function Home() {
         <RadioPlayer />
       </main>
 
-      <footer className="mx-auto flex flex-col items-center gap-1 px-4 pb-8 text-center">
-        <p className="text-sm font-medium">created by DWLC</p>
-        <p className="text-xs text-muted-foreground">this app enjoy the music</p>
+      <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-primary/80"><span className="size-1.5 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" /> On air from Naga</div>
+        <p className="text-xs text-muted-foreground">Enjoy the music.</p>
       </footer>
     </div>
   )

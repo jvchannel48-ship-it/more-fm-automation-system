@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { RefreshCw, Upload } from 'lucide-react'
+import { Clock3, RefreshCw, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -18,6 +18,12 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     <span className="text-lg font-semibold tabular-nums">{value}</span>
     <span className="text-[11px] text-muted-foreground">{label}</span>
   </div>
+}
+
+function hourLabel(hour: number) {
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 || 12
+  return `${displayHour}:00 ${suffix}`
 }
 
 function audioDuration(file: File) {
@@ -43,6 +49,14 @@ export function AdminPanel() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [signOffHour, setSignOffHour] = useState('1')
+  const [signOnHour, setSignOnHour] = useState('4')
+
+  useEffect(() => {
+    if (!data) return
+    setSignOffHour(String(data.signOffHour))
+    setSignOnHour(String(data.signOnHour))
+  }, [data?.signOffHour, data?.signOnHour])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -80,9 +94,27 @@ export function AdminPanel() {
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
-        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Naka-off ang livestream' : 'Auto on 4:00 AM · auto off 1:00 AM'}</span></div>
+        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Naka-off ang livestream' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)}`}</span></div>
       <Switch id="broadcast" checked={data?.broadcastEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Piliin kung kailan mag-sign off at muling mag-sign on ang station, Manila time.</p></div></div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">Sign off
+          <select value={signOffHour} onChange={(event) => setSignOffHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
+            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Sign on
+          <select value={signOnHour} onChange={(event) => setSignOnHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
+            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
+          </select>
+        </label>
+      </div>
+      <Button variant="secondary" disabled={!data || busy || signOffHour === signOnHour} onClick={() => send('PUT', { signOffHour: Number(signOffHour), signOnHour: Number(signOnHour) })}>Save schedule</Button>
+      {signOffHour === signOnHour && <p className="text-xs text-destructive">Magkaiba dapat ang sign-off at sign-on time.</p>}
     </div>
 
     <div className="grid grid-cols-2 gap-2">
