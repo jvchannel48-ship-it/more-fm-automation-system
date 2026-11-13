@@ -3,6 +3,10 @@ import { get, put } from '@vercel/blob'
 import type { SongRequest, StationSettings } from './types'
 
 const blobToken = process.env.BLOB_READ_WRITE_TOKEN ?? process.env.VERCEL_BLOB_READ_WRITE_TOKEN
+const hasBlobCredentials = Boolean(blobToken || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID))
+export const hasPersistentStorage = hasBlobCredentials
+const memoryState = new Map<string, string>()
+const STATION_STATE_PATH = 'station/state-v2.json'
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   try {
@@ -11,12 +15,22 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     const text = await new Response(result.stream).text()
     return JSON.parse(text) as T
   } catch {
+    if (pathname === STATION_STATE_PATH) {
+      const cached = memoryState.get(pathname)
+      if (cached) {
+        try { return JSON.parse(cached) as T } catch { /* ignore a corrupted process-local entry */ }
+      }
+    }
     return fallback
   }
 }
-
 export async function writeJson(pathname: string, data: unknown) {
-  await put(pathname, JSON.stringify(data), {
+  const serialized = JSON.stringify(data)
+  if (pathname === STATION_STATE_PATH && !hasBlobCredentials) {
+    memoryState.set(pathname, serialized)
+    return
+  }
+  await put(pathname, serialized, {
     access: 'private',
     allowOverwrite: true,
     addRandomSuffix: false,
@@ -25,9 +39,8 @@ export async function writeJson(pathname: string, data: unknown) {
     ...(blobToken ? { token: blobToken } : {}),
   })
 }
-
 export const SETTINGS_PATH = 'station/settings.json'
-export const STATE_PATH = 'station/state-v2.json'
+export const STATE_PATH = STATION_STATE_PATH
 export const LISTENERS_PATH = 'station/listeners-v1.json'
 export const RATINGS_PATH = 'station/ratings-v1.json'
 export const REQUESTS_PATH = 'station/requests-v1.json'

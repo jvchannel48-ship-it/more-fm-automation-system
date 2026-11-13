@@ -1,5 +1,5 @@
 import 'server-only'
-import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { getRatings, getSettings, getSongRequests, hasPersistentStorage, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
@@ -439,7 +439,10 @@ export async function getNowPlaying(): Promise<NowResponse> {
     }
   }
 
-  const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
+  const hasActiveTrack = state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
+  const needsFill = hasPersistentStorage
+    ? state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
+    : !hasActiveTrack && state.tracks.filter((track) => track.startAt > now).length < PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK
   if (settings.autoDjEnabled && needsFill) {
     await fillQueueIfNeeded(settings)
     const refreshed = await loadState(Date.now())
