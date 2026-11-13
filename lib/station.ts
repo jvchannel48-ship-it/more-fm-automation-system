@@ -86,6 +86,18 @@ async function findSongRequest(request: { title: string; artist: string }, histo
   return downloads.find((song) => song !== null) ?? null
 }
 
+async function findPendingSongRequest(history: HistoryEntry[]) {
+  const pending = (await getSongRequests())
+    .filter((request) => request.status === 'pending')
+    .sort((a, b) => a.requestedAt - b.requestedAt)
+    .slice(0, 12)
+  for (const request of pending) {
+    const song = await findSongRequest(request, history)
+    if (song) return { request, song }
+  }
+  return null
+}
+
 const AI_RULE =
   /\bai\b|a\.i\.|artificial intelligence|suno|udio|voice ?clon|cloned|\bclone\b|deepfake|synthetic|generated|remake|re-?imagined|\bcover\b|covered by|tribute|version|parody|impersonat|soundalike/i
 
@@ -342,9 +354,10 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     let fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
-    const requested = settings.tagalogOnlyEnabled ? undefined : (await getSongRequests()).find((request) => request.status === 'pending')
-    if (requested) {
-      song = await findSongRequest(requested, state.history)
+    const requestMatch = settings.tagalogOnlyEnabled ? null : await findPendingSongRequest(state.history)
+    const requested = requestMatch?.request
+    if (requestMatch) {
+      song = requestMatch.song
       if (song && settings.autoVoiceEnabled && settings.autoVoiceAnnouncement) {
         const announcementStart = nextStart(state, now)
         const previous = state.tracks.at(-1)
@@ -361,7 +374,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         })
         fadeIn = 0
       }
-      if (song) await updateSongRequest(requested.id, 'played')
     }
     if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
       song = await findSong(rotationProgram, state.songCount, state.history, startAt, true, settings.shuffleEnabled)
@@ -386,6 +398,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     state.seasonalSongCount++
+    if (requested && song) await updateSongRequest(requested.id, 'played')
     // One song per request keeps the now-playing endpoint responsive; subsequent polls
     // fill the second queue slot well before the current track finishes.
     break
