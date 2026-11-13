@@ -19,11 +19,21 @@ export interface StationSettings {
   broadcastEnabled: boolean
   signOffHour: number
   signOnHour: number
+  discoStartHour: number
+  discoEndHour: number
   jingleEnabled: boolean
   commercialEnabled: boolean
   jingle: AudioAsset | null
   commercials: Array<AudioAsset | null>
   goldenSunday: AudioAsset | null
+}
+
+export interface SongRequest {
+  id: string
+  title: string
+  artist: string
+  requestedAt: number
+  status: 'pending' | 'played' | 'skipped'
 }
 
 export interface NowResponse {
@@ -38,4 +48,6 @@ export interface AdminStatus extends StationSettings {
   artistsThisHour: number
   queued: number
   listenersNow: number
+  totalRatings: number
+  pendingRequests: number
 }

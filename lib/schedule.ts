@@ -305,12 +305,15 @@ export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
-export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): Program {
+export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20): Program {
   const { hour, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
   if (day === 0 && hour >= 4 && hour < 13) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
-  if (hour >= 16 && hour < 20) return PROGRAMS.disco
+  const inDiscoWindow = discoStartHour < discoEndHour
+    ? hour >= discoStartHour && hour < discoEndHour
+    : hour >= discoStartHour || hour < discoEndHour
+  if (inDiscoWindow) return PROGRAMS.disco
   if (hour >= 20) return PROGRAMS['night-love']
   return PROGRAMS['love-mix']
 }

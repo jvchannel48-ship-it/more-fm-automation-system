@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
+import { RequestInbox } from './request-inbox'
 
 const fetcher = (url: string) => fetch(url).then((r) => {
   if (!r.ok) throw new Error('Unauthorized')
@@ -51,12 +52,16 @@ export function AdminPanel() {
   const [error, setError] = useState('')
   const [signOffHour, setSignOffHour] = useState('1')
   const [signOnHour, setSignOnHour] = useState('4')
+  const [discoStartHour, setDiscoStartHour] = useState('16')
+  const [discoEndHour, setDiscoEndHour] = useState('20')
 
   useEffect(() => {
     if (!data) return
     setSignOffHour(String(data.signOffHour))
     setSignOnHour(String(data.signOnHour))
-  }, [data?.signOffHour, data?.signOnHour])
+    setDiscoStartHour(String(data.discoStartHour))
+    setDiscoEndHour(String(data.discoEndHour))
+  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -117,13 +122,30 @@ export function AdminPanel() {
       {signOffHour === signOnHour && <p className="text-xs text-destructive">Magkaiba dapat ang sign-off at sign-on time.</p>}
     </div>
 
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>Disco schedule</Label><p className="text-xs text-muted-foreground">Piliin kung anong oras magsisimula at matatapos ang Disco program, Manila time.</p></div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">Disco start
+          <select value={discoStartHour} onChange={(event) => setDiscoStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Disco end
+          <select value={discoEndHour} onChange={(event) => setDiscoEndHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
+        </label>
+      </div>
+      <Button variant="secondary" disabled={!data || busy || discoStartHour === discoEndHour} onClick={() => send('PUT', { discoStartHour: Number(discoStartHour), discoEndHour: Number(discoEndHour) })}>Save Disco schedule</Button>
+      {discoStartHour === discoEndHour && <p className="text-xs text-destructive">Magkaiba dapat ang Disco start at end time.</p>}
+    </div>
+
     <div className="grid grid-cols-2 gap-2">
       <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
       <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
       <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />
+      <Stat label="Heart ratings" value={data?.totalRatings ?? '–'} />
+      <Stat label="Pending requests" value={data?.pendingRequests ?? '–'} />
     </div>
     <p className="-mt-2 text-[11px] text-muted-foreground">Estimated browsers currently playing; inactive sessions expire after one minute.</p>
+    <RequestInbox />
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label htmlFor="upload-golden-sunday">Golden Sunday</Label>

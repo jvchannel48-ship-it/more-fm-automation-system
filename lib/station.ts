@@ -1,5 +1,5 @@
 import 'server-only'
-import { getSettings, readJson, STATE_PATH, writeJson } from './storage'
+import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isOffAir, languageForSlot, manilaMonthKey, MANILA_OFFSET_MS, nextSignOn, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
@@ -36,6 +36,21 @@ interface SearchItem {
   title: string
   url: string
   duration: string
+}
+
+async function findSongRequest(request: { title: string; artist: string }, history: HistoryEntry[]) {
+  const artist: Artist = { name: request.artist, match: normalize(request.artist), language: 'english' }
+  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${request.title} ${request.artist}`)}`, 15_000)
+  const playedIds = new Set(history.map((entry) => entry.id))
+  const requestedTitle = normalize(request.title)
+  const candidate = (data?.items ?? []).find((item) => {
+    const seconds = parseDuration(item.duration ?? '')
+    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && isAllowed(item.title, artist) && !playedIds.has(item.id)
+  })
+  if (!candidate) return null
+  const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 30_000)
+  if (!download?.downloadUrl) return null
+  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
 }
 
 const AI_RULE =
@@ -229,11 +244,16 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     }
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
-    const program = programAt(startAt, settings.signOffHour, settings.signOnHour)
+    const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     let song = null
-    if (isChristmasSlot(state.seasonalSongCount, startAt)) {
+    const requested = (await getSongRequests()).find((request) => request.status === 'pending')
+    if (requested) {
+      song = await findSongRequest(requested, state.history)
+      if (song) await updateSongRequest(requested.id, 'played')
+    }
+    if (!song && isChristmasSlot(state.seasonalSongCount, startAt)) {
       song = await findSong(program, state.songCount, state.history, startAt, true)
     }
     if (!song) song = await findSong(program, state.songCount, state.history, startAt)
@@ -305,7 +325,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [{ state }, settings, listenersNow] = await Promise.all([loadState(now), getSettings(), getListenerCount()])
+  const [{ state }, settings, listenersNow, ratings, requests] = await Promise.all([loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests()])
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
   return {
     ...settings,
@@ -313,6 +333,8 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     artistsThisHour: hourArtists.size,
     queued: state.tracks.filter((t) => t.startAt > now).length,
     listenersNow,
+    totalRatings: ratings.total,
+    pendingRequests: requests.filter((request) => request.status === 'pending').length,
   }
 }
 

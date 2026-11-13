@@ -1,4 +1,5 @@
 import { AdminMenu } from '@/components/station/admin-menu'
+import { EngagePanel } from '@/components/station/engage-panel'
 import { RadioPlayer } from '@/components/station/radio-player'
 
 export default function Home() {
@@ -9,15 +10,21 @@ export default function Home() {
         aria-hidden="true"
       />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4">
-        <span className="font-mono text-sm font-bold tracking-widest">
-          MOR <span className="text-primary">93.5</span>
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="size-11 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10">
+            <img src="/icon.svg" alt="MOR 93.5 station logo" className="size-full rounded-full object-cover" />
+          </div>
+          <span className="font-mono text-sm font-bold tracking-widest">
+            MOR <span className="text-primary">93.5</span>
+          </span>
+        </div>
         <AdminMenu />
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
         <h1 className="sr-only">MOR 93.5 Naga livestream</h1>
         <RadioPlayer />
+        <EngagePanel />
       </main>
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">

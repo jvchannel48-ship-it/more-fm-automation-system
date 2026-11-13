@@ -1,6 +1,6 @@
 import 'server-only'
 import { get, put } from '@vercel/blob'
-import type { StationSettings } from './types'
+import type { SongRequest, StationSettings } from './types'
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   try {
@@ -26,11 +26,15 @@ export async function writeJson(pathname: string, data: unknown) {
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = 'station/state-v2.json'
 export const LISTENERS_PATH = 'station/listeners-v1.json'
+export const RATINGS_PATH = 'station/ratings-v1.json'
+export const REQUESTS_PATH = 'station/requests-v1.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   signOffHour: 1,
   signOnHour: 4,
+  discoStartHour: 16,
+  discoEndHour: 20,
   jingleEnabled: false,
   commercialEnabled: false,
   jingle: null,
@@ -44,6 +48,8 @@ export async function getSettings(): Promise<StationSettings> {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? saved.signOffHour : 1,
     signOnHour: typeof saved.signOnHour === 'number' && saved.signOnHour >= 0 && saved.signOnHour <= 23 ? saved.signOnHour : 4,
+    discoStartHour: typeof saved.discoStartHour === 'number' && saved.discoStartHour >= 0 && saved.discoStartHour <= 23 ? saved.discoStartHour : 16,
+    discoEndHour: typeof saved.discoEndHour === 'number' && saved.discoEndHour >= 0 && saved.discoEndHour <= 23 ? saved.discoEndHour : 20,
     jingleEnabled: typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
     jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : null,
@@ -53,4 +59,38 @@ export async function getSettings(): Promise<StationSettings> {
     }),
     goldenSunday: saved.goldenSunday && typeof saved.goldenSunday.url === 'string' ? saved.goldenSunday : null,
   }
+}
+
+interface RatingState { total: number; voterIds: string[] }
+
+export async function getRatings() {
+  const saved = await readJson<Partial<RatingState>>(RATINGS_PATH, {})
+  return { total: typeof saved.total === 'number' ? saved.total : 0, voterIds: Array.isArray(saved.voterIds) ? saved.voterIds.filter((id): id is string => typeof id === 'string').slice(-10000) : [] }
+}
+
+export async function addRating(voterId: string) {
+  const ratings = await getRatings()
+  if (ratings.voterIds.includes(voterId)) return ratings
+  const next = { total: ratings.total + 1, voterIds: [...ratings.voterIds, voterId].slice(-10000) }
+  await writeJson(RATINGS_PATH, next)
+  return next
+}
+
+export async function getSongRequests() {
+  const saved = await readJson<unknown>(REQUESTS_PATH, [])
+  return Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(item && typeof item === 'object' && typeof (item as SongRequest).id === 'string' && typeof (item as SongRequest).title === 'string' && typeof (item as SongRequest).artist === 'string' && ['pending', 'played', 'skipped'].includes((item as SongRequest).status))) : []
+}
+
+export async function addSongRequest(title: string, artist: string) {
+  const requests = await getSongRequests()
+  const request: SongRequest = { id: `request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, artist, requestedAt: Date.now(), status: 'pending' }
+  await writeJson(REQUESTS_PATH, [...requests.slice(-199), request])
+  return request
+}
+
+export async function updateSongRequest(id: string, status: SongRequest['status']) {
+  const requests = await getSongRequests()
+  const next = requests.map((request) => request.id === id ? { ...request, status } : request)
+  await writeJson(REQUESTS_PATH, next)
+  return next.find((request) => request.id === id) ?? null
 }
