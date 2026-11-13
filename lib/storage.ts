@@ -1,50 +1,99 @@
 import 'server-only'
-import { get, put } from '@vercel/blob'
+import { Pool } from 'pg'
 import type { SongRequest, StationSettings } from './types'
 
-const blobToken = process.env.BLOB_READ_WRITE_TOKEN ?? process.env.VERCEL_BLOB_READ_WRITE_TOKEN
-const hasBlobCredentials = Boolean(blobToken || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID))
-export const hasPersistentStorage = hasBlobCredentials
+const databaseUrl = process.env.POSTGRES_URL
+  ?? process.env.POSTGRES_URL_NON_POOLING
+  ?? process.env.DATABASE_URL
+  ?? process.env.SUPABASE_DB_URL
+
+type MoreFmGlobals = typeof globalThis & {
+  __moreFmPostgresPool?: Pool
+  __moreFmSchemaPromise?: Promise<void>
+}
+const globals = globalThis as MoreFmGlobals
 const memoryState = new Map<string, string>()
 const STATION_STATE_PATH = 'station/state-v2.json'
+export const hasPersistentStorage = Boolean(databaseUrl)
+
+function getPool() {
+  if (!databaseUrl) return null
+  if (!globals.__moreFmPostgresPool) {
+    globals.__moreFmPostgresPool = new Pool({
+      connectionString: databaseUrl,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+    })
+  }
+  return globals.__moreFmPostgresPool
+}
+
+async function ensureStateTable() {
+  const pool = getPool()
+  if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
+  if (!globals.__moreFmSchemaPromise) {
+    globals.__moreFmSchemaPromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS public.morefm_state (
+        storage_key text PRIMARY KEY,
+        value jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      ALTER TABLE public.morefm_state ENABLE ROW LEVEL SECURITY;
+    `).then(() => undefined).catch((error) => {
+      globals.__moreFmSchemaPromise = undefined
+      throw error
+    })
+  }
+  await globals.__moreFmSchemaPromise
+}
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
-  try {
-    const result = await get(pathname, { access: 'private', useCache: false, ...(blobToken ? { token: blobToken } : {}) })
-    if (!result || !result.stream) return fallback
-    const text = await new Response(result.stream).text()
-    return JSON.parse(text) as T
-  } catch {
+  const pool = getPool()
+  if (!pool) {
     if (pathname === STATION_STATE_PATH) {
       const cached = memoryState.get(pathname)
       if (cached) {
-        try { return JSON.parse(cached) as T } catch { /* ignore a corrupted process-local entry */ }
+        try { return JSON.parse(cached) as T } catch { /* Ignore a corrupted process-local entry. */ }
       }
     }
     return fallback
   }
+  await ensureStateTable()
+  const result = await pool.query<{ value: T }>(
+    'SELECT value FROM public.morefm_state WHERE storage_key = $1 LIMIT 1',
+    [pathname],
+  )
+  return result.rows[0]?.value ?? fallback
 }
+
 export async function writeJson(pathname: string, data: unknown) {
   const serialized = JSON.stringify(data)
-  if (pathname === STATION_STATE_PATH && !hasBlobCredentials) {
-    memoryState.set(pathname, serialized)
-    return
+  if (serialized === undefined) throw new Error('State value could not be serialized as JSON.')
+  const pool = getPool()
+  if (!pool) {
+    if (pathname === STATION_STATE_PATH) {
+      memoryState.set(pathname, serialized)
+      return
+    }
+    throw new Error('Supabase Postgres is not configured for this deployment.')
   }
-  await put(pathname, serialized, {
-    access: 'private',
-    allowOverwrite: true,
-    addRandomSuffix: false,
-    contentType: 'application/json',
-    cacheControlMaxAge: 60,
-    ...(blobToken ? { token: blobToken } : {}),
-  })
+  await ensureStateTable()
+  await pool.query(
+    `INSERT INTO public.morefm_state (storage_key, value, updated_at)
+     VALUES ($1, $2::jsonb, now())
+     ON CONFLICT (storage_key)
+     DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [pathname, serialized],
+  )
 }
+
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = STATION_STATE_PATH
 export const LISTENERS_PATH = 'station/listeners-v1.json'
 export const RATINGS_PATH = 'station/ratings-v1.json'
 export const REQUESTS_PATH = 'station/requests-v1.json'
-
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   autoDjEnabled: true,
@@ -100,12 +149,13 @@ export async function getSettings(): Promise<StationSettings> {
 }
 
 interface RatingState { total: number; voterIds: string[] }
-
 export async function getRatings() {
   const saved = await readJson<Partial<RatingState>>(RATINGS_PATH, {})
-  return { total: typeof saved.total === 'number' ? saved.total : 0, voterIds: Array.isArray(saved.voterIds) ? saved.voterIds.filter((id): id is string => typeof id === 'string').slice(-10000) : [] }
+  return {
+    total: typeof saved.total === 'number' ? saved.total : 0,
+    voterIds: Array.isArray(saved.voterIds) ? saved.voterIds.filter((id): id is string => typeof id === 'string').slice(-10000) : [],
+  }
 }
-
 export async function addRating(voterId: string) {
   const ratings = await getRatings()
   if (ratings.voterIds.includes(voterId)) return ratings
@@ -116,16 +166,26 @@ export async function addRating(voterId: string) {
 
 export async function getSongRequests() {
   const saved = await readJson<unknown>(REQUESTS_PATH, [])
-  return Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(item && typeof item === 'object' && typeof (item as SongRequest).id === 'string' && typeof (item as SongRequest).title === 'string' && typeof (item as SongRequest).artist === 'string' && ['pending', 'played', 'skipped'].includes((item as SongRequest).status))) : []
+  return Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(
+    item && typeof item === 'object'
+    && typeof (item as SongRequest).id === 'string'
+    && typeof (item as SongRequest).title === 'string'
+    && typeof (item as SongRequest).artist === 'string'
+    && ['pending', 'played', 'skipped'].includes((item as SongRequest).status),
+  )) : []
 }
-
 export async function addSongRequest(title: string, artist: string) {
   const requests = await getSongRequests()
-  const request: SongRequest = { id: `request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, artist, requestedAt: Date.now(), status: 'pending' }
+  const request: SongRequest = {
+    id: `request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    artist,
+    requestedAt: Date.now(),
+    status: 'pending',
+  }
   await writeJson(REQUESTS_PATH, [...requests.slice(-199), request])
   return request
 }
-
 export async function updateSongRequest(id: string, status: SongRequest['status']) {
   const requests = await getSongRequests()
   const next = requests.map((request) => request.id === id ? { ...request, status } : request)

@@ -10,7 +10,7 @@ function adminPassword() {
 }
 
 function secret() {
-  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.BLOB_READ_WRITE_TOKEN ?? 'morefm'}`
+  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY ?? 'morefm'}`
 }
 
 function sign(payload: string) {

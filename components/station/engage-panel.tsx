@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+async function readApiJson<T>(response: Response): Promise<T> {
+  const result = await response.json().catch(() => null) as (T & { error?: unknown }) | null
+  if (!response.ok) {
+    const message = result && typeof result.error === 'string' ? result.error : `Request failed (${response.status}).`
+    throw new Error(message)
+  }
+  if (result === null) throw new Error('The server returned an empty response. Please try again.')
+  return result
+}
+
 function browserId() {
   let id = localStorage.getItem('morefm-voter-id')
   if (!id) {
@@ -31,7 +41,7 @@ export function EngagePanel() {
   useEffect(() => {
     setRated(localStorage.getItem('morefm-rated') === 'true')
     void fetch('/api/rating')
-      .then((response) => response.json())
+      .then((response) => readApiJson<{ total?: number }>(response))
       .then((result) => setRatingTotal(result.total ?? 0))
       .catch(() => undefined)
   }, [])
@@ -47,8 +57,7 @@ export function EngagePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voterId: browserId() }),
       })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Your rating could not be saved. Please try again.')
+      const result = await readApiJson<{ total?: number }>(response)
       setRatingTotal(result.total ?? ratingTotal)
       setRated(true)
       localStorage.setItem('morefm-rated', 'true')
@@ -72,9 +81,8 @@ export function EngagePanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, artist }),
       })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Your song request could not be submitted. Please try again.')
-      setRequestMessage('Your request has been received and is being checked. If a suitable version is available, it will be queued for the next available slot after songs already playing or queued. Please wait; it may take a little while to come on.')
+      const result = await readApiJson<{ message?: string }>(response)
+      setRequestMessage(result.message ?? 'Your song request was submitted successfully.')
       setTitle('')
       setArtist('')
     } catch (reason) {
