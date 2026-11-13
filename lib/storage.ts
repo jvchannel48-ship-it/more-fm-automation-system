@@ -19,8 +19,11 @@ export const hasPersistentStorage = Boolean(databaseUrl)
 function getPool() {
   if (!databaseUrl) return null
   if (!globals.__moreFmPostgresPool) {
+    // Keep TLS enabled while avoiding connection-string SSL options that force strict certificate verification.
+    const connectionUrl = new URL(databaseUrl)
+    for (const option of ['sslmode', 'sslrootcert', 'sslcert', 'sslkey']) connectionUrl.searchParams.delete(option)
     globals.__moreFmPostgresPool = new Pool({
-      connectionString: databaseUrl,
+      connectionString: connectionUrl.toString(),
       ssl: { rejectUnauthorized: false },
       max: 1,
       idleTimeoutMillis: 10_000,
