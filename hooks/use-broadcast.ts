@@ -99,6 +99,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
 
         const expected = (now - track.startAt) / 1000
+        if (el.error && now - slot.lastPlayAttemptAt >= 2_000) {
+          // Expiring third-party download URLs can fail after the queue was built.
+          // Reload the same element so the next poll/source refresh can recover it.
+          slot.lastPlayAttemptAt = now
+          slot.synced = false
+          el.load()
+        }
         if (el.readyState >= 1) {
           const drift = Math.abs(el.currentTime - expected)
           if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
@@ -106,7 +113,9 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
             slot.synced = true
           }
         }
-        if (el.readyState < 3 && !el.ended) buffering = true
+        // HAVE_CURRENT_DATA (2) is enough to begin playback. Waiting for HAVE_FUTURE_DATA
+        // (3) made the UI report an endless loading state for some valid remote MP3s.
+        if (el.readyState < 2 && !el.ended) buffering = true
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
         el.volume = clamp01(trackGain(track, now) * volume * nightVolumeGain * duckGain)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {

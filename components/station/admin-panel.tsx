@@ -290,6 +290,14 @@ export function AdminPanel() {
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Database size is reported by PostgreSQL; audio totals use stored object file sizes in this app’s Supabase Storage bucket. This is app storage, not total Vercel bandwidth, build, or function quota.</p>
         <Button type="button" variant="ghost" size="sm" onClick={() => void mutateUsage()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh usage</Button></div>
     </div>
+    <div className="flex flex-col gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+      <div className="flex items-center gap-2"><Database className="size-4 text-emerald-400" aria-hidden="true" /><div><h3 className="text-sm font-semibold">Storage Protection</h3><p className="text-xs text-muted-foreground">Enabled automatically to help avoid unnecessary storage upgrades.</p></div></div>
+      <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+        <li>Identical audio uploads reuse the same stored file instead of creating duplicates.</li>
+        <li>Replacing a jingle, commercial, DJ Mic, voice clip, or Golden Sunday file removes the old stored copy.</li>
+        <li>Audio uploads are limited to 4 MB per file, and song rotation keeps only recent history.</li>
+      </ul>
+    </div>
     <RequestInbox />
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
