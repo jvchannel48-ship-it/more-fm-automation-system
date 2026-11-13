@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Clock3, Mic2, RefreshCw, Square, Upload } from 'lucide-react'
+import { Clock3, Database, Mic2, RefreshCw, Square, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
@@ -27,6 +28,22 @@ function hourLabel(hour: number) {
   return `${displayHour}:00 ${suffix}`
 }
 
+type UsageResponse = { usage: { provider: string; databaseBytes: number; stationAudioBytes: number; stationAudioFiles: number; measuredAt: number } }
+async function usageFetcher(url: string): Promise<UsageResponse> {
+  const response = await fetch(url, { cache: 'no-store' })
+  const result = await response.json().catch(() => null) as (UsageResponse & { error?: string }) | null
+  if (!response.ok || !result?.usage) throw new Error(result?.error ?? 'Could not load storage usage.')
+  return result
+}
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let size = value / 1024
+  let unit = 0
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit++ }
+  return `${size.toFixed(2)} ${units[unit]}`
+}
+
 function audioDuration(file: File) {
   return new Promise<number>((resolve, reject) => {
     const audio = document.createElement('audio')
@@ -47,6 +64,7 @@ function audioDuration(file: File) {
 
 export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
+  const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 60000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -56,6 +74,8 @@ export function AdminPanel() {
   const [discoEndHour, setDiscoEndHour] = useState('20')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
+  const [rotationPoolSize, setRotationPoolSize] = useState('100')
+  const [listenerLimit, setListenerLimit] = useState('0')
   const [recording, setRecording] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
@@ -68,7 +88,9 @@ export function AdminPanel() {
     setDiscoEndHour(String(data.discoEndHour))
     setNightVolumeStartHour(String(data.nightVolumeStartHour))
     setNightVolumeEndHour(String(data.nightVolumeEndHour))
-  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour])
+    setRotationPoolSize(String(data.rotationPoolSize))
+    setListenerLimit(String(data.listenerLimit))
+  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -96,6 +118,7 @@ export function AdminPanel() {
       const result = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
+      void mutateUsage()
       const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
       setMessage(`${label} uploaded. A new selection replaces the previous file.`)
     } catch (reason) {
@@ -145,9 +168,26 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ picks tracks and avoids repeats for 7 days. OFF stops it from choosing new songs after anything already queued.</p></div>
+      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–100-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="shuffle-enabled">Shuffle</Label><p className="text-xs text-muted-foreground">ON randomizes eligible artists and tracks; OFF follows source search order.</p></div>
+        <Switch id="shuffle-enabled" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
+      <div className="grid grid-cols-2 gap-2">
+        <label htmlFor="rotation-pool-size" className="flex flex-col gap-1 text-xs font-medium">Rotation history size (50–100 songs)
+          <Input id="rotation-pool-size" type="number" min={50} max={100} step={1} value={rotationPoolSize} onChange={(event) => setRotationPoolSize(event.target.value)} disabled={!data || busy} />
+        </label>
+        <label htmlFor="listener-limit" className="flex flex-col gap-1 text-xs font-medium">Listener cap (0 = unlimited)
+          <Input id="listener-limit" type="number" min={0} max={1000} step={1} value={listenerLimit} onChange={(event) => setListenerLimit(event.target.value)} disabled={!data || busy} />
+        </label>
+      </div>
+      <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 100 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
+        onClick={() => send('PUT', { rotationPoolSize: Number(rotationPoolSize), listenerLimit: Number(listenerLimit) })}>Save rotation and listener limits</Button>
+      <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION IS LIMITED LISTENER. Please try again later.” Existing listeners stay connected. Listener cap defaults to unlimited.</p>
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -226,13 +266,22 @@ export function AdminPanel() {
 
     <div className="grid grid-cols-2 gap-2">
       <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
-      <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
+      <Stat label="Songs in history" value={data?.songsThisWeek ?? '–'} />
       <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />
       <Stat label="Heart ratings" value={data?.totalRatings ?? '–'} />
       <Stat label="Pending requests" value={data?.pendingRequests ?? '–'} />
     </div>
     <p className="-mt-2 text-[11px] text-muted-foreground">Estimated browsers currently playing; inactive sessions expire after one minute.</p>
+    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex items-center gap-2"><Database className="size-4 text-primary" aria-hidden="true" /><div><h3 className="text-sm font-semibold">Live storage usage</h3><p className="text-xs text-muted-foreground">{usageData?.usage.provider ?? 'Supabase connected to Vercel'}</p></div></div>
+      {usageError ? <p className="text-xs text-destructive" role="alert">{usageError.message} — check Supabase Storage permissions and database connection.</p> : usageData ? <div className="grid grid-cols-2 gap-2">
+        <Stat label="Supabase database" value={formatBytes(usageData.usage.databaseBytes)} />
+        <Stat label="Station audio files" value={`${formatBytes(usageData.usage.stationAudioBytes)} · ${usageData.usage.stationAudioFiles} files`} />
+      </div> : <p className="text-xs text-muted-foreground">Loading live Supabase usage…</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Database size is reported by PostgreSQL; audio totals use stored object file sizes in this app’s Supabase Storage bucket. This is app storage, not total Vercel bandwidth, build, or function quota.</p>
+        <Button type="button" variant="ghost" size="sm" onClick={() => void mutateUsage()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh usage</Button></div>
+    </div>
     <RequestInbox />
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -286,6 +335,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Outside Golden Sunday, Jingle ON plays the jingle after every three songs and music resumes automatically; Jingle OFF skips the break for continuous music. Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, no repeat song within 7 days, max 2 plays per artist per hour.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Outside Golden Sunday, Jingle ON plays the jingle after every three songs and music resumes automatically; Jingle OFF skips the break for continuous music. Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, avoid repeats within the configured rotation history, max 2 plays per artist per hour.</p>
   </div>
 }

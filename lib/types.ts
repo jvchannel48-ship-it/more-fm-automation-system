@@ -23,6 +23,9 @@ export interface AudioAsset {
 export interface StationSettings {
   broadcastEnabled: boolean
   autoDjEnabled: boolean
+  shuffleEnabled: boolean
+  rotationPoolSize: number
+  listenerLimit: number
   tagalogOnlyEnabled: boolean
   transmitterWatts: TransmitterWatts
   signOffHour: number
@@ -68,4 +71,11 @@ export interface AdminStatus extends StationSettings {
   listenersNow: number
   totalRatings: number
   pendingRequests: number
+  storageUsage?: {
+    provider: string
+    databaseBytes: number
+    stationAudioBytes: number
+    stationAudioFiles: number
+    measuredAt: number
+  }
 }

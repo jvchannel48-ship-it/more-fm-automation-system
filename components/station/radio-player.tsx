@@ -16,6 +16,8 @@ const fetcher = (url: string) =>
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
+  const [checkingCapacity, setCheckingCapacity] = useState(false)
+  const [listenerMessage, setListenerMessage] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
   const { data, error } = useSWR('/api/now', fetcher, {
@@ -33,15 +35,27 @@ export function RadioPlayer() {
         : `listener-${Date.now()}-${Math.random().toString(36).slice(2)}`
       localStorage.setItem('morefm-listener-id', id)
     }
-    const send = (active: boolean) => {
-      void fetch('/api/listeners', {
+    const send = async (active: boolean) => {
+      try {
+        const response = await fetch('/api/listeners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, active }),
         keepalive: !active,
-      }).catch(() => undefined)
+        })
+        const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string } | null
+        if (active && (!response.ok || result?.accepted === false)) {
+          setListenerMessage(result?.message ?? 'Could not check listener capacity. Please try again.')
+          setPlaying(false)
+        }
+      } catch {
+        if (active) {
+          setListenerMessage('Could not check listener capacity. Please try again.')
+          setPlaying(false)
+        }
+      }
     }
-    send(true)
+    void send(true)
     const interval = window.setInterval(() => send(true), 20_000)
     return () => {
       window.clearInterval(interval)
@@ -51,9 +65,43 @@ export function RadioPlayer() {
 
   const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir
-  const togglePlay = () => {
+  const listenerId = () => {
+    let id = localStorage.getItem('morefm-listener-id')
+    if (!id) {
+      id = typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `listener-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      localStorage.setItem('morefm-listener-id', id)
+    }
+    return id
+  }
+
+  const togglePlay = async () => {
+    if (playing) {
+      setPlaying(false)
+      return
+    }
+    if (checkingCapacity) return
     unlock()
-    setPlaying((p) => !p)
+    setCheckingCapacity(true)
+    setListenerMessage('')
+    try {
+      const response = await fetch('/api/listeners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: listenerId(), active: true }),
+      })
+      const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string } | null
+      if (!response.ok || result?.accepted !== true) {
+        setListenerMessage(result?.message ?? 'Could not check listener capacity. Please try again.')
+        return
+      }
+      setPlaying(true)
+    } catch {
+      setListenerMessage('Could not check listener capacity. Please try again.')
+    } finally {
+      setCheckingCapacity(false)
+    }
   }
 
   const onAirAgain = data?.nextOnAir
@@ -93,13 +141,15 @@ export function RadioPlayer() {
 
         <Button
           size="icon"
-          onClick={togglePlay}
-          disabled={offAir}
+          onClick={() => void togglePlay()}
+          disabled={offAir || checkingCapacity}
           aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
             <Moon aria-hidden="true" />
+          ) : checkingCapacity ? (
+            <Loader2 className="animate-spin" aria-hidden="true" />
           ) : playing && buffering ? (
             <Loader2 className="animate-spin" aria-hidden="true" />
           ) : playing ? (
@@ -127,6 +177,7 @@ export function RadioPlayer() {
             Could not connect to the station. Retrying...
           </p>
         )}
+        {listenerMessage && <p className="max-w-sm text-sm font-semibold text-destructive" role="alert" aria-live="assertive">{listenerMessage}</p>}
       </div>
 
       <div className="flex w-full max-w-xs items-center gap-3">

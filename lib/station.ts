@@ -159,7 +159,7 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
   return null
 }
 
-function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
+function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number, shuffleEnabled: boolean) {
   const unique = [...new Map(pool.map((a) => [a.name, a])).values()]
   const lastArtist = history.at(-1)?.artist
   const hourCounts = new Map<string, number>()
@@ -172,20 +172,21 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   // Prefer artists not heard recently so the rotation keeps changing.
   const recent = new Set(history.slice(-12).map((h) => h.artist))
   const fresh = allowed.filter((a) => !recent.has(a.name))
-  return shuffle(fresh.length >= 3 ? fresh : allowed)
+  const selected = fresh.length >= 3 ? fresh : allowed
+  return shuffleEnabled ? shuffle(selected) : selected
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, christmas = false) {
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, christmas = false, shuffleEnabled = true) {
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const candidatesArtists = eligibleArtists(christmas ? CHRISTMAS_ARTISTS[language] : program.pools[language], history, now)
+  const candidatesArtists = eligibleArtists(christmas ? CHRISTMAS_ARTISTS[language] : program.pools[language], history, now, shuffleEnabled)
   const variants = christmas
     ? language === 'english' ? ['Christmas song', 'Christmas classic'] : ['Tagalog Christmas song', 'Pasko OPM']
     : program.variants[language]
 
   const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
-    const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
+    const variant = (shuffleEnabled ? variants[Math.floor(Math.random() * variants.length)] : variants[0]) ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       `${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`,
       8_000,
@@ -193,7 +194,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     return { artist, items: data?.items ?? [] }
   }))
 
-  const candidates = shuffle(searchResults.flatMap(({ artist, items }) => items
+  const candidates = searchResults.flatMap(({ artist, items }) => items
     .filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 90 || seconds > 540) return false
@@ -202,7 +203,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
-    .map((item) => ({ artist, item }))))
+    .map((item) => ({ artist, item })))
+  if (shuffleEnabled) shuffle(candidates)
 
   const downloadResults = await Promise.all(candidates.slice(0, 8).map(async ({ artist, item }) => {
     const download = await fetchJson<{ downloadUrl?: string }>(
@@ -344,9 +346,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       if (song) await updateSongRequest(requested.id, 'played')
     }
     if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
-      song = await findSong(rotationProgram, state.songCount, state.history, startAt, true)
+      song = await findSong(rotationProgram, state.songCount, state.history, startAt, true, settings.shuffleEnabled)
     }
-    if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt)
+    if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt, false, settings.shuffleEnabled)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -363,6 +365,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       title: song.title,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
+    state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     state.seasonalSongCount++
     // One song per request keeps the now-playing endpoint responsive; subsequent polls

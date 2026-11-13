@@ -16,7 +16,7 @@ export async function PUT(request: NextRequest) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const body = (await request.json().catch(() => ({}))) as {
-      broadcastEnabled?: unknown; autoDjEnabled?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
+      broadcastEnabled?: unknown; autoDjEnabled?: unknown; shuffleEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
       christmasEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
@@ -30,12 +30,17 @@ export async function PUT(request: NextRequest) {
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const transmitterWatts: typeof current.transmitterWatts = typeof body.transmitterWatts === 'number' && [0, 5000, 20000, 100000].includes(body.transmitterWatts) ? body.transmitterWatts as typeof current.transmitterWatts : current.transmitterWatts
+    if (body.rotationPoolSize !== undefined && (typeof body.rotationPoolSize !== 'number' || !Number.isInteger(body.rotationPoolSize) || body.rotationPoolSize < 50 || body.rotationPoolSize > 100)) return jsonError('Song rotation pool must be between 50 and 100.', 400)
+    if (body.listenerLimit !== undefined && (typeof body.listenerLimit !== 'number' || !Number.isInteger(body.listenerLimit) || body.listenerLimit < 0 || body.listenerLimit > 1000)) return jsonError('Listener limit must be between 0 and 1,000; use 0 for unlimited.', 400)
     if (signOffHour === signOnHour) return jsonError('Sign-off and sign-on must be different.', 400)
     if (discoStartHour === discoEndHour) return jsonError('Disco start and end must be different.', 400)
     if (nightVolumeStartHour === nightVolumeEndHour) return jsonError('Night-volume start and end must be different.', 400)
     const next = {
       broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
+      shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,
+      rotationPoolSize: typeof body.rotationPoolSize === 'number' ? body.rotationPoolSize : current.rotationPoolSize,
+      listenerLimit: typeof body.listenerLimit === 'number' ? body.listenerLimit : current.listenerLimit,
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
       transmitterWatts, signOffHour, signOnHour, discoStartHour, discoEndHour,
       christmasEnabled: typeof body.christmasEnabled === 'boolean' ? body.christmasEnabled : current.christmasEnabled,
@@ -48,7 +53,7 @@ export async function PUT(request: NextRequest) {
       jingle: current.jingle, commercials: current.commercials, goldenSunday: current.goldenSunday, news: current.news, djMic: current.djMic,
     }
     await writeJson(SETTINGS_PATH, next)
-    if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled) await refreshQueue()
+    if (next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled) await refreshQueue()
     return NextResponse.json(await getAdminStatus())
   } catch (error) {
     console.error('[morefm] admin settings PUT failed', error)

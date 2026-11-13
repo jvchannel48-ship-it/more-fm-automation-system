@@ -43,6 +43,10 @@ async function ensureStateTable() {
         value jsonb NOT NULL,
         updated_at timestamptz NOT NULL DEFAULT now()
       );
+      CREATE TABLE IF NOT EXISTS public.morefm_listeners (
+        listener_id text PRIMARY KEY,
+        last_seen_at timestamptz NOT NULL DEFAULT now()
+      );
       ALTER TABLE public.morefm_state ENABLE ROW LEVEL SECURITY;
     `).then(() => undefined).catch((error) => {
       globals.__moreFmSchemaPromise = undefined
@@ -92,6 +96,77 @@ export async function writeJson(pathname: string, data: unknown) {
   )
 }
 
+export async function registerListener(id: string, active: boolean, listenerLimit: number) {
+  const pool = getPool()
+  if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
+  await ensureStateTable()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('morefm_listener_admission'))")
+    await client.query("DELETE FROM public.morefm_listeners WHERE last_seen_at < now() - interval '60 seconds'")
+    let accepted = true
+    if (active) {
+      const existing = await client.query('SELECT 1 FROM public.morefm_listeners WHERE listener_id = $1', [id])
+      const count = await client.query<{ count: string }>('SELECT count(*)::text AS count FROM public.morefm_listeners')
+      if (existing.rowCount === 0 && listenerLimit > 0 && Number(count.rows[0]?.count ?? 0) >= listenerLimit) {
+        accepted = false
+      } else {
+        await client.query(
+          `INSERT INTO public.morefm_listeners (listener_id, last_seen_at) VALUES ($1, now())
+           ON CONFLICT (listener_id) DO UPDATE SET last_seen_at = now()`,
+          [id],
+        )
+      }
+    } else {
+      await client.query('DELETE FROM public.morefm_listeners WHERE listener_id = $1', [id])
+    }
+    const count = await client.query<{ count: string }>('SELECT count(*)::text AS count FROM public.morefm_listeners')
+    await client.query('COMMIT')
+    return { accepted, listenersNow: Number(count.rows[0]?.count ?? 0) }
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export async function getStoredListenerCount() {
+  const pool = getPool()
+  if (!pool) return getListenerCountFromState()
+  await ensureStateTable()
+  await pool.query("DELETE FROM public.morefm_listeners WHERE last_seen_at < now() - interval '60 seconds'")
+  const result = await pool.query<{ count: string }>('SELECT count(*)::text AS count FROM public.morefm_listeners')
+  return Number(result.rows[0]?.count ?? 0)
+}
+
+async function getListenerCountFromState() {
+  const listeners = await readJson<Record<string, number>>(LISTENERS_PATH, {})
+  const cutoff = Date.now() - 60_000
+  return Object.values(listeners).filter((seenAt) => seenAt >= cutoff).length
+}
+
+export async function getStorageUsage() {
+  const pool = getPool()
+  if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
+  await ensureStateTable()
+  const result = await pool.query<{ database_bytes: string; audio_bytes: string; audio_files: string }>(`
+    SELECT
+      pg_database_size(current_database())::text AS database_bytes,
+      COALESCE((SELECT sum(NULLIF(metadata->>'size', '')::bigint) FROM storage.objects WHERE bucket_id = 'more-fm-media'), 0)::text AS audio_bytes,
+      COALESCE((SELECT count(*) FROM storage.objects WHERE bucket_id = 'more-fm-media'), 0)::text AS audio_files
+  `)
+  const row = result.rows[0]
+  return {
+    provider: 'Supabase connected to Vercel',
+    databaseBytes: Number(row?.database_bytes ?? 0),
+    stationAudioBytes: Number(row?.audio_bytes ?? 0),
+    stationAudioFiles: Number(row?.audio_files ?? 0),
+    measuredAt: Date.now(),
+  }
+}
+
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = STATION_STATE_PATH
 export const LISTENERS_PATH = 'station/listeners-v1.json'
@@ -100,6 +175,9 @@ export const REQUESTS_PATH = 'station/requests-v1.json'
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   autoDjEnabled: true,
+  shuffleEnabled: true,
+  rotationPoolSize: 100,
+  listenerLimit: 0,
   tagalogOnlyEnabled: false,
   transmitterWatts: 100000,
   signOffHour: 1,
@@ -126,6 +204,9 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
+    shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+    rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(100, Math.round(saved.rotationPoolSize))) : 100,
+    listenerLimit: typeof saved.listenerLimit === 'number' ? Math.max(0, Math.min(1000, Math.round(saved.listenerLimit))) : 0,
     tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : false,
     transmitterWatts: [0, 5000, 20000, 100000].includes(saved.transmitterWatts as number) ? saved.transmitterWatts as StationSettings['transmitterWatts'] : 100000,
     signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? saved.signOffHour : 1,
