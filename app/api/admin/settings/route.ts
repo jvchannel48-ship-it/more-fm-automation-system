@@ -14,6 +14,7 @@ export async function PUT(request: NextRequest) {
     broadcastEnabled?: unknown
     autoDjEnabled?: unknown
     tagalogOnlyEnabled?: unknown
+    transmitterWatts?: unknown
     signOffHour?: unknown
     signOnHour?: unknown
     discoStartHour?: unknown
@@ -34,6 +35,7 @@ export async function PUT(request: NextRequest) {
   const discoEndHour = typeof body.discoEndHour === 'number' && body.discoEndHour >= 0 && body.discoEndHour <= 23 ? body.discoEndHour : current.discoEndHour
   const nightVolumeStartHour = typeof body.nightVolumeStartHour === 'number' && body.nightVolumeStartHour >= 0 && body.nightVolumeStartHour <= 23 ? body.nightVolumeStartHour : current.nightVolumeStartHour
   const nightVolumeEndHour = typeof body.nightVolumeEndHour === 'number' && body.nightVolumeEndHour >= 0 && body.nightVolumeEndHour <= 23 ? body.nightVolumeEndHour : current.nightVolumeEndHour
+  const transmitterWatts: typeof current.transmitterWatts = typeof body.transmitterWatts === 'number' && [0, 5000, 20000, 100000].includes(body.transmitterWatts) ? body.transmitterWatts as typeof current.transmitterWatts : current.transmitterWatts
   if (signOffHour === signOnHour) return NextResponse.json({ error: 'Sign-off and sign-on must be different.' }, { status: 400 })
   if (discoStartHour === discoEndHour) return NextResponse.json({ error: 'Disco start and end must be different.' }, { status: 400 })
   if (nightVolumeStartHour === nightVolumeEndHour) return NextResponse.json({ error: 'Night-volume start and end must be different.' }, { status: 400 })
@@ -41,6 +43,7 @@ export async function PUT(request: NextRequest) {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
     autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
     tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
+    transmitterWatts,
     signOffHour,
     signOnHour,
     discoStartHour,

@@ -1,3 +1,5 @@
+export type TransmitterWatts = 0 | 5000 | 20000 | 100000
+
 export interface Track {
   uid: string
   src: string
@@ -20,6 +22,7 @@ export interface StationSettings {
   broadcastEnabled: boolean
   autoDjEnabled: boolean
   tagalogOnlyEnabled: boolean
+  transmitterWatts: TransmitterWatts
   signOffHour: number
   signOnHour: number
   discoStartHour: number
@@ -53,6 +56,7 @@ export interface NowResponse {
   nextOnAir: number | null
   signOffAt: number | null
   tracks: Track[]
+  transmitterWatts: TransmitterWatts
   nightVolumeActive: boolean
 }
 

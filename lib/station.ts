@@ -404,6 +404,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
+      transmitterWatts: settings.transmitterWatts,
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
   }
@@ -426,13 +427,14 @@ export async function getNowPlaying(): Promise<NowResponse> {
       nextOnAir: settings.broadcastEnabled ? nextSignOn(responseNow, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : responseNow,
       tracks: [],
+      transmitterWatts: settings.transmitterWatts,
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
     }
   } else if (changed) {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
+  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, transmitterWatts: settings.transmitterWatts, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

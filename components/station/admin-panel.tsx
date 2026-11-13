@@ -179,6 +179,18 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
     </div>
 
+    <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label htmlFor="transmitter-watts">Simulated transmitter power</Label><p className="text-xs text-muted-foreground">Choose a simulated reception level for the player. This does not change real transmitter output or actual internet coverage.</p></div>
+      <select id="transmitter-watts" value={data?.transmitterWatts ?? 100000} disabled={!data || busy}
+        onChange={(event) => send('PUT', { transmitterWatts: Number(event.target.value) })}
+        className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">
+        <option value={0}>0 watts — no song signal, loud static</option>
+        <option value={5000}>5,000 watts — Naga City only, slight static</option>
+        <option value={20000}>20,000 watts — weak signal, noticeable static</option>
+        <option value={100000}>100,000 watts — wider/clearer simulation, faint static</option>
+      </select>
+    </div>
+
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
         <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
