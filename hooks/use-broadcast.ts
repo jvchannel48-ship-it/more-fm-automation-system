@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 25_000
-const DRIFT_TOLERANCE_S = 4
+const PRELOAD_AHEAD_MS = 90_000
+const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
   el: HTMLAudioElement
   uid: string | null
   synced: boolean
+  lastPlayAttemptAt: number
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -35,12 +36,12 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
   const unlock = useCallback(() => {
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 3 }, () => {
+    slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, synced: false }
+      return { el, uid: null, synced: false, lastPlayAttemptAt: 0 }
     })
   }, [])
 
@@ -69,6 +70,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           if (!slot) continue
           slot.uid = track.uid
           slot.synced = false
+          slot.lastPlayAttemptAt = 0
           slot.el.src = track.src
           slot.el.load()
         }
@@ -82,14 +84,18 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
         const expected = (now - track.startAt) / 1000
         if (el.readyState >= 1) {
-          if (!slot.synced || Math.abs(el.currentTime - expected) > DRIFT_TOLERANCE_S) {
+          const drift = Math.abs(el.currentTime - expected)
+          if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
             if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
             slot.synced = true
           }
         }
         if (el.readyState < 3 && !el.ended) buffering = true
         el.volume = clamp01(trackGain(track, now) * volume)
-        if (el.paused && !el.ended) el.play().catch(() => undefined)
+        if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
+          slot.lastPlayAttemptAt = now
+          el.play().catch(() => undefined)
+        }
       }
 
       const onAir = active.length > 0
