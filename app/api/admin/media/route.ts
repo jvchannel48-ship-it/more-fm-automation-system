@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   const kind = form.get('kind')
   const slot = Number(form.get('slot'))
   const duration = Number(form.get('duration'))
-  if (!(file instanceof File) || !['jingle', 'commercial', 'golden-sunday', 'news', 'dj-mic'].includes(String(kind))) {
+  if (!(file instanceof File) || !['jingle', 'commercial', 'golden-sunday', 'dj-mic'].includes(String(kind))) {
     return NextResponse.json({ error: 'Invalid audio upload.' }, { status: 400 })
   }
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -40,13 +40,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Audio storage is not configured. Add BLOB_READ_WRITE_TOKEN to the project environment, then try again.' }, { status: 503 })
   }
   try {
-    const blob = await put(pathname, file, { access: 'public', addRandomSuffix: true, contentType, ...(blobToken ? { token: blobToken } : {}) })
-    const asset: AudioAsset = { url: blob.url, name: file.name.slice(0, 120), duration }
+    const blob = await put(pathname, file, { access: 'private', addRandomSuffix: true, contentType, ...(blobToken ? { token: blobToken } : {}) })
+    const asset: AudioAsset = {
+      url: `/api/audio/${blob.pathname.split('/').map(encodeURIComponent).join('/')}`,
+      pathname: blob.pathname,
+      name: file.name.slice(0, 120),
+      duration,
+    }
     const settings = await getSettings()
     if (kind === 'jingle') settings.jingle = asset
     else if (kind === 'commercial') settings.commercials[slot] = asset
     else if (kind === 'golden-sunday') settings.goldenSunday = asset
-    else if (kind === 'news') settings.news = asset
     else settings.djMic = asset
     await writeJson(SETTINGS_PATH, settings)
     if (kind === 'dj-mic' && settings.djMicEnabled) await queueDjMic(asset)

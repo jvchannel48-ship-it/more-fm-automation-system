@@ -38,6 +38,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     if (slots.current.length > 0) return
     slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
+      el.controls = false
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)

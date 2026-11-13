@@ -11,6 +11,7 @@ export interface Track {
 
 export interface AudioAsset {
   url: string
+  pathname?: string
   name: string
   duration: number
 }

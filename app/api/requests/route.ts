@@ -9,5 +9,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please enter a valid song title and artist.' }, { status: 400 })
   }
   const songRequest = await addSongRequest(title, artist)
-  return NextResponse.json({ request: songRequest, message: 'Thanks for your request! We will add it to the next music rotation when available.' })
+  return NextResponse.json({ request: songRequest, message: 'Your song request was submitted successfully. Please wait for it in the next available music rotation.' })
 }

@@ -86,7 +86,7 @@ export function AdminPanel() {
     } finally { setBusy(false) }
   }
 
-  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic', file: File | undefined, slot = 0) => {
+  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic', file: File | undefined, slot = 0) => {
     if (!file) return
     setBusy(true); setError(''); setMessage('')
     try {
@@ -97,7 +97,7 @@ export function AdminPanel() {
       const result = await res.json()
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
-      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'news' ? 'News bulletin' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
+      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
       setMessage(`${label} uploaded. A new selection replaces the previous file.`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Audio upload failed.')
@@ -170,7 +170,7 @@ export function AdminPanel() {
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
         <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="news-enabled">4:00–4:50 PM news block</Label><p className="text-xs text-muted-foreground">Pause Disco during the news window and play the uploaded current bulletin.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="news-enabled">4:00–4:50 PM news block</Label><p className="text-xs text-muted-foreground">Pause Disco during the news window; regular music plays if no bulletin is configured.</p></div>
         <Switch id="news-enabled" checked={data?.newsEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { newsEnabled: checked })} /></div>
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="dj-mic-enabled">DJ Mic</Label><p className="text-xs text-muted-foreground">Play a recorded microphone announcement to every listener after the current track.</p></div>
         <Switch id="dj-mic-enabled" checked={data?.djMicEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djMicEnabled: checked })} /></div>
@@ -244,14 +244,6 @@ export function AdminPanel() {
       {data?.goldenSunday && <a href={data.goldenSunday.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.goldenSunday.name}</a>}
     </div>
     <p className="text-[11px] text-muted-foreground">Christmas rotation: September–October one in every five songs; November three in a row, then regular songs; December three Christmas songs out of every four; normal rotation resumes in January.</p>
-
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="upload-news">4:00–4:50 PM news bulletin</Label><p className="text-xs text-muted-foreground">Upload a current, licensed ABS-CBN news bulletin or your station&apos;s news recording. Disco is paused during this window.</p></div>
-      <label htmlFor="upload-news" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
-        <Upload className="size-4" aria-hidden="true" /> {data?.news ? 'Replace news bulletin' : 'Upload news bulletin'}</label>
-      <input id="upload-news" type="file" accept="audio/*" className="sr-only" disabled={busy} onChange={(event) => { void upload('news', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
-      {data?.news && <a href={data.news.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.news.name}</a>}
-    </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a smooth microphone clip. It is uploaded and queued after the current track so every listener hears it.</p></div>
