@@ -21,6 +21,8 @@ export interface StationSettings {
   signOnHour: number
   discoStartHour: number
   discoEndHour: number
+  christmasEnabled: boolean
+  djEnabled: boolean
   jingleEnabled: boolean
   commercialEnabled: boolean
   jingle: AudioAsset | null
@@ -41,6 +43,7 @@ export interface NowResponse {
   offAir: boolean
   nextOnAir: number | null
   tracks: Track[]
+  djEnabled: boolean
 }
 
 export interface AdminStatus extends StationSettings {

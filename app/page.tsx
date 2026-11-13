@@ -12,7 +12,7 @@ export default function Home() {
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4">
         <div className="flex items-center gap-3">
           <div className="size-11 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10">
-            <img src="/icon.svg" alt="MOR 93.5 station logo" className="size-full rounded-full object-cover" />
+            <img src="/mor-935-logo.jpg" alt="MOR 93.5 station logo" className="size-full rounded-full object-cover" />
           </div>
           <span className="font-mono text-sm font-bold tracking-widest">
             MOR <span className="text-primary">93.5</span>

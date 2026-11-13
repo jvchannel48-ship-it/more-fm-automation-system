@@ -48,7 +48,7 @@ export function AdminMenu() {
     })
     setLoading(false)
     if (!res.ok) {
-      setError('Mali ang password. Subukan ulit.')
+      setError('Incorrect password. Please try again.')
       return
     }
     setPassword('')
@@ -117,7 +117,7 @@ export function AdminMenu() {
             ) : (
               <form onSubmit={login} className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="admin-password">Password</Label>
+              <Label htmlFor="admin-password">Admin password</Label>
                   <Input
                     id="admin-password"
                     type="password"
@@ -135,7 +135,7 @@ export function AdminMenu() {
                 )}
                 <Button type="submit" disabled={loading || !password}>
                   <Lock aria-hidden="true" />
-                  {loading ? 'Logging in...' : 'Log in'}
+                  {loading ? 'Signing in...' : 'Sign in'}
                 </Button>
               </form>
             )}

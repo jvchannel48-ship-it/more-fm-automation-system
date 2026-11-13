@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,29 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
+  const announcedTrack = useRef<string | null>(null)
   const { data, error } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
   const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  useEffect(() => {
+    const track = data?.tracks?.[0]
+    if (!track || !data?.djEnabled || !playing || track.kind !== 'music' || typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    if (announcedTrack.current === track.uid) return
+    if (announcedTrack.current === null) {
+      announcedTrack.current = track.uid
+      return
+    }
+    announcedTrack.current = track.uid
+    const title = track.title ? ` Now playing ${track.title}.` : ' Enjoy the music.'
+    const voice = new SpeechSynthesisUtterance(`You are listening to MOR 93.5 Naga.${title}`)
+    voice.lang = 'en-US'
+    voice.rate = 0.96
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(voice)
+  }, [data?.tracks?.[0]?.uid, data?.djEnabled, playing])
   useEffect(() => {
     if (!playing || data?.offAir) return
     let id = localStorage.getItem('morefm-listener-id')
@@ -123,12 +140,12 @@ export function RadioPlayer() {
         </div>
         {offAir && (
           <p className="text-sm text-muted-foreground">
-            {onAirAgain ? `Signed off. Babalik kami ng ${onAirAgain}.` : 'Signed off.'}
+            {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
           </p>
         )}
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
-            Hindi ma-connect sa station. Sinusubukan ulit...
+            Could not connect to the station. Retrying...
           </p>
         )}
       </div>

@@ -46,18 +46,18 @@ export function EngagePanel() {
     try {
       const response = await fetch('/api/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, artist }) })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Hindi naisumite ang request.')
+      if (!response.ok) throw new Error(result.error ?? 'The request could not be submitted.')
       setMessage(result.message)
       setTitle(''); setArtist('')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Hindi naisumite ang request.')
+      setError(reason instanceof Error ? reason.message : 'The request could not be submitted.')
     } finally { setBusy(false) }
   }
 
   return <div className="flex w-full max-w-md flex-col gap-3">
     <div className="flex items-center justify-center gap-2">
       <Button type="button" variant={rated ? 'secondary' : 'outline'} onClick={() => void rate()} className={`rounded-full ${rated ? 'text-rose-400' : ''}`} aria-label="Rate this station with a heart">
-        <Heart className={rated ? 'fill-current' : undefined} aria-hidden="true" /> {rated ? 'Salamat sa heart' : 'Rate with a heart'}
+        <Heart className={rated ? 'fill-current' : undefined} aria-hidden="true" /> {rated ? 'Thanks for the heart' : 'Rate with a heart'}
       </Button>
       <span className="text-xs tabular-nums text-muted-foreground">{ratingTotal} ratings</span>
       <Button type="button" variant="ghost" onClick={() => { setOpen((value) => !value); setMessage(''); setError('') }} aria-expanded={open}>
@@ -65,10 +65,10 @@ export function EngagePanel() {
       </Button>
     </div>
     {open && <form onSubmit={submitRequest} className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
-      <div><h3 className="font-semibold">Song request</h3><p className="text-xs text-muted-foreground">Ipadala ang title at artist. Susuriin namin ang request at isasama sa susunod na rotation kapag available.</p></div>
-      <div className="flex flex-col gap-1.5"><Label htmlFor="request-title">Title ng kanta</Label><Input id="request-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hal. Ikaw" required maxLength={120} /></div>
-      <div className="flex flex-col gap-1.5"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Hal. Yeng Constantino" required maxLength={120} /></div>
-      <Button type="submit" disabled={busy || !title.trim() || !artist.trim()}><Send aria-hidden="true" /> {busy ? 'Ipinapadala...' : 'I-submit ang request'}</Button>
+      <div><h3 className="font-semibold">Song request</h3><p className="text-xs text-muted-foreground">Send the title and artist. We will review the request and add it to the next rotation when available.</p></div>
+      <div className="flex flex-col gap-1.5"><Label htmlFor="request-title">Song title</Label><Input id="request-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Example: Ikaw" required maxLength={120} /></div>
+      <div className="flex flex-col gap-1.5"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Example: Yeng Constantino" required maxLength={120} /></div>
+      <Button type="submit" disabled={busy || !title.trim() || !artist.trim()}><Send aria-hidden="true" /> {busy ? 'Sending...' : 'Submit request'}</Button>
       {message && <p className="text-xs text-emerald-400" role="status">{message}</p>}
       {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
     </form>}

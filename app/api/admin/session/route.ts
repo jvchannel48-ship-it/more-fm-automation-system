@@ -9,7 +9,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as { password?: unknown }
   if (typeof body.password !== 'string' || !checkPassword(body.password)) {
-    return NextResponse.json({ error: 'Mali ang password' }, { status: 401 })
+    return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
   }
   const { token, maxAge } = createSessionToken()
   const store = await cookies()

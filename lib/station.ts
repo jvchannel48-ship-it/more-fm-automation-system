@@ -39,18 +39,17 @@ interface SearchItem {
 }
 
 async function findSongRequest(request: { title: string; artist: string }, history: HistoryEntry[]) {
-  const artist: Artist = { name: request.artist, match: normalize(request.artist), language: 'english' }
   const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${request.title} ${request.artist}`)}`, 15_000)
   const playedIds = new Set(history.map((entry) => entry.id))
   const requestedTitle = normalize(request.title)
   const candidate = (data?.items ?? []).find((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && isAllowed(item.title, artist) && !playedIds.has(item.id)
+    return seconds >= 120 && seconds <= 420 && normalize(item.title).includes(requestedTitle) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !playedIds.has(item.id)
   })
   if (!candidate) return null
   const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 30_000)
   if (!download?.downloadUrl) return null
-  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
+  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
 }
 
 const AI_RULE =
@@ -168,6 +167,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
           id: item.id,
           key: songKey(item.title),
           artist: artist.name,
+          title: item.title,
           src: dl.downloadUrl,
           duration: parseDuration(item.duration),
         }
@@ -253,7 +253,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       song = await findSongRequest(requested, state.history)
       if (song) await updateSongRequest(requested.id, 'played')
     }
-    if (!song && isChristmasSlot(state.seasonalSongCount, startAt)) {
+    if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
       song = await findSong(program, state.songCount, state.history, startAt, true)
     }
     if (!song) song = await findSong(program, state.songCount, state.history, startAt)
@@ -268,6 +268,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
       kind: 'music',
+      title: song.title,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
@@ -306,6 +307,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       offAir: true,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       tracks: [],
+      djEnabled: settings.djEnabled,
     }
   }
 
@@ -320,7 +322,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks }
+  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks, djEnabled: settings.djEnabled }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

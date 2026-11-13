@@ -99,13 +99,21 @@ export function AdminPanel() {
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
-        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Naka-off ang livestream' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)}`}</span></div>
+        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)}`}</span></div>
       <Switch id="broadcast" checked={data?.broadcastEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Piliin kung kailan mag-sign off at muling mag-sign on ang station, Manila time.</p></div></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
+        <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="dj-enabled">DJ voice</Label><p className="text-xs text-muted-foreground">When enabled, the station speaks in English after each song and reads song-request titles when they play.</p></div>
+        <Switch id="dj-enabled" checked={data?.djEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djEnabled: checked })} /></div>
+      <p className="text-[11px] text-muted-foreground">Voice announcements use the listener&apos;s browser voice and never expose an internal AI label.</p>
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose when the station signs off and signs on again, Manila time.</p></div></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Sign off
           <select value={signOffHour} onChange={(event) => setSignOffHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
@@ -119,11 +127,11 @@ export function AdminPanel() {
         </label>
       </div>
       <Button variant="secondary" disabled={!data || busy || signOffHour === signOnHour} onClick={() => send('PUT', { signOffHour: Number(signOffHour), signOnHour: Number(signOnHour) })}>Save schedule</Button>
-      {signOffHour === signOnHour && <p className="text-xs text-destructive">Magkaiba dapat ang sign-off at sign-on time.</p>}
+      {signOffHour === signOnHour && <p className="text-xs text-destructive">Sign-off and sign-on must be different.</p>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Disco schedule</Label><p className="text-xs text-muted-foreground">Piliin kung anong oras magsisimula at matatapos ang Disco program, Manila time.</p></div>
+      <div><Label>Disco schedule</Label><p className="text-xs text-muted-foreground">Choose when the Disco program starts and ends, Manila time.</p></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Disco start
           <select value={discoStartHour} onChange={(event) => setDiscoStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
@@ -133,7 +141,7 @@ export function AdminPanel() {
         </label>
       </div>
       <Button variant="secondary" disabled={!data || busy || discoStartHour === discoEndHour} onClick={() => send('PUT', { discoStartHour: Number(discoStartHour), discoEndHour: Number(discoEndHour) })}>Save Disco schedule</Button>
-      {discoStartHour === discoEndHour && <p className="text-xs text-destructive">Magkaiba dapat ang Disco start at end time.</p>}
+      {discoStartHour === discoEndHour && <p className="text-xs text-destructive">Disco start and end must be different.</p>}
     </div>
 
     <div className="grid grid-cols-2 gap-2">
