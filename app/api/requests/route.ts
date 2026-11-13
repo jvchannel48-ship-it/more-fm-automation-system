@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { addSongRequest } from '@/lib/storage'
+import { prioritizePendingRequests } from '@/lib/station'
 
 export async function POST(request: Request) {
   try {
@@ -10,9 +11,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please enter a valid song title and artist.' }, { status: 400 })
     }
     const songRequest = await addSongRequest(title, artist)
+    await prioritizePendingRequests()
     return NextResponse.json({
       request: songRequest,
-      message: 'Your request has been received and is being checked. If a suitable version is available, it will be queued for the next available slot after songs already playing or queued. Please wait; it may take a little while to come on.',
+      message: 'Your request has been received. The current song will finish, then pending requests are checked in order and played ahead of the regular rotation when a suitable version is available.',
     })
   } catch (error) {
     console.error('[morefm] song request save failed', error)

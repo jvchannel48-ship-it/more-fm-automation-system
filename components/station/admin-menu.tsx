@@ -33,6 +33,7 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Info; children: R
 
 export function AdminMenu() {
   const { data, mutate } = useSWR<{ admin: boolean }>('/api/admin/session', fetcher)
+  const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -61,7 +62,7 @@ export function AdminMenu() {
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
         <Menu aria-hidden="true" />
       </SheetTrigger>
@@ -108,7 +109,7 @@ export function AdminMenu() {
             <SectionTitle icon={Lock}>Admin</SectionTitle>
             {data?.admin ? (
               <>
-                <AdminPanel />
+                {open && <AdminPanel />}
                 <Button variant="outline" onClick={logout}>
                   <LogOut aria-hidden="true" />
                   Log out

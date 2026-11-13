@@ -55,6 +55,26 @@
   --ring: oklch(0.82 0.16 78);
 }
 
+.light {
+  --background: oklch(0.97 0.015 85);
+  --foreground: oklch(0.2 0.025 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.025 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.025 255);
+  --primary: oklch(0.62 0.16 68);
+  --primary-foreground: oklch(0.98 0.01 85);
+  --secondary: oklch(0.93 0.02 255);
+  --secondary-foreground: oklch(0.24 0.03 255);
+  --muted: oklch(0.93 0.02 255);
+  --muted-foreground: oklch(0.43 0.03 255);
+  --accent: oklch(0.9 0.03 255);
+  --accent-foreground: oklch(0.24 0.03 255);
+  --border: oklch(0.83 0.025 255);
+  --input: oklch(0.86 0.025 255);
+  --ring: oklch(0.62 0.16 68);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -74,6 +94,10 @@
       linear-gradient(145deg, rgba(6, 8, 16, 0.98), rgba(16, 24, 39, 0.96) 52%, rgba(7, 12, 22, 0.99));
   }
 
+  .light .studio-shell {
+    background: radial-gradient(circle at 50% -10%, rgba(245, 183, 65, 0.2), transparent 30rem), linear-gradient(145deg, #f8fafc, #e8eef6 52%, #f5f7fb);
+  }
+
   .studio-shell::before {
     position: absolute;
     inset: 0;
@@ -83,6 +107,11 @@
     background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
     background-size: 48px 48px;
     mask-image: linear-gradient(to bottom, black, transparent 82%);
+  }
+
+  .light .studio-shell::before {
+    opacity: 0.4;
+    background-image: linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
   }
 
   .glass-surface {

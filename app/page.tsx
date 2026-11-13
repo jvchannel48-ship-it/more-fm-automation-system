@@ -2,6 +2,7 @@ import { AdminMenu } from '@/components/station/admin-menu'
 import { EngagePanel } from '@/components/station/engage-panel'
 import { FeedbackForm } from '@/components/station/feedback-form'
 import { RadioPlayer } from '@/components/station/radio-player'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <FeedbackForm />
+          <ThemeToggle />
           <AdminMenu />
         </div>
       </header>

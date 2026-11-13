@@ -63,8 +63,8 @@ function audioDuration(file: File) {
 }
 
 export function AdminPanel() {
-  const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
-  const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 60000 })
+  const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30000 })
+  const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 300000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')

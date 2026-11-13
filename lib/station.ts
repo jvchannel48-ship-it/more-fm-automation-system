@@ -12,6 +12,7 @@ const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
 const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
+const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
@@ -241,7 +242,9 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
 async function refreshUpcomingSongSources(state: StationState, now: number) {
   const due = state.tracks.filter((track) =>
-    track.kind === 'music' && track.sourceUrl && track.startAt > now && track.startAt - now <= SOURCE_REFRESH_WINDOW_MS &&
+    track.kind === 'music' && track.sourceUrl &&
+    ((track.startAt > now && track.startAt - now <= SOURCE_REFRESH_WINDOW_MS) ||
+      (track.startAt <= now && trackEnd(track) > now && track.sourceRefreshedAt !== undefined && now - track.sourceRefreshedAt >= ACTIVE_SOURCE_REFRESH_AFTER_MS)) &&
     (track.sourceRefreshedAt === undefined || now - track.sourceRefreshedAt >= SOURCE_REFRESH_RETRY_MS),
   )
   if (due.length === 0) return false
@@ -272,12 +275,15 @@ function nextStart(state: StationState, now: number) {
 }
 
 async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
-  const targetFutureTracks = queueAheadTarget(state, now)
+  const pendingRequestCount = settings.tagalogOnlyEnabled ? 0 : (await getSongRequests()).filter((request) => request.status === 'pending').length
+  const targetFutureTracks = pendingRequestCount > 0
+    ? Math.min(5, Math.max(queueAheadTarget(state, now), pendingRequestCount))
+    : queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
-    if (isGoldenSundayWindow(breakAt)) {
+    if (pendingRequestCount === 0 && isGoldenSundayWindow(breakAt)) {
       const localDay = new Date(breakAt + MANILA_OFFSET_MS)
       localDay.setUTCHours(4, 0, 0, 0)
       const sundayStart = localDay.getTime() - MANILA_OFFSET_MS
@@ -300,7 +306,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
           continue
         }
       }
-    } else if (state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
+    } else if (pendingRequestCount === 0 && state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
       if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
@@ -398,7 +404,11 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     state.seasonalSongCount++
-    if (requested && song) await updateSongRequest(requested.id, 'played')
+    if (requested && song) {
+      await updateSongRequest(requested.id, 'played')
+      const remainingPending = (await getSongRequests()).some((request) => request.status === 'pending')
+      if (remainingPending) continue
+    }
     // One song per request keeps the now-playing endpoint responsive; subsequent polls
     // fill the second queue slot well before the current track finishes.
     break
@@ -524,6 +534,15 @@ export async function refreshQueue() {
   const { state } = await loadState(now)
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
+  state.fillingUntil = 0
+  await writeJson(STATE_PATH, state)
+}
+
+export async function prioritizePendingRequests() {
+  const now = Date.now()
+  const { state } = await loadState(now)
+  state.tracks = state.tracks.filter((track) =>
+    track.startAt <= now || (track.kind === 'music' && track.title?.startsWith('Song request:')))
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
 }
