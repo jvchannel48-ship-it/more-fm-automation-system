@@ -159,7 +159,7 @@ export function AdminPanel() {
     setRecordingKind(null)
   }
 
-  return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+  return <div className="ui-depth flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>

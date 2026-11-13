@@ -59,7 +59,7 @@ function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
   const metadata = [title, ...values].filter((value): value is string => typeof value === 'string').join(' ')
   const liveTitleTag = /(?:\(\s*live\s*\)|\[\s*live\s*\]|\blive\s*$)/i.test(titleText)
   const rejectedMetadata = /\blive\s+(?:concert|performance|recording|version|session|show|set|stream|acoustic|cover|at|in|from|on|video|audio|blog)\b|\bconcert\s+(?:live|recording|version|video|audio|footage|performance)\b|\b(?:performed|performing)\s+live\b|\blivestream\b|\bvlog\b|\bwish\s*107(?:[.]?5)?\b|\bwishclusive\b|\bwish[\s-]*bus\b/i.test(metadata)
-  return liveTitleTag || rejectedMetadata
+  return liveTitleTag || rejectedMetadata || AI_RULE.test(metadata)
 }
 
 function isDisallowedSearchItem(item: SearchItem) {

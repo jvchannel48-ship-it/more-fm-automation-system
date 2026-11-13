@@ -128,7 +128,7 @@ export function EngagePanel() {
     </div>}
     {ratingError && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{ratingError}</p>}
 
-    {open && <form onSubmit={submitRequest} className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
+    {open && <form onSubmit={submitRequest} className="ui-depth flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
       <div>
         <h3 className="font-semibold">Request a song</h3>
         <p className="text-xs text-muted-foreground">Requests are checked in order and played consecutively after the current song when a suitable match is available. An unmatched request stays pending without blocking later requests.</p>

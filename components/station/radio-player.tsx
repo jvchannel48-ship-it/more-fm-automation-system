@@ -128,7 +128,7 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MOR 93.5 Naga live player" className="flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label="MOR 93.5 Naga live player" className="studio-deck flex w-full flex-col items-center gap-8 px-4 py-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
