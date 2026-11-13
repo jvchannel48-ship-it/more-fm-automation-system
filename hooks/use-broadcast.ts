@@ -27,12 +27,12 @@ function trackGain(track: Track, now: number) {
 
 function playSignOffStatic(context: AudioContext, volume: number) {
   const now = context.currentTime
-  const duration = 2.1
+  const duration = 2.5
   const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate)
   const samples = buffer.getChannelData(0)
   for (let i = 0; i < samples.length; i++) {
-    const crackle = Math.random() < 0.004 ? 0.08 : 1
-    const flutter = 0.72 + Math.sin(i / 137) * 0.18 + Math.sin(i / 43) * 0.1
+    const crackle = Math.random() < 0.006 ? 1.8 : 0.62
+    const flutter = 0.68 + Math.sin(i / 151) * 0.2 + Math.sin(i / 37) * 0.12
     samples[i] = (Math.random() * 2 - 1) * crackle * flutter
   }
 
@@ -40,14 +40,17 @@ function playSignOffStatic(context: AudioContext, volume: number) {
   noise.buffer = buffer
   const highPass = context.createBiquadFilter()
   highPass.type = 'highpass'
-  highPass.frequency.value = 650
+  highPass.frequency.value = 280
   const lowPass = context.createBiquadFilter()
   lowPass.type = 'lowpass'
-  lowPass.frequency.value = 5200
+  lowPass.frequency.setValueAtTime(1800, now)
+  lowPass.frequency.linearRampToValueAtTime(4800, now + 0.5)
+  lowPass.frequency.setValueAtTime(3200, now + 1.5)
+  lowPass.frequency.linearRampToValueAtTime(2200, now + duration)
   const noiseGain = context.createGain()
   noiseGain.gain.setValueAtTime(0.0001, now)
-  noiseGain.gain.linearRampToValueAtTime(0.16 * volume, now + 0.08)
-  noiseGain.gain.setValueAtTime(0.16 * volume, now + duration - 0.25)
+  noiseGain.gain.linearRampToValueAtTime(0.2 * volume, now + 0.06)
+  noiseGain.gain.setValueAtTime(0.2 * volume, now + duration - 0.3)
   noiseGain.gain.linearRampToValueAtTime(0.0001, now + duration)
   noise.connect(highPass)
   highPass.connect(lowPass)
@@ -59,14 +62,14 @@ function playSignOffStatic(context: AudioContext, volume: number) {
   const sweep = context.createOscillator()
   const sweepGain = context.createGain()
   sweep.type = 'triangle'
-  sweep.frequency.setValueAtTime(1100, now)
-  sweep.frequency.exponentialRampToValueAtTime(260, now + 0.32)
-  sweepGain.gain.setValueAtTime(0.035 * volume, now)
-  sweepGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34)
+  sweep.frequency.setValueAtTime(1400, now)
+  sweep.frequency.exponentialRampToValueAtTime(210, now + 0.42)
+  sweepGain.gain.setValueAtTime(0.055 * volume, now)
+  sweepGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45)
   sweep.connect(sweepGain)
   sweepGain.connect(context.destination)
   sweep.start(now)
-  sweep.stop(now + 0.35)
+  sweep.stop(now + 0.45)
 }
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {

@@ -9,5 +9,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please enter a valid song title and artist.' }, { status: 400 })
   }
   const songRequest = await addSongRequest(title, artist)
-  return NextResponse.json({ request: songRequest, message: 'Your song request was submitted successfully. Please wait for it in the next available music rotation.' })
+  return NextResponse.json({ request: songRequest, message: 'AutoDJ has received and is checking your request. If a suitable version is available, it will be queued for the next available slot after songs already playing or queued. Please wait; it may take a little while to come on.' })
 }

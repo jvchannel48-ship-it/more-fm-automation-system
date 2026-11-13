@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -248,6 +248,22 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: SUNDAY_TAGALOG_OLDIES },
     variants: { english: ['', 'oldies', 'classic hits'], tagalog: ['', 'official audio', 'OPM oldies'] },
   },
+  'sunday-english': {
+    id: 'sunday-english',
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [] },
+    variants: { english: LOVE_VARIANTS, tagalog: [] },
+  },
+  'sunday-english-oldies': {
+    id: 'sunday-english-oldies',
+    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
+    variants: { english: ['', 'oldies', 'classic hits'], tagalog: [] },
+  },
+  'sunday-tagalog': {
+    id: 'sunday-tagalog',
+    pools: { english: [], tagalog: PINOY_LOVE },
+    variants: { english: [], tagalog: OPM_VARIANTS },
+    tagalogOnly: true,
+  },
   'english-love': {
     id: 'english-love',
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
@@ -292,7 +308,8 @@ export function manilaTime(ms: number): ManilaTime {
 }
 
 export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {
-  const { hour } = manilaTime(ms)
+  const { hour, day } = manilaTime(ms)
+  if (day === 0) return false
   return signOffHour < signOnHour
     ? hour >= signOffHour && hour < signOnHour
     : hour >= signOffHour || hour < signOnHour
@@ -311,18 +328,25 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
   d.setUTCHours(signOffHour, 0, 0, 0)
   let target = d.getTime() - MANILA_OFFSET_MS
   if (target <= ms) target += 24 * 60 * 60 * 1000
+  if (manilaTime(target).day === 0) target += 24 * 60 * 60 * 1000
   return target
 }
 
 /**
- * Sunday 4 AM–1 PM: English and Tagalog senior classics. 1–3 PM: English love songs.
+ * Sunday 1–4 AM: English favorites; 4–8 AM: English senior classics; 8–11 AM: Tagalog senior classics.
+ * 11:01 AM–midnight: Tagalog favorites. Sunday runs continuously with no sign-off.
  * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
  * Every other on-air hour: English love songs mixed with Tagalog.
  */
 export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20, newsEnabled = true): Program {
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
-  if (day === 0 && hour >= 4 && hour < 13) return PROGRAMS['sunday-oldies']
+  if (day === 0) {
+    if (hour >= 4 && hour < 8) return PROGRAMS['sunday-english-oldies']
+    if ((hour >= 8 && hour < 11) || (hour === 11 && minute === 0)) return PROGRAMS['sunday-oldies']
+    if (hour > 11 || (hour === 11 && minute >= 1)) return PROGRAMS['sunday-tagalog']
+    return PROGRAMS['sunday-english']
+  }
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   if (newsEnabled && hour === 16 && minute < 50) return PROGRAMS.news
   const inDiscoWindow = discoStartHour < discoEndHour
@@ -335,6 +359,7 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
 export function languageForSlot(program: Program, songCount: number): Language {
+  if (program.id === 'sunday-english' || program.id === 'sunday-english-oldies') return 'english'
   if (program.tagalogOnly) return 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }

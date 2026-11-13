@@ -162,7 +162,7 @@ export function AdminPanel() {
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
-        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)}`}</span></div>
+        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
       <Switch id="broadcast" checked={data?.broadcastEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
@@ -183,7 +183,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose when the station signs off and signs on again, Manila time.</p></div></div>
+      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose the regular schedule in Manila time. Sunday broadcasts continuously with no sign-off.</p></div></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Sign off
           <select value={signOffHour} onChange={(event) => setSignOffHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">

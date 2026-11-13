@@ -74,7 +74,7 @@ export function EngagePanel() {
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'Your song request could not be submitted. Please try again.')
-      setRequestMessage('Your song request was submitted successfully. Please wait for it in the next available music rotation.')
+      setRequestMessage('AutoDJ has received and is checking your request. If a suitable version is available, it will be queued for the next available slot after songs already playing or queued. Please wait; it may take a little while to come on.')
       setTitle('')
       setArtist('')
     } catch (reason) {
@@ -123,7 +123,7 @@ export function EngagePanel() {
     {open && <form onSubmit={submitRequest} className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
       <div>
         <h3 className="font-semibold">Request a song</h3>
-        <p className="text-xs text-muted-foreground">Tell us what you would love to hear. We will review your request and add it when it is available in the rotation.</p>
+        <p className="text-xs text-muted-foreground">AutoDJ checks each request and queues a suitable match for an available slot. Songs already playing or queued come first.</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="request-title">Song title</Label>
