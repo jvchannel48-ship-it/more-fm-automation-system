@@ -23,8 +23,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid audio upload.' }, { status: 400 })
   }
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
-  const contentType = file.type || MIME_BY_EXTENSION[extension]
-  if ((!AUDIO_TYPES.has(contentType) && !AUDIO_EXTENSIONS.has(extension)) || file.size === 0 || file.size > 4 * 1024 * 1024) {
+  const reportedType = (file.type || '').split(';')[0].trim().toLowerCase()
+  const normalizedReportedType = reportedType === 'audio/mp3' ? 'audio/mpeg' : reportedType
+  const contentType = AUDIO_TYPES.has(normalizedReportedType) ? normalizedReportedType : MIME_BY_EXTENSION[extension] ?? normalizedReportedType
+  if (!AUDIO_TYPES.has(contentType) || file.size === 0 || file.size > 4 * 1024 * 1024) {
     return NextResponse.json({ error: 'Use a supported audio file under 4 MB.' }, { status: 400 })
   }
   if (!Number.isFinite(duration) || duration < 1 || duration > 900) {

@@ -261,18 +261,18 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">One jingle after every 4 songs, except during Golden Sunday</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">One jingle after every 4 songs, except during Golden Sunday. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
         <Upload className="size-4" aria-hidden="true" /> {data?.jingle ? 'Replace jingle audio' : 'Upload jingle audio'}</label>
-      <input id="upload-jingle" type="file" accept="audio/*" className="sr-only" disabled={busy}
+      <input id="upload-jingle" type="file" accept=".mp3,audio/mpeg,audio/mp3,audio/*" className="sr-only" disabled={busy}
         onChange={(event) => { void upload('jingle', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
       {data?.jingle && <a href={data.jingle.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.jingle.name}</a>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle, except during Golden Sunday</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle, except during Golden Sunday. MP3 supported · max 4 MB per file.</p></div>
         <Switch id="commercial-enabled" checked={data?.commercialEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { commercialEnabled: checked })} /></div>
       {[0, 1, 2].map((slot) => {
@@ -280,7 +280,7 @@ export function AdminPanel() {
         return <div key={slot} className="flex flex-col gap-1 border-t border-border pt-2">
           <label htmlFor={`upload-commercial-${slot}`} className={`flex cursor-pointer items-center gap-2 text-sm hover:text-primary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
             <Upload className="size-3.5" aria-hidden="true" /> {asset ? `Replace commercial ${slot + 1}` : `Upload commercial ${slot + 1}`}</label>
-          <input id={`upload-commercial-${slot}`} type="file" accept="audio/*" className="sr-only" disabled={busy}
+          <input id={`upload-commercial-${slot}`} type="file" accept=".mp3,audio/mpeg,audio/mp3,audio/*" className="sr-only" disabled={busy}
             onChange={(event) => { void upload('commercial', event.currentTarget.files?.[0], slot); event.currentTarget.value = '' }} />
           {asset && <a href={asset.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">{asset.name}</a>}
         </div>
