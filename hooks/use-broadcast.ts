@@ -13,21 +13,39 @@ interface Slot {
   src: string | null
   synced: boolean
   lastPlayAttemptAt: number
+  gainNode: GainNode | null
+  bassFilter: BiquadFilterNode | null
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const curve = (n: number) => Math.sin((clamp01(n) * Math.PI) / 2)
 
-function trackGain(track: Track, now: number) {
+function crossfadeGain(progress: number, curveName: string, fadeIn: boolean) {
+  const p = clamp01(progress)
+  if (curveName === 'full-cut') return fadeIn ? (p >= 1 ? 1 : 0) : (p >= 1 ? 0 : 1)
+  if (curveName === 'fast-cut') return fadeIn ? (p >= 0.2 ? 1 : p * 5) : (p >= 0.8 ? 0 : 1)
+  if (curveName === 'slow-cut') return fadeIn ? p * p : 1 - p * p
+  if (curveName === 'slow-fade') return fadeIn ? p * p * p : 1 - p * p * p
+  if (curveName === 'fast-fade') return fadeIn ? Math.sqrt(p) : Math.sqrt(1 - p)
+  if (curveName === 'dipped') return fadeIn ? (p < 0.5 ? p * 1.4 : 0.7 + (p - 0.5) * 0.6) : (p < 0.5 ? 1 - p * 0.6 : 0.7 - (p - 0.5) * 1.4)
+  if (curveName === 'scratch-cut') return fadeIn ? (p > 0.12 ? 1 : 0) : (p > 0.88 ? 0 : 1)
+  if (curveName === 'smooth') { const shaped = p * p * (3 - 2 * p); return fadeIn ? shaped : 1 - shaped }
+  if (curveName === 'constant-power') return fadeIn ? curve(p) : Math.cos((p * Math.PI) / 2)
+  return fadeIn ? p : 1 - p
+}
+
+function trackGain(track: Track, now: number, enabled: boolean, curveName: string) {
+  if (!enabled) return 1
   const elapsed = (now - track.startAt) / 1000
   const remaining = track.duration - elapsed
-  const fadeIn = track.fadeIn > 0 ? curve(elapsed / track.fadeIn) : 1
-  const fadeOut = track.fadeOut > 0 ? curve(remaining / track.fadeOut) : 1
+  const fadeIn = track.fadeIn > 0 ? crossfadeGain(elapsed / track.fadeIn, curveName, true) : 1
+  const fadeOut = track.fadeOut > 0 ? crossfadeGain(1 - remaining / track.fadeOut, curveName, false) : 1
   return Math.min(fadeIn, fadeOut)
 }
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
+  const audioContext = useRef<AudioContext | null>(null)
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
 
@@ -38,13 +56,26 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
   const unlock = useCallback(() => {
     if (slots.current.length > 0) return
+    const AudioContextClass = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    audioContext.current ??= AudioContextClass ? new AudioContextClass() : null
+    void audioContext.current?.resume()
     slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0 }
+      let gainNode: GainNode | null = null
+      let bassFilter: BiquadFilterNode | null = null
+      if (audioContext.current) {
+        const source = audioContext.current.createMediaElementSource(el)
+        bassFilter = audioContext.current.createBiquadFilter()
+        bassFilter.type = 'lowshelf'
+        bassFilter.frequency.value = 120
+        gainNode = audioContext.current.createGain()
+        source.connect(bassFilter).connect(gainNode).connect(audioContext.current.destination)
+      }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, gainNode, bassFilter }
     })
   }, [])
 
@@ -56,7 +87,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
       const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
-      const nightVolumeGain = data?.nightVolumeActive ? 0.72 : 1
+      const config = data?.audioConfig
+      const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
+      const masterGain = (config?.masterVolume ?? 100) / 100
+      const replayGain = config?.replayGainEnabled ? Math.pow(10, ((config.replayGainTargetLufs ?? -14) + 14) / 20) : 1
       const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
@@ -117,7 +151,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         // (3) made the UI report an endless loading state for some valid remote MP3s.
         if (el.readyState < 2 && !el.ended) buffering = true
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        el.volume = clamp01(trackGain(track, now) * volume * nightVolumeGain * duckGain)
+        const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
+        if (slot.bassFilter) slot.bassFilter.gain.value = config?.bassGainDb ?? 0
+        if (slot.gainNode) slot.gainNode.gain.value = outputGain
+        else el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           el.play().catch(() => undefined)
@@ -153,6 +190,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         slot.el.removeAttribute('src')
       }
       slots.current = []
+      void audioContext.current?.close().catch(() => undefined)
+      audioContext.current = null
     },
     [],
   )

@@ -1,4 +1,5 @@
 export type TransmitterWatts = 0 | 5000 | 20000 | 100000
+export type CrossfaderCurve = 'transition' | 'smooth' | 'constant-power' | 'dipped' | 'slow-fade' | 'slow-cut' | 'fast-fade' | 'fast-cut' | 'full-cut' | 'scratch-cut'
 
 export interface Track {
   uid: string
@@ -41,6 +42,14 @@ export interface StationSettings {
   nightVolumeEnabled: boolean
   nightVolumeStartHour: number
   nightVolumeEndHour: number
+  masterVolume: number
+  nightVolumePercent: number
+  bassGainDb: number
+  crossfaderEnabled: boolean
+  crossfaderCurve: CrossfaderCurve
+  crossfadeSeconds: number
+  replayGainEnabled: boolean
+  replayGainTargetLufs: number
   jingleEnabled: boolean
   commercialEnabled: boolean
   jingle: AudioAsset | null
@@ -65,6 +74,14 @@ export interface NowResponse {
   signOffAt: number | null
   tracks: Track[]
   nightVolumeActive: boolean
+  audioConfig: Pick<StationSettings, 'masterVolume' | 'nightVolumePercent' | 'bassGainDb' | 'crossfaderEnabled' | 'crossfaderCurve' | 'crossfadeSeconds' | 'replayGainEnabled' | 'replayGainTargetLufs'>
+}
+
+export interface PlaybackStats {
+  last24Hours: number
+  last7Days: number
+  topArtists: Array<{ artist: string; plays: number }>
+  recentSongs: Array<{ title: string; artist: string; playedAt: number }>
 }
 
 export interface AdminStatus extends StationSettings {
@@ -74,6 +91,7 @@ export interface AdminStatus extends StationSettings {
   listenersNow: number
   totalRatings: number
   pendingRequests: number
+  playbackStats: PlaybackStats
   storageUsage?: {
     provider: string
     databaseBytes: number

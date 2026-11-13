@@ -76,6 +76,11 @@ export function AdminPanel() {
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [rotationPoolSize, setRotationPoolSize] = useState('100')
   const [listenerLimit, setListenerLimit] = useState('0')
+  const [masterVolume, setMasterVolume] = useState('100')
+  const [nightVolumePercent, setNightVolumePercent] = useState('72')
+  const [bassGainDb, setBassGainDb] = useState('0')
+  const [crossfadeSeconds, setCrossfadeSeconds] = useState('8')
+  const [replayGainTargetLufs, setReplayGainTargetLufs] = useState('-14')
   const [recordingKind, setRecordingKind] = useState<'dj-mic' | 'auto-voice' | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
@@ -90,7 +95,12 @@ export function AdminPanel() {
     setNightVolumeEndHour(String(data.nightVolumeEndHour))
     setRotationPoolSize(String(data.rotationPoolSize))
     setListenerLimit(String(data.listenerLimit))
-  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit])
+    setMasterVolume(String(data.masterVolume))
+    setNightVolumePercent(String(data.nightVolumePercent))
+    setBassGainDb(String(data.bassGainDb))
+    setCrossfadeSeconds(String(data.crossfadeSeconds))
+    setReplayGainTargetLufs(String(data.replayGainTargetLufs))
+  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -272,6 +282,29 @@ export function AdminPanel() {
       {nightVolumeStartHour === nightVolumeEndHour && <p className="text-xs text-destructive">Night-volume start and end must be different.</p>}
     </div>
 
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>Advanced audio controls</Label><p className="text-xs text-muted-foreground">Master volume stays normal outside the night schedule. Night volume applies only during the configured night hours.</p></div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">Master volume (%)<Input type="number" min={0} max={100} step={1} value={masterVolume} onChange={(event) => setMasterVolume(event.target.value)} disabled={!data || busy} /></label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Night volume (%)<Input type="number" min={0} max={100} step={1} value={nightVolumePercent} onChange={(event) => setNightVolumePercent(event.target.value)} disabled={!data || busy} /></label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Bass gain (dB)<Input type="number" min={-12} max={12} step={0.5} value={bassGainDb} onChange={(event) => setBassGainDb(event.target.value)} disabled={!data || busy} /></label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Crossfade (0–30 sec)<Input type="number" min={0} max={30} step={0.1} value={crossfadeSeconds} onChange={(event) => setCrossfadeSeconds(event.target.value)} disabled={!data || busy} /></label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">Crossfader curve
+          <select value={data?.crossfaderCurve ?? 'constant-power'} disabled={!data || busy} onChange={(event) => send('PUT', { crossfaderCurve: event.target.value })} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
+            <option value="transition">Transition</option><option value="smooth">Smooth</option><option value="constant-power">Constant Power</option><option value="dipped">Dipped</option><option value="slow-fade">Slow Fade</option><option value="slow-cut">Slow Cut</option><option value="fast-fade">Fast Fade</option><option value="fast-cut">Fast Cut</option><option value="full-cut">Full Cut</option><option value="scratch-cut">Scratch Cut</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Replay Gain target (LUFS)<Input type="number" min={-24} max={-5} step={0.5} value={replayGainTargetLufs} onChange={(event) => setReplayGainTargetLufs(event.target.value)} disabled={!data || busy} /></label>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center gap-2"><Switch id="crossfader-enabled" checked={data?.crossfaderEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { crossfaderEnabled: checked })} /><Label htmlFor="crossfader-enabled">Crossfader ON</Label></div>
+        <div className="flex items-center gap-2"><Switch id="replay-gain-enabled" checked={data?.replayGainEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { replayGainEnabled: checked })} /><Label htmlFor="replay-gain-enabled">Replay Gain ON</Label></div>
+      </div>
+      <Button variant="secondary" disabled={!data || busy || Number(masterVolume) < 0 || Number(masterVolume) > 100 || Number(nightVolumePercent) < 0 || Number(nightVolumePercent) > 100 || Number(bassGainDb) < -12 || Number(bassGainDb) > 12 || Number(crossfadeSeconds) < 0 || Number(crossfadeSeconds) > 30 || Number(replayGainTargetLufs) < -24 || Number(replayGainTargetLufs) > -5} onClick={() => send('PUT', { masterVolume: Number(masterVolume), nightVolumePercent: Number(nightVolumePercent), bassGainDb: Number(bassGainDb), crossfadeSeconds: Number(crossfadeSeconds), replayGainTargetLufs: Number(replayGainTargetLufs) })}>Save audio controls</Button>
+    </div>
+
     <div className="grid grid-cols-2 gap-2">
       <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
       <Stat label="Songs in history" value={data?.songsThisWeek ?? '–'} />
@@ -279,6 +312,12 @@ export function AdminPanel() {
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />
       <Stat label="Heart ratings" value={data?.totalRatings ?? '–'} />
       <Stat label="Pending requests" value={data?.pendingRequests ?? '–'} />
+    </div>
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>Playback statistics</Label><p className="text-xs text-muted-foreground">Based on songs successfully added to station history.</p></div>
+      <div className="grid grid-cols-2 gap-2"><Stat label="Plays / last 24 hours" value={data?.playbackStats?.last24Hours ?? '–'} /><Stat label="Plays / last 7 days" value={data?.playbackStats?.last7Days ?? '–'} /></div>
+      <div className="grid gap-1 text-xs">{data?.playbackStats?.topArtists?.slice(0, 5).map((item) => <div key={item.artist} className="flex justify-between gap-3"><span className="truncate">{item.artist}</span><span className="font-mono text-muted-foreground">{item.plays}</span></div>)}</div>
+      <div className="border-t border-border pt-2 text-xs">{data?.playbackStats?.recentSongs?.slice(0, 5).map((song) => <div key={`${song.playedAt}-${song.title}`} className="flex justify-between gap-3 py-1"><span className="truncate">{song.title}</span><span className="shrink-0 text-muted-foreground">{song.artist}</span></div>)}</div>
     </div>
     <p className="-mt-2 text-[11px] text-muted-foreground">Estimated browsers currently playing; inactive sessions expire after one minute.</p>
     <div className="flex flex-col gap-2 rounded-lg border border-border p-3">

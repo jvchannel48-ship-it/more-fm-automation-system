@@ -1,6 +1,6 @@
 import 'server-only'
 import { Pool } from 'pg'
-import type { SongRequest, StationSettings } from './types'
+import type { CrossfaderCurve, SongRequest, StationSettings } from './types'
 
 const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
@@ -193,6 +193,14 @@ export const DEFAULT_SETTINGS: StationSettings = {
   nightVolumeEnabled: false,
   nightVolumeStartHour: 22,
   nightVolumeEndHour: 6,
+  masterVolume: 100,
+  nightVolumePercent: 72,
+  bassGainDb: 0,
+  crossfaderEnabled: true,
+  crossfaderCurve: 'constant-power',
+  crossfadeSeconds: 8,
+  replayGainEnabled: false,
+  replayGainTargetLufs: -14,
   jingleEnabled: true,
   commercialEnabled: false,
   jingle: { url: '/my-only-radio-for-life.mp3', name: 'MyOnlyRadioforLife-usesuno.com.mp3', duration: 11.833 },
@@ -225,6 +233,14 @@ export async function getSettings(): Promise<StationSettings> {
     nightVolumeEnabled: typeof saved.nightVolumeEnabled === 'boolean' ? saved.nightVolumeEnabled : false,
     nightVolumeStartHour: typeof saved.nightVolumeStartHour === 'number' && saved.nightVolumeStartHour >= 0 && saved.nightVolumeStartHour <= 23 ? saved.nightVolumeStartHour : 22,
     nightVolumeEndHour: typeof saved.nightVolumeEndHour === 'number' && saved.nightVolumeEndHour >= 0 && saved.nightVolumeEndHour <= 23 ? saved.nightVolumeEndHour : 6,
+    masterVolume: typeof saved.masterVolume === 'number' ? Math.max(0, Math.min(100, Math.round(saved.masterVolume))) : 100,
+    nightVolumePercent: typeof saved.nightVolumePercent === 'number' ? Math.max(0, Math.min(100, Math.round(saved.nightVolumePercent))) : 72,
+    bassGainDb: typeof saved.bassGainDb === 'number' ? Math.max(-12, Math.min(12, saved.bassGainDb)) : 0,
+    crossfaderEnabled: typeof saved.crossfaderEnabled === 'boolean' ? saved.crossfaderEnabled : true,
+    crossfaderCurve: ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut'].includes(saved.crossfaderCurve as string) ? saved.crossfaderCurve as CrossfaderCurve : 'constant-power',
+    crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' ? Math.max(0, Math.min(30, saved.crossfadeSeconds)) : 8,
+    replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
+    replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
     jingleEnabled: saved.jingle && typeof saved.jingle.url === 'string' && typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : true,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
     jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : DEFAULT_SETTINGS.jingle,

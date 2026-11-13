@@ -1,11 +1,11 @@
 import 'server-only'
-import { getRatings, getSettings, getSongRequests, hasPersistentStorage, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
+import { orderedPendingRequests } from './song-request-queue'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
-const CROSSFADE_SECONDS = 8
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
@@ -23,6 +23,7 @@ interface HistoryEntry {
   id: string
   key: string
   artist: string
+  title?: string
   t: number
 }
 
@@ -88,10 +89,7 @@ async function findSongRequest(request: { title: string; artist: string }, histo
 }
 
 async function findPendingSongRequest(history: HistoryEntry[]) {
-  const pending = (await getSongRequests())
-    .filter((request) => request.status === 'pending')
-    .sort((a, b) => a.requestedAt - b.requestedAt)
-    .slice(0, 12)
+  const pending = orderedPendingRequests(await getSongRequests())
   for (const request of pending) {
     const song = await findSongRequest(request, history)
     if (song) return { request, song }
@@ -263,6 +261,19 @@ function trackEnd(track: Track) {
   return track.startAt + track.duration * 1000
 }
 
+function audioConfig(settings: Awaited<ReturnType<typeof getSettings>>) {
+  return {
+    masterVolume: settings.masterVolume,
+    nightVolumePercent: settings.nightVolumePercent,
+    bassGainDb: settings.bassGainDb,
+    crossfaderEnabled: settings.crossfaderEnabled,
+    crossfaderCurve: settings.crossfaderCurve,
+    crossfadeSeconds: settings.crossfadeSeconds,
+    replayGainEnabled: settings.replayGainEnabled,
+    replayGainTargetLufs: settings.replayGainTargetLufs,
+  }
+}
+
 function queueAheadTarget(state: StationState, now: number) {
   const hasActiveTrack = state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
   return hasActiveTrack ? PRELOAD_QUEUE_WITH_ACTIVE_TRACKS : PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK
@@ -369,7 +380,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         const previous = state.tracks.at(-1)
         if (previous) previous.fadeOut = 0
         state.tracks.push({
-          uid: `auto-voice-${requested.id}-${announcementStart}`,
+          uid: `auto-voice-${requestMatch.request.id}-${announcementStart}`,
           src: settings.autoVoiceAnnouncement.url,
           startAt: announcementStart,
           duration: settings.autoVoiceAnnouncement.duration,
@@ -393,14 +404,14 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       src: song.src,
       startAt: songStart,
       duration: song.duration,
-      fadeIn,
-      fadeOut: CROSSFADE_SECONDS,
+      fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
+      fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
       sourceRefreshedAt: song.sourceRefreshedAt,
       kind: 'music',
       title: song.title,
     })
-    state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
+    state.history.push({ id: song.id, key: song.key, artist: song.artist, title: song.title, t: songStart })
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     state.seasonalSongCount++
@@ -480,13 +491,11 @@ export async function getNowPlaying(): Promise<NowResponse> {
       signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
+      audioConfig: audioConfig(settings),
     }
   }
 
-  const hasActiveTrack = state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
-  const needsFill = hasPersistentStorage
-    ? state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
-    : !hasActiveTrack && state.tracks.filter((track) => track.startAt > now).length < PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK
+  const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
     await fillQueueIfNeeded(settings)
     const refreshed = await loadState(Date.now())
@@ -505,19 +514,24 @@ export async function getNowPlaying(): Promise<NowResponse> {
       signOffAt: settings.broadcastEnabled ? null : responseNow,
       tracks: [],
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
+      audioConfig: audioConfig(settings),
     }
   } else {
     const sourcesChanged = await refreshUpcomingSongSources(state, responseNow)
     if (changed || sourcesChanged) await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
+  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
   const [{ state }, settings, listenersNow, ratings, requests] = await Promise.all([loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests()])
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
+  const last24Hours = state.history.filter((h) => h.t > now - 24 * 60 * 60 * 1000)
+  const last7Days = state.history.filter((h) => h.t > now - 7 * 24 * 60 * 60 * 1000)
+  const artistCounts = new Map<string, number>()
+  for (const entry of last7Days) artistCounts.set(entry.artist, (artistCounts.get(entry.artist) ?? 0) + 1)
   return {
     ...settings,
     songsThisWeek: state.history.length,
@@ -526,6 +540,12 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     listenersNow,
     totalRatings: ratings.total,
     pendingRequests: requests.filter((request) => request.status === 'pending').length,
+    playbackStats: {
+      last24Hours: last24Hours.length,
+      last7Days: last7Days.length,
+      topArtists: [...artistCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([artist, plays]) => ({ artist, plays })),
+      recentSongs: state.history.slice(-12).reverse().map((entry) => ({ title: entry.title ?? entry.key, artist: entry.artist, playedAt: entry.t })),
+    },
   }
 }
 
