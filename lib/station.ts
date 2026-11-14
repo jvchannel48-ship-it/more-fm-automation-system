@@ -518,8 +518,20 @@ async function loadState(now: number) {
         track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
       )
   })
+  const queuedSongKeys = new Set<string>()
+  const beforeQueueDeduplication = state.tracks.length
+  state.tracks = state.tracks.filter((track) => {
+    if (track.kind !== 'music' && track.kind !== 'mor-sync') return true
+    const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
+    const key = repeatTitleKey(track.title ?? '', artist)
+    if (!key || !queuedSongKeys.has(key)) {
+      if (key) queuedSongKeys.add(key)
+      return true
+    }
+    return false
+  })
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
-  return { state, changed: dailyChanged || state.tracks.length !== before }
+  return { state, changed: dailyChanged || state.tracks.length !== before || state.tracks.length !== beforeQueueDeduplication }
 }
 
 export async function runMorSyncTick(): Promise<MorSyncRecord> {
