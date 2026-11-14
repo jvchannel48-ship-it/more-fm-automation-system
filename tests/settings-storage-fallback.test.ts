@@ -55,7 +55,7 @@ async function main() {
     timeOffset += 3_000
     const reloaded = await getSettings()
     assert.equal(reloaded.tagalogOnlyEnabled, false, 'an explicit saved Tagalog-only admin choice is preserved')
-    assert.equal(reloaded.noRepeatEnabled, false, 'an explicit saved no-repeat choice is preserved')
+    assert.equal(reloaded.noRepeatEnabled, true, 'no-repeat remains enforced')
     assert.equal(reloaded.shuffleEnabled, false, 'an explicit saved shuffle choice is preserved')
     console.log('settings-storage-fallback: durable private JSON fallback without PostgreSQL passed')
   } finally {

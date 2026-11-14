@@ -198,6 +198,7 @@ const NIGHT_LOVE = artists('english', [
   'John Legend',
   'Adele',
   'The Righteous Brothers',
+  'Heart',
 ])
 
 const ENGLISH_DISCO = artists('english', [
@@ -345,12 +346,12 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
  * Sunday runs continuously with Tagalog senior classics and no English-language music all day.
  * Other days follow the configured program schedule; the default station settings enforce Tagalog-only rotation.
  */
-export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20, newsEnabled = true): Program {
+export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 18, newsEnabled = true): Program {
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
   if (day === 0) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
-  if (newsEnabled && hour === 16 && minute < 50) return PROGRAMS.news
+  if (hour === 18 && minute < 3) return PROGRAMS.disco
   const inDiscoWindow = discoStartHour < discoEndHour
     ? hour >= discoStartHour && hour < discoEndHour
     : hour >= discoStartHour || hour < discoEndHour

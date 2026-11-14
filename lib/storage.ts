@@ -318,7 +318,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   signOffHour: 1,
   signOnHour: 4,
   discoStartHour: 16,
-  discoEndHour: 20,
+  discoEndHour: 18,
   christmasEnabled: false,
   autoVoiceEnabled: false,
   autoVoiceAnnouncement: null,
@@ -373,7 +373,8 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
-    noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
+    // Keep song rotation from repeating titles across the active daily history.
+    noRepeatEnabled: true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
     shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
@@ -387,8 +388,9 @@ export async function getSettings(): Promise<StationSettings> {
     // Sunday remains continuous through isOffAir(), which explicitly skips Sunday.
     signOffHour: 1,
     signOnHour: 4,
-    discoStartHour: typeof saved.discoStartHour === 'number' && saved.discoStartHour >= 0 && saved.discoStartHour <= 23 ? saved.discoStartHour : 16,
-    discoEndHour: typeof saved.discoEndHour === 'number' && saved.discoEndHour >= 0 && saved.discoEndHour <= 23 ? saved.discoEndHour : 20,
+    // Weekday disco is fixed from 4:00 PM through 6:00 PM.
+    discoStartHour: 16,
+    discoEndHour: 18,
     christmasEnabled: false,
     autoVoiceEnabled: false,
     autoVoiceAnnouncement: saved.autoVoiceAnnouncement && typeof saved.autoVoiceAnnouncement.url === 'string' ? saved.autoVoiceAnnouncement : null,

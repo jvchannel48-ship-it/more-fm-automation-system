@@ -32,8 +32,8 @@ export async function PUT(request: NextRequest) {
     const hour = (value: unknown, fallback: number) => typeof value === 'number' && value >= 0 && value <= 23 ? value : fallback
     const signOffHour = 1
     const signOnHour = 4
-    const discoStartHour = hour(body.discoStartHour, current.discoStartHour)
-    const discoEndHour = hour(body.discoEndHour, current.discoEndHour)
+    const discoStartHour = 16
+    const discoEndHour = 18
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const bounded = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest) {
     const next = {
       broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
       boardOperatorEnabled: typeof body.boardOperatorEnabled === 'boolean' ? body.boardOperatorEnabled : current.boardOperatorEnabled,
-      noRepeatEnabled: typeof body.noRepeatEnabled === 'boolean' ? body.noRepeatEnabled : current.noRepeatEnabled,
+      noRepeatEnabled: true,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
       morSyncEnabled: typeof body.morSyncEnabled === 'boolean' ? body.morSyncEnabled : current.morSyncEnabled,
       shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,

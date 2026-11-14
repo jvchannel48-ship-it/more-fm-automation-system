@@ -74,7 +74,7 @@ export function AdminPanel() {
   const [signOffHour, setSignOffHour] = useState('1')
   const [signOnHour, setSignOnHour] = useState('4')
   const [discoStartHour, setDiscoStartHour] = useState('16')
-  const [discoEndHour, setDiscoEndHour] = useState('20')
+  const [discoEndHour, setDiscoEndHour] = useState('18')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [rotationPoolSize, setRotationPoolSize] = useState('100')

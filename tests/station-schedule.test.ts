@@ -22,6 +22,11 @@ assert.equal(isChristmasTitle('Blue Christmas'), true)
 assert.equal(isChristmasTitle('Maligayang Pasko'), true)
 assert.equal(isChristmasTitle('Because You Loved Me'), false)
 assert.notEqual(programAt(manilaTimeAt(2026, 11, 14, 12)).id, 'sunday-oldies', 'weekday programming remains separate from Sunday oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 14, 16)).id, 'disco', 'weekday 4 PM starts disco programming')
+assert.equal(programAt(manilaTimeAt(2026, 11, 14, 17)).id, 'disco', 'weekday 5 PM uses disco programming')
+assert.equal(programAt(Date.UTC(2026, 10, 14, 18, 2, 0) - MANILA_OFFSET_MS).id, 'disco', 'weekday 6:02 PM remains in disco')
+assert.equal(programAt(Date.UTC(2026, 10, 14, 18, 3, 0) - MANILA_OFFSET_MS).id, 'love-mix', 'weekday 6:03 PM switches to love songs')
+assert.ok(PROGRAMS['night-love'].pools.english.some((artist) => artist.name === 'Heart'), 'night love includes Heart')
 
 for (const date of [14, 16, 17, 18, 19, 20]) {
   assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 1)), true, `weekday ${date} signs off at 1 AM`)
