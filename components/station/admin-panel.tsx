@@ -106,6 +106,11 @@ export function AdminPanel() {
   }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
+    if (data?.persistenceConfigured === false) {
+      setError('Cannot save admin settings: add the Supabase PostgreSQL connection string as POSTGRES_URL in the deployment environment, then redeploy.')
+      setMessage('')
+      return
+    }
     setBusy(true)
     setError('')
     setMessage('')
@@ -181,6 +186,7 @@ export function AdminPanel() {
     </div>
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
+    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes cannot be saved until the deployment has a Supabase PostgreSQL connection. Set <code>POSTGRES_URL</code> in the hosting environment and redeploy; see <code>docs/deployment-env.md</code>.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
     <div className="flex items-center justify-between gap-3">
@@ -259,8 +265,8 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only mode</Label><p className="text-xs text-muted-foreground">ON plays Tagalog songs continuously with no English songs mixed in. English requests wait until this mode is OFF. The current song finishes; upcoming tracks are refreshed.</p></div>
-        <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? false} disabled={!data || busy}
+      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only love-song mode</Label><p className="text-xs text-muted-foreground">Default ON: randomly rotates Tagalog OPM love songs and blocks titles already played that Manila day. English MOR matches are skipped while this mode is ON. The current song finishes; upcoming tracks are refreshed.</p></div>
+        <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
     </div>
 

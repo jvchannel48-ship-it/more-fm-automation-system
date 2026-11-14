@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'christmas' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -18,6 +18,7 @@ export interface Program {
   pools: Record<Language, Artist[]>
   variants: Record<Language, string[]>
   tagalogOnly?: boolean
+  christmasOnly?: boolean
 }
 
 function artists(language: Language, entries: string[]): Artist[] {
@@ -293,6 +294,15 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     variants: { english: [], tagalog: OPM_VARIANTS },
     tagalogOnly: true,
   },
+  christmas: {
+    id: 'christmas',
+    pools: CHRISTMAS_ARTISTS,
+    variants: {
+      english: ['Christmas songs', 'classic Christmas', 'Christmas official audio'],
+      tagalog: ['Pasko OPM', 'Tagalog Christmas songs', 'Christmas official audio'],
+    },
+    christmasOnly: true,
+  },
   'english-love': {
     id: 'english-love',
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
@@ -395,6 +405,7 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.id === 'sunday-english' || program.id === 'sunday-english-oldies') return 'english'
   if (program.tagalogOnly) return 'tagalog'
+  if (program.christmasOnly) return songCount % 2 === 0 ? 'english' : 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }
 
@@ -422,11 +433,24 @@ export function isGoldenSundayWindow(ms: number): boolean {
   return day === 0 && hour >= 4 && hour < 13
 }
 
-/** Seasonal cadence: one Christmas song per five in Sep–Oct; three in a row in Nov; three of every four in Dec. */
+/** Sep–Oct: one Christmas song per five songs; Nov–Dec: every music selection is Christmas. */
 export function isChristmasSlot(monthlySongIndex: number, ms: number): boolean {
   const month = manilaMonth(ms)
   if (month === 9 || month === 10) return monthlySongIndex % 5 === 4
-  if (month === 11) return monthlySongIndex % 7 < 3
-  if (month === 12) return monthlySongIndex % 4 < 3
+  if (month === 11 || month === 12) return true
   return false
+}
+
+export function isChristmasSeason(ms: number): boolean {
+  const month = manilaMonth(ms)
+  return month >= 9 && month <= 12
+}
+
+export function isContinuousChristmasPeriod(ms: number): boolean {
+  const month = manilaMonth(ms)
+  return month === 11 || month === 12
+}
+
+export function isChristmasTitle(title: string): boolean {
+  return /\b(?:christmas|xmas|pasko|santa(?:\s+claus|\s+baby)?|silent\s+night|jingle\s+bells?|holly|winter\s+wonderland|maligayang\s+pasko|himig\s+ng\s+pasko|sa\s+araw\s+ng\s+pasko|deck\s+the\s+halls|o\s+holy\s+night|joy\s+to\s+the\s+world|we\s+wish\s+you|let\s+it\s+snow|white\s+christmas|blue\s+christmas|last\s+christmas|merry\s+christmas|christmas\s+time|christmas\s+song|christmas\s+eve|rudolph|frosty\s+the\s+snowman|grinch|grandma\s+got\s+run\s+over\s+by\s+a\s+reindeer|reindeer|sleigh\s+ride|first\s+noel|feliz\s+navidad|silver\s+bells|little\s+drummer\s+boy|carol\s+of\s+the\s+bells|o\s+christmas\s+tree|have\s+yourself\s+a\s+merry\s+little\s+christmas|wonderful\s+christmastime|mary['’]?s\s+boy\s+child|hark\s+the\s+herald\s+angels\s+sing)\b/i.test(title)
 }

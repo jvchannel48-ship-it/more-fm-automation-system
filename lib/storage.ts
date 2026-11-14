@@ -263,6 +263,7 @@ export const RATINGS_PATH = 'station/ratings-v1.json'
 export const REQUESTS_PATH = 'station/requests-v1.json'
 export const MOR_SYNC_PATH = 'station/mor-sync-v1.json'
 export const QUEUE_LOCK_PATH = 'station/queue-lock-v1.json'
+const SETTINGS_MIGRATIONS_PATH = 'station/settings-migrations-v1.json'
 export const EMPTY_MOR_SYNC_RECORD: MorSyncRecord = {
   metadata: null,
   syncStatus: 'HINDI NAKITA YUNG KANTA',
@@ -287,7 +288,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   goodVibesEnabled: false,
   rotationPoolSize: 100,
   listenerLimit: 0,
-  tagalogOnlyEnabled: false,
+  tagalogOnlyEnabled: true,
   transmitterWatts: 100000,
   signOffHour: 1,
   signOnHour: 4,
@@ -320,6 +321,17 @@ export const DEFAULT_SETTINGS: StationSettings = {
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
+  const migrations = await readJson<{ tagalogLoveRotation?: number }>(SETTINGS_MIGRATIONS_PATH, {})
+  if (hasPersistentStorage && migrations.tagalogLoveRotation !== 1) {
+    const migrated = { ...saved, tagalogOnlyEnabled: true, noRepeatEnabled: true, shuffleEnabled: true }
+    try {
+      await writeJson(SETTINGS_PATH, migrated)
+      await writeJson(SETTINGS_MIGRATIONS_PATH, { ...migrations, tagalogLoveRotation: 1 })
+      Object.assign(saved, migrated)
+    } catch (error) {
+      console.error('[morefm] could not apply the Tagalog love rotation settings migration', error)
+    }
+  }
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
@@ -330,7 +342,7 @@ export async function getSettings(): Promise<StationSettings> {
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(300, Math.round(saved.rotationPoolSize))) : 100,
     listenerLimit: typeof saved.listenerLimit === 'number' ? Math.max(0, Math.min(1000, Math.round(saved.listenerLimit))) : 0,
-    tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : false,
+    tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
     transmitterWatts: [0, 5000, 20000, 100000].includes(saved.transmitterWatts as number) ? saved.transmitterWatts as StationSettings['transmitterWatts'] : 100000,
     signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? saved.signOffHour : 1,
     signOnHour: typeof saved.signOnHour === 'number' && saved.signOnHour >= 0 && saved.signOnHour <= 23 ? saved.signOnHour : 4,
