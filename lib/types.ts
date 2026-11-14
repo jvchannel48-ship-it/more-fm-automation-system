@@ -3,6 +3,7 @@ export type CrossfaderCurve = 'transition' | 'smooth' | 'constant-power' | 'dipp
 
 export interface Track {
   uid: string
+  requestId?: string
   src: string
   startAt: number
   duration: number

@@ -1,5 +1,5 @@
 import 'server-only'
-import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
+import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
@@ -176,6 +176,55 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
     }
   }))
   return downloads.find((song) => song !== null) ?? null
+}
+
+export async function queueSongRequest(requestId: string) {
+  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+  if (!lease) return { queued: false, reason: 'The AutoDJ queue is busy. Your request is saved and will retry automatically.' }
+  try {
+    const request = (await getSongRequests()).find((item) => item.id === requestId && item.status === 'pending')
+    if (!request) return { queued: false, reason: 'Request not found.' }
+    const now = Date.now()
+    const settings = await getSettings()
+    const { state } = await loadState(now)
+    const blocked = settings.noRepeatEnabled
+      ? new Set([
+          ...state.dailyPlayedTitles.map((entry) => entry.key),
+          ...state.history.filter((entry) => manilaDateKey(entry.t) === manilaDateKey(now)).map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist)).filter(Boolean),
+          ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', track.artist ?? '')).filter(Boolean),
+        ])
+      : new Set<string>()
+    const song = await findMorSong(request.title, request.artist, blocked, false)
+    if (!song) return { queued: false, reason: 'Song not found yet. AutoDJ will keep retrying this request.' }
+    const startAt = nextStart(state, now)
+    state.tracks.push({
+      uid: `request-${request.id}-${startAt}`,
+      requestId: request.id,
+      src: song.src,
+      startAt,
+      duration: song.duration,
+      fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
+      fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
+      sourceUrl: song.sourceUrl,
+      sourceChannel: song.sourceChannel,
+      sourceRefreshedAt: song.sourceRefreshedAt,
+      kind: 'music',
+      title: song.title,
+      artist: request.artist,
+    })
+    state.history.push({ id: song.id, key: song.key, artist: request.artist, title: song.title, t: startAt })
+    state.history = state.history.slice(-settings.rotationPoolSize)
+    await writeJson(STATE_PATH, state)
+    return { queued: true, track: { title: song.title, artist: request.artist } }
+  } finally {
+    await releaseStationLease(lease)
+  }
+}
+
+export async function submitSongRequest(title: string, artist: string) {
+  const request = await addSongRequest(title, artist)
+  const result = await queueSongRequest(request.id)
+  return { request, ...result }
 }
 
 async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean, blockedTitleKeys: Set<string>) {
@@ -448,6 +497,33 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < FILL_BATCH_SIZE) {
+    const pendingRequest = (await getSongRequests()).find((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
+    if (pendingRequest) {
+      const requestedSong = await findMorSong(pendingRequest.title, pendingRequest.artist, blockedTitleKeys, false)
+      if (requestedSong) {
+        const requestedStart = nextStart(state, now)
+        state.tracks.push({
+          uid: `request-${pendingRequest.id}-${requestedStart}`,
+          requestId: pendingRequest.id,
+          src: requestedSong.src,
+          startAt: requestedStart,
+          duration: requestedSong.duration,
+          fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
+          fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
+          sourceUrl: requestedSong.sourceUrl,
+          sourceChannel: requestedSong.sourceChannel,
+          sourceRefreshedAt: requestedSong.sourceRefreshedAt,
+          kind: 'music',
+          title: requestedSong.title,
+          artist: pendingRequest.artist,
+        })
+        state.history.push({ id: requestedSong.id, key: requestedSong.key, artist: pendingRequest.artist, title: requestedSong.title, t: requestedStart })
+        state.history = state.history.slice(-settings.rotationPoolSize)
+        if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(requestedSong.title, pendingRequest.artist))
+        state.songCount++
+        continue
+      }
+    }
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
     const breakTime = manilaTime(breakAt)
@@ -586,7 +662,10 @@ async function loadState(now: number) {
     })) continue
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? 'Unknown artist'
     const key = repeatTitleKey(track.title, artist)
-    if (!key || dailyKeys.has(key)) continue
+    if (!key || dailyKeys.has(key)) {
+      if (track.requestId) await updateSongRequest(track.requestId, 'played')
+      continue
+    }
     const completed = appendCompletedSong(state.dailyPlayedTitles, {
       title: track.title.replace(/^song request\s*:\s*/i, ''),
       artist,
@@ -598,6 +677,7 @@ async function loadState(now: number) {
       dailyKeys.add(key)
       dailyChanged = true
     }
+    if (track.requestId) await updateSongRequest(track.requestId, 'played')
   }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((track) => {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 180_000
+const PRELOAD_AHEAD_MS = 360_000
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
@@ -69,7 +69,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 5 }, () => {
+    slots.current = Array.from({ length: 6 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
@@ -177,7 +177,29 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         if (el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
-          if (now - slot.activeWaitSince >= 25_000) setPlaybackIssue('The stream is taking too long to load. Retrying automatically…')
+          if (now - slot.activeWaitSince >= 20_000) {
+            if (slot.reloadAttempts < 5 && slot.src) {
+              slot.reloadAttempts += 1
+              slot.synced = false
+              slot.lastPlayAttemptAt = now
+              slot.activeWaitSince = now
+              el.pause()
+              el.src = slot.src
+              el.load()
+              setPlaybackIssue('The stream is taking too long to load. Retrying automatically…')
+            } else {
+              setPlaybackIssue('This song could not load. AutoDJ is moving to the next track…')
+              failedUids.current.add(track.uid)
+              el.pause()
+              el.removeAttribute('src')
+              el.load()
+              slot.uid = null
+              slot.src = null
+              slot.synced = false
+              slot.reloadAttempts = 0
+              onStreamError?.(track.uid)
+            }
+          }
         } else {
           slot.activeWaitSince = null
         }
