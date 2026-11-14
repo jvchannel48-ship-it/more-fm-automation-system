@@ -178,7 +178,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={() => void togglePlay()}
           disabled={offAir || checkingCapacity}
-          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play RJ FM 93.5 Naga'}
+          aria-label={playing ? 'Pause RJ FM 93.5 Naga' : 'Play RJ FM 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
