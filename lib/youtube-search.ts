@@ -28,7 +28,7 @@ const STATIC_PLAYLIST: PlaylistTrackResult[] = (playlistCatalog as Array<Omit<Pl
   ...track,
   durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
 }))
-const RJ_FM_PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PLd469-e1TkbM'
+const RJ_FM_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLd469-e1TkbM'
 const PLAYLIST_REFRESH_MS = 60_000
 let playlistCache = STATIC_PLAYLIST
 let playlistLastCheckedAt = 0
@@ -76,7 +76,9 @@ async function refreshRjFmPlaylist() {
   try {
     const playlist = await Promise.race([
       YouTube.getPlaylist(RJ_FM_PLAYLIST_URL, {
-        limit: 100,
+      // Fetch the full current playlist so additions after the first 100 songs
+      // are also available to AutoDJ after the next background refresh.
+      limit: 500,
         fetchAll: true,
         requestOptions: {
           headers: {

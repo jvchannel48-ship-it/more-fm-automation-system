@@ -10,6 +10,10 @@ When no PostgreSQL URL is present, admin settings and the one-time settings-migr
 
 The app also stores the station queue and no-repeat ledger in this private bucket when PostgreSQL is unavailable, so a single-instance restart can recover the daily played-song history. PostgreSQL remains strongly recommended for atomic queue leases, shared serverless coordination, and listener counts; without it, multiple simultaneous instances can still race. Configure `POSTGRES_URL` for a fully coordinated radio station. With neither backend configured, the Admin Panel shows an actionable warning and saving is rejected instead of pretending that settings or queue history persisted.
 
+## Render persistent disk and RJ FM playlist
+
+The included `render.yaml` mounts a persistent disk at `/var/data` and sets `MORE_FM_DATA_DIR=/var/data/more-fm`. Keep that disk attached when using Render's clear-build-cache deploy so the same-day no-repeat ledger survives the new build. AutoDJ refreshes the RJ FM YouTube playlist `PLd469-e1TkbM` in the background every 60 seconds and can load up to 500 current entries, so newly added songs become eligible after the next queue refresh without a code change.
+
 The first persistent settings read fills any missing Tagalog-only, shuffle, and no-repeat preferences with their ON defaults while preserving every explicitly saved operator choice. On queue load, same-day persisted history is also added to the no-repeat blocklist, which prevents legacy songs from replaying after a version update or restart. Sunday programming is always a separate full-day Tagalog senior-classics rotation and does not add English songs, jingles, commercials, news, or DJ-mic clips between tracks. Subsequent manual admin changes remain saved.
 
 See `.env.example` for variable names and placeholder shapes. It contains no usable credentials.
