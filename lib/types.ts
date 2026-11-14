@@ -153,7 +153,6 @@ export interface AdminStatus extends StationSettings {
   moreFmNowPlaying: string | null
   morSyncStatus: MorSyncStatus
   morCheckedAt: number | null
-  listenerGeo: ListenerGeoSummary
   dailyPlayedTitles: Array<{ title: string; artist: string; playedAt: number }>
   dailyPlayedDate: string
 }

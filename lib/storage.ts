@@ -15,6 +15,7 @@ type MoreFmGlobals = typeof globalThis & {
 const globals = globalThis as MoreFmGlobals
 const memoryState = new Map<string, string>()
 const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
+const memoryListeners = new Map<string, { lastSeenAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasPersistentStorage = Boolean(databaseUrl)
 
@@ -179,7 +180,15 @@ export async function renewStationLease(lease: StationLease, leaseMs: number): P
 
 export async function registerListener(id: string, active: boolean, listenerLimit: number, location?: Pick<ListenerGeoLocation, 'city' | 'region' | 'countryCode'>) {
   const pool = getPool()
-  if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
+  if (!pool) {
+    const cutoff = Date.now() - 60_000
+    for (const [listenerId, listener] of memoryListeners) if (listener.lastSeenAt < cutoff) memoryListeners.delete(listenerId)
+    const alreadyActive = memoryListeners.has(id)
+    const accepted = !active || alreadyActive || listenerLimit <= 0 || memoryListeners.size < listenerLimit
+    if (active && accepted) memoryListeners.set(id, { lastSeenAt: Date.now() })
+    if (!active) memoryListeners.delete(id)
+    return { accepted, listenersNow: memoryListeners.size }
+  }
   await ensureStateTable()
   const client = await pool.connect()
   try {

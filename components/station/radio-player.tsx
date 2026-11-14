@@ -77,9 +77,9 @@ export function RadioPlayer() {
         body: JSON.stringify({ id, active }),
         keepalive: !active,
         })
-        const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string } | null
+        const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string; error?: string } | null
         if (active && (!response.ok || result?.accepted === false)) {
-          setListenerMessage(result?.message ?? 'Could not check listener capacity. Please try again.')
+          setListenerMessage(result?.message ?? result?.error ?? 'Could not check listener capacity. Please try again.')
           setPlaying(false)
         }
       } catch {
@@ -126,9 +126,9 @@ export function RadioPlayer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: listenerId(), active: true }),
       })
-      const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string } | null
+      const result = await response.json().catch(() => null) as { accepted?: boolean; message?: string; error?: string } | null
       if (!response.ok || result?.accepted !== true) {
-        setListenerMessage(result?.message ?? 'Could not check listener capacity. Please try again.')
+        setListenerMessage(result?.message ?? result?.error ?? 'Could not check listener capacity. Please try again.')
         return
       }
       setPlaying(true)
