@@ -7,6 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "test:queue": "node --experimental-strip-types tests/song-request-queue.test.ts",
     "test:mor": "node --conditions=react-server --experimental-strip-types tests/mor-sync-parser.test.ts",
     "test:repeat": "node --experimental-strip-types tests/song-repeat.test.ts",
@@ -16,6 +20,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@opennextjs/cloudflare": "^1.20.17",
     "@vercel/analytics": "1.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -42,6 +47,7 @@
     "@types/react-dom": "^19",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "wrangler": "^4.161.0"
   }
 }
