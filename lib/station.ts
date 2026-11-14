@@ -251,6 +251,8 @@ function isSundayOldiesArtist(name: string) {
   return PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => normalizeMorMatchText(artist.name) === normalizedName)
 }
 
+const SUNDAY_ENGLISH_OLDIES_ARTISTS = new Set(PROGRAMS['sunday-english-oldies'].pools.english.map((artist) => normalizeMorMatchText(artist.name)))
+
 const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
 function parseDuration(value: string): number {
   const parts = value.split(':').map(Number)
@@ -581,7 +583,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       }
     }
     const rotationProgram = manilaTime(startAt).day === 0
-      ? program.id === 'sunday-english-oldies' ? PROGRAMS['sunday-english-oldies'] : PROGRAMS['sunday-oldies']
+      ? program
       : settings.tagalogOnlyEnabled
         ? PROGRAMS['sunday-tagalog']
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
@@ -693,14 +695,19 @@ async function loadState(now: number) {
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const removeFilteredTrack = isMusicTrack && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
     const trackManila = manilaTime(track.startAt)
-    const validSundayEnglishOldies = trackManila.hour >= 4 && trackManila.hour < 6
-    const validSundayOldies = isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
+    const sundayProgram = trackManila.day === 0
+      ? programAt(track.startAt)
+      : null
+    const validSundayEnglishOldies = sundayProgram?.id === 'sunday-english-oldies' && SUNDAY_ENGLISH_OLDIES_ARTISTS.has(normalizeMorMatchText(artist))
+    const validSundayOldies = sundayProgram?.id === 'sunday-oldies' && isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
+    const validSundayTagalogLove = sundayProgram?.id === 'sunday-tagalog' && sundayProgram.pools.tagalog.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
+    const validSundayEnglishLove = sundayProgram?.id === 'english-love' && sundayProgram.pools.english.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
     const removeSundayBreak = sunday && (
       ['jingle', 'commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
       || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
     )
     const removeSundayMusic = sunday && isMusicTrack && (
-      manilaTime(track.startAt).day !== 0 || (!validSundayOldies && !validSundayEnglishOldies)
+      manilaTime(track.startAt).day !== 0 || (!validSundayOldies && !validSundayEnglishOldies && !validSundayTagalogLove && !validSundayEnglishLove)
     )
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest

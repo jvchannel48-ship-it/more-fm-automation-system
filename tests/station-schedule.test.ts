@@ -6,7 +6,7 @@ function manilaTimeAt(year: number, month: number, day: number, hour = 12, minut
 }
 
 const sundayOldies = PROGRAMS['sunday-oldies']
-for (const hour of [0, 1, 3, 7, 8, 11, 12, 16, 20, 23]) {
+for (const hour of [10, 11, 12, 16]) {
   const timestamp = manilaTimeAt(2026, 11, 15, hour)
   assert.equal(manilaTime(timestamp).day, 0, 'test date is Sunday in Manila')
   assert.equal(programAt(timestamp).id, 'sunday-oldies', `Sunday ${hour}:00 uses the oldies program`)
@@ -15,12 +15,15 @@ for (const hour of [0, 1, 3, 7, 8, 11, 12, 16, 20, 23]) {
 
 const sundayEnglishOldies = PROGRAMS['sunday-english-oldies']
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 4)).id, 'sunday-english-oldies', 'Sunday 4 AM starts English senior oldies')
-assert.equal(programAt(manilaTimeAt(2026, 11, 15, 5, 59)).id, 'sunday-english-oldies', 'Sunday 5:59 AM remains English senior oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 8, 59)).id, 'sunday-english-oldies', 'Sunday 8:59 AM remains English senior oldies')
 assert.equal(languageForSlot(sundayEnglishOldies, 0), 'english', 'Sunday early oldies use English rotation')
 assert.ok(sundayEnglishOldies.pools.english.some((artist) => artist.name === 'Victor Wood'), 'Sunday early oldies include Victor Wood')
-assert.equal(programAt(manilaTimeAt(2026, 11, 15, 6)).id, 'sunday-oldies', 'Sunday 6 AM remains RJ FM oldies')
-assert.equal(programAt(manilaTimeAt(2026, 11, 15, 7)).id, 'sunday-oldies', 'Sunday 7 AM returns to RJ FM oldies')
-assert.equal(programAt(manilaTimeAt(2026, 11, 15, 7, 1)).id, 'sunday-oldies', 'Sunday 7:01 AM remains RJ FM oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 9, 0)).id, 'sunday-english-oldies', 'Sunday 9:00 AM remains English senior oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 9, 1)).id, 'sunday-oldies', 'Sunday 9:01 AM uses senior Tagalog oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 17, 1)).id, 'sunday-oldies', 'Sunday 5:01 PM remains senior Tagalog oldies')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 17, 2)).id, 'sunday-tagalog', 'Sunday 5:02 PM starts Tagalog love songs')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 20, 59)).id, 'sunday-tagalog', 'Sunday 8:59 PM remains Tagalog love songs')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 21)).id, 'english-love', 'Sunday 9 PM starts English evening love songs')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 16, 59)).id, 'love-mix', 'Saturday 4:59 PM remains regular programming')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 17)).id, 'love-mix', 'Saturday 5 PM remains on RJ FM music')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 17, 59)).id, 'love-mix', 'Saturday 5:59 PM remains on RJ FM music')

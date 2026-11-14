@@ -85,7 +85,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const tracks = data?.tracks ?? []
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
-      const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
+      const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt - Math.max(0, t.fadeIn) * 1000 && now < t.startAt + t.duration * 1000)
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
       const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
@@ -137,7 +137,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           continue
         }
 
-        const expected = (now - track.startAt) / 1000
+        const expected = Math.max(0, (now - track.startAt) / 1000)
         if (el.error || (isActive && el.ended && now < track.startAt + track.duration * 1000 - 1_000)) {
           if (slot.reloadAttempts < 3 && slot.src) {
             slot.reloadAttempts += 1

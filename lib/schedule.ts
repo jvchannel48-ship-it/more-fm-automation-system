@@ -374,15 +374,17 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
   return target
 }
 
-/**
- * Sunday runs continuously with Tagalog senior classics and no English-language music all day.
- * Other days follow the configured program schedule; the default station settings enforce Tagalog-only rotation.
- */
+/** Sunday programming keeps a gentle oldies-to-love-song flow from 4 AM through the evening. */
 export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 19, newsEnabled = true): Program {
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
-  if (day === 0 && hour >= 4 && hour < 6) return PROGRAMS['sunday-english-oldies']
-  if (day === 0) return PROGRAMS['sunday-oldies']
+  if (day === 0) {
+    const minutes = hour * 60 + minute
+    if (minutes >= 4 * 60 && minutes < 9 * 60 + 1) return PROGRAMS['sunday-english-oldies']
+    if (minutes < 17 * 60 + 2) return PROGRAMS['sunday-oldies']
+    if (hour < 21) return PROGRAMS['sunday-tagalog']
+    return PROGRAMS['english-love']
+  }
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   // Disco programming is intentionally disabled; use the regular love mix.
   if (hour >= 22) return PROGRAMS['night-love']
