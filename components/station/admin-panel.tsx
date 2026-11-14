@@ -170,6 +170,10 @@ export function AdminPanel() {
   }
 
   return <div className="ui-depth flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+    <div className="border-b border-border pb-3">
+      <h2 className="text-base font-semibold">Station Settings</h2>
+      <p className="mt-1 text-xs text-muted-foreground">Control the broadcast status and what listeners see on the public player.</p>
+    </div>
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
@@ -177,9 +181,9 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] p-3">
-      <div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">When ON, the public player displays “Board Operator Active”. When OFF, the indicator is hidden from listeners.</p></div>
-      <Switch id="board-operator-enabled" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy}
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3 shadow-sm shadow-amber-950/20">
+      <div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">When ON, the public player displays “Board Operator Active”. When OFF, the indicator is hidden from listeners.</p><p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-amber-200" role="status">Status: {data?.boardOperatorEnabled ? 'ON · visible on public screen' : 'OFF · hidden from public screen'}</p></div>
+      <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} />
     </div>
 
