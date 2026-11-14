@@ -181,12 +181,6 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3 shadow-sm shadow-amber-950/20">
-      <div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">When ON, the public player displays “Board Operator Active”. When OFF, the indicator is hidden from listeners.</p><p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-amber-200" role="status">Status: {data?.boardOperatorEnabled ? 'ON · visible on public screen' : 'OFF · hidden from public screen'}</p></div>
-      <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy}
-        onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} />
-    </div>
-
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–100-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
@@ -220,8 +214,12 @@ export function AdminPanel() {
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="shuffle-enabled">Shuffle</Label><p className="text-xs text-muted-foreground">ON randomizes eligible artists and tracks; OFF follows source search order.</p></div>
-        <Switch id="shuffle-enabled" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle</Label><p className="text-xs text-muted-foreground">ON randomizes eligible artists and tracks; OFF follows source search order.</p></div>
+          <Switch id="shuffle-enabled" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
+          <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <label htmlFor="rotation-pool-size" className="flex flex-col gap-1 text-xs font-medium">Rotation history size (50–100 songs)
           <Input id="rotation-pool-size" type="number" min={50} max={100} step={1} value={rotationPoolSize} onChange={(event) => setRotationPoolSize(event.target.value)} disabled={!data || busy} />
