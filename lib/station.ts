@@ -497,7 +497,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < FILL_BATCH_SIZE) {
-    const pendingRequest = (await getSongRequests()).find((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
+    const pendingRequest = hasQueuePersistence
+      ? (await getSongRequests()).find((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
+      : undefined
     if (pendingRequest) {
       const requestedSong = await findMorSong(pendingRequest.title, pendingRequest.artist, blockedTitleKeys, false)
       if (requestedSong) {

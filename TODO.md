@@ -1,10 +1,8 @@
 # Delivery outcomes
 
 ## Listener song request flow
-- [x] Add a message/request button at the bottom of the public player.
-- [x] Opening the button shows fields for song title and artist.
-- [x] Submitting validates both fields, shows progress while searching and inserting, and returns a clear successful or waiting state.
-- [x] A valid request is persisted and either inserted into the AutoDJ playlist immediately or remains pending for the next queue fill instead of being lost.
+- [x] Public listener request UI and endpoint are temporarily disabled while the persistent backend is not configured.
+- [ ] Re-enable the message/request button only after the production queue backend is configured and verified.
 
 ## AutoDJ request playback
 - [x] AutoDJ reads pending message requests, matches them through the existing YouTube/provider lookup, and queues them in request order.

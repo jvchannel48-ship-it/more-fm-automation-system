@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 360_000
+const PRELOAD_AHEAD_MS = 120_000
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
@@ -69,7 +69,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 6 }, () => {
+    slots.current = Array.from({ length: 4 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
@@ -173,12 +173,12 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
             }
           }
         }
-        const minimumReadyState = track.kind === 'brigada-news' ? 1 : 2
+        const minimumReadyState = 1
         if (el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
-          if (now - slot.activeWaitSince >= 20_000) {
-            if (slot.reloadAttempts < 5 && slot.src) {
+          if (now - slot.activeWaitSince >= 8_000) {
+            if (slot.reloadAttempts < 3 && slot.src) {
               slot.reloadAttempts += 1
               slot.synced = false
               slot.lastPlayAttemptAt = now
