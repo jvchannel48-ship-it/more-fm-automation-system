@@ -261,6 +261,15 @@ function shuffle<T>(list: T[]): T[] {
   return copy
 }
 
+async function fetchJsonOnce<T>(url: string, timeoutMs: number): Promise<T | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' })
+    return res.ok ? (await res.json()) as T : null
+  } catch {
+    return null
+  }
+}
+
 async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -296,7 +305,8 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
   for (let offset = 0; offset < EMERGENCY_OPM_ROTATION.length; offset++) {
     const [artist, title] = EMERGENCY_OPM_ROTATION[(songCount + offset) % EMERGENCY_OPM_ROTATION.length]
     if (blockedTitleKeys.has(repeatTitleKey(title, artist))) continue
-    const items = await searchMusicItems(`${artist} ${title}`)
+    const youtubeItems = await searchYouTube(`${artist} ${title} official audio`, 5)
+    const items = asSearchItems(youtubeItems)
     const item = items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
       return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
@@ -306,7 +316,7 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
       return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title)
     })
     if (!item) continue
-    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
+    const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 6_000)
     if (!download?.downloadUrl) continue
     return {
       id: item.id,
