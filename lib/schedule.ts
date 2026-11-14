@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'brigada-news' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -301,11 +301,6 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     variants: { english: [], tagalog: OPM_VARIANTS },
     tagalogOnly: true,
   },
-  'brigada-news': {
-    id: 'brigada-news',
-    pools: { english: [], tagalog: [] },
-    variants: { english: [], tagalog: [] },
-  },
   'english-love': {
     id: 'english-love',
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
@@ -386,13 +381,10 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
 export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 19, newsEnabled = true): Program {
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
-  if (day === 0 && hour >= 6 && hour < 7) return PROGRAMS['brigada-news']
-  if (day !== 0 && hour >= 17 && hour < 21) return PROGRAMS['brigada-news']
   if (day === 0 && hour >= 4 && hour < 6) return PROGRAMS['sunday-english-oldies']
   if (day === 0) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   // Disco programming is intentionally disabled; use the regular love mix.
-  if (day !== 0 && hour >= 22) return PROGRAMS['brigada-news']
   if (hour >= 22) return PROGRAMS['night-love']
   if (hour >= 21) return PROGRAMS['english-love']
   return PROGRAMS['love-mix']

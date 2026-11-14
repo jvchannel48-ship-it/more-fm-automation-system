@@ -5,7 +5,6 @@ import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manil
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
-import { BRIGADA_NAGA_STATION_NAME, BRIGADA_NAGA_STREAM_URL } from './brigada'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -401,22 +400,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    if (program.id === 'brigada-news') {
-      const hour = manilaTime(startAt).hour
-      const endHour = hour === 6 ? 7 : hour >= 17 && hour < 21 ? 21 : 24
-      const endAt = manilaHourBoundary(startAt, endHour)
-      state.tracks.push({
-        uid: `brigada-news-${startAt}`,
-        src: BRIGADA_NAGA_STREAM_URL,
-        startAt,
-        duration: Math.max(1, (endAt - startAt) / 1000),
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'brigada-news',
-        title: BRIGADA_NAGA_STATION_NAME,
-      })
-      break
-    }
     const rotationProgram = manilaTime(startAt).day === 0
       ? program.id === 'sunday-english-oldies' ? PROGRAMS['sunday-english-oldies'] : PROGRAMS['sunday-oldies']
       : settings.tagalogOnlyEnabled
@@ -502,6 +485,7 @@ async function loadState(now: number) {
     const isFutureTrack = track.startAt > now
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
     const removeChristmas = isMusicTrack && isChristmasTrack
+    const removeBrigada = track.kind === 'brigada-news'
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const removeFilteredTrack = isMusicTrack && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
@@ -519,6 +503,7 @@ async function loadState(now: number) {
       && !staleRequest
       && !removeFilteredTrack
       && !removeChristmas
+      && !removeBrigada
       && !removeSundayBreak
       && !removeSundayMusic
       && (
