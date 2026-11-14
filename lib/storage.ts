@@ -1,5 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { Pool } from 'pg'
 import type { CrossfaderCurve, MorSyncRecord, SongRequest, StationSettings } from './types'
 import { hasSupabaseStorageConfig, readSupabaseJson, writeSupabaseJson } from './supabase-media.ts'
@@ -8,6 +10,9 @@ const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
   ?? process.env.DATABASE_URL
   ?? process.env.SUPABASE_DB_URL
+// Render persistent disks survive clear-build-cache deploys. The Render
+// blueprint sets MORE_FM_DATA_DIR to the mounted disk location.
+const filesystemDataDir = process.env.MORE_FM_DATA_DIR?.trim() || (process.env.RENDER ? '/var/data/more-fm' : '')
 
 type MoreFmGlobals = typeof globalThis & {
   __moreFmPostgresPool?: Pool
@@ -19,7 +24,8 @@ const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
 const memoryListeners = new Map<string, { lastSeenAt: number }>()
 const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
-export const hasPersistentStorage = Boolean(databaseUrl)
+export const hasFilesystemPersistence = Boolean(filesystemDataDir)
+export const hasPersistentStorage = Boolean(databaseUrl) || hasFilesystemPersistence
 export const hasSettingsPersistence = hasPersistentStorage || hasSupabaseStorageConfig()
 export const hasQueuePersistence = hasPersistentStorage || hasSupabaseStorageConfig()
 const SETTINGS_CACHE_TTL_MS = 2_000
@@ -39,6 +45,39 @@ function getPool() {
     })
   }
   return globals.__moreFmPostgresPool
+}
+
+function filesystemPath(pathname: string) {
+  if (!filesystemDataDir) return null
+  const root = path.resolve(filesystemDataDir)
+  const target = path.resolve(root, pathname)
+  if (target !== root && !target.startsWith(`${root}${path.sep}`)) throw new Error('Invalid station storage path.')
+  return target
+}
+
+async function readFilesystemJson<T>(pathname: string): Promise<T | undefined> {
+  const target = filesystemPath(pathname)
+  if (!target) return undefined
+  try {
+    return JSON.parse(await readFile(/* turbopackIgnore: true */ target, 'utf8')) as T
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+}
+
+async function writeFilesystemJson(pathname: string, serialized: string) {
+  const target = filesystemPath(pathname)
+  if (!target) return false
+  await mkdir(path.dirname(target), { recursive: true })
+  const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`
+  try {
+    await writeFile(temporary, serialized, 'utf8')
+    await rename(temporary, target)
+  } finally {
+    await unlink(temporary).catch(() => undefined)
+  }
+  return true
 }
 
 async function ensureStateTable() {
@@ -79,6 +118,8 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
         return remote as T
       }
     }
+    const filesystemValue = await readFilesystemJson<T>(pathname)
+    if (filesystemValue !== undefined) return filesystemValue
     if (pathname === STATION_STATE_PATH) {
       const cached = memoryState.get(pathname)
       if (cached) {
@@ -106,6 +147,7 @@ export async function writeJson(pathname: string, data: unknown) {
       if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
       return
     }
+    if (await writeFilesystemJson(pathname, serialized)) return
     if (pathname === STATION_STATE_PATH) {
       memoryState.set(pathname, serialized)
       return

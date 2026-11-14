@@ -45,11 +45,7 @@ export function RadioPlayer() {
       body: JSON.stringify({ uid }),
     }).then(() => mutate()).catch(() => undefined)
   }, [mutate])
-  const { buffering, currentUid, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
-  const activeTrack = data?.tracks.find((track) => track.uid === currentUid) ?? data?.tracks.find((track) => {
-    const now = data.serverTime
-    return track.startAt <= now && track.startAt + track.duration * 1000 > now && (track.kind === 'music' || track.kind === 'mor-sync')
-  })
+  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
   useEffect(() => {
     if (!playbackIssue) return
     void mutate()
@@ -139,17 +135,6 @@ export function RadioPlayer() {
           <p className="text-sm text-muted-foreground">
             {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
           </p>
-        )}
-        {!offAir && (
-          <div className="mt-3 w-full max-w-md rounded-2xl border border-primary/25 bg-background/45 px-5 py-4 text-left shadow-inner" aria-live="polite">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Now playing</p>
-            <p className="mt-1 min-w-0 max-w-full break-words text-lg font-semibold leading-snug text-foreground">
-              {activeTrack?.title ?? 'On air'}
-            </p>
-            <p className="mt-0.5 min-w-0 max-w-full break-words text-sm text-muted-foreground">
-              {activeTrack?.artist ?? '—'}
-            </p>
-          </div>
         )}
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
