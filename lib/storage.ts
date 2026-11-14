@@ -1,6 +1,7 @@
 import 'server-only'
+import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
-import type { CrossfaderCurve, SongRequest, StationSettings } from './types'
+import type { CrossfaderCurve, MorSyncRecord, SongRequest, StationSettings } from './types'
 
 const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
@@ -13,6 +14,7 @@ type MoreFmGlobals = typeof globalThis & {
 }
 const globals = globalThis as MoreFmGlobals
 const memoryState = new Map<string, string>()
+const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasPersistentStorage = Boolean(databaseUrl)
 
@@ -96,6 +98,79 @@ export async function writeJson(pathname: string, data: unknown) {
   )
 }
 
+export interface StationLease {
+  pathname: string
+  owner: string
+}
+
+/** Atomically acquire a time-limited lease in Postgres so separate server instances serialize queue changes. */
+export async function acquireStationLease(pathname: string, leaseMs: number): Promise<StationLease | null> {
+  const owner = randomUUID()
+  const expiresAt = Date.now() + leaseMs
+  const pool = getPool()
+  if (!pool) {
+    const current = memoryLeases.get(pathname)
+    if (current && current.expiresAt > Date.now()) return null
+    memoryLeases.set(pathname, { owner, expiresAt })
+    return { pathname, owner }
+  }
+  await ensureStateTable()
+  const result = await pool.query<{ owner: string }>(
+    `INSERT INTO public.morefm_state (storage_key, value, updated_at)
+     VALUES ($1, jsonb_build_object('owner', $2::text, 'expiresAt', $3::bigint), now())
+     ON CONFLICT (storage_key)
+     DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+     WHERE CASE
+       WHEN public.morefm_state.value->>'expiresAt' ~ '^[0-9]+$'
+       THEN (public.morefm_state.value->>'expiresAt')::bigint
+       ELSE 0
+     END <= $4::bigint
+     RETURNING value->>'owner' AS owner`,
+    [pathname, owner, expiresAt, Date.now()],
+  )
+  return result.rows[0]?.owner === owner ? { pathname, owner } : null
+}
+
+/** Delete only the lease owned by the caller; a newer lease is never disturbed. */
+export async function releaseStationLease(lease: StationLease) {
+  const pool = getPool()
+  if (!pool) {
+    if (memoryLeases.get(lease.pathname)?.owner === lease.owner) memoryLeases.delete(lease.pathname)
+    return
+  }
+  await ensureStateTable()
+  await pool.query(
+    "DELETE FROM public.morefm_state WHERE storage_key = $1 AND value->>'owner' = $2",
+    [lease.pathname, lease.owner],
+  )
+}
+
+/** Extend only a still-live lease owned by this operation; false means another instance may now own the queue. */
+export async function renewStationLease(lease: StationLease, leaseMs: number): Promise<boolean> {
+  const now = Date.now()
+  const expiresAt = now + leaseMs
+  const pool = getPool()
+  if (!pool) {
+    const current = memoryLeases.get(lease.pathname)
+    if (!current || current.owner !== lease.owner || current.expiresAt <= now) return false
+    memoryLeases.set(lease.pathname, { owner: lease.owner, expiresAt })
+    return true
+  }
+  await ensureStateTable()
+  const result = await pool.query(
+    `UPDATE public.morefm_state
+     SET value = jsonb_set(value, '{expiresAt}', to_jsonb($3::bigint), true), updated_at = now()
+     WHERE storage_key = $1 AND value->>'owner' = $2
+       AND CASE
+         WHEN value->>'expiresAt' ~ '^[0-9]+$' THEN (value->>'expiresAt')::bigint
+         ELSE 0
+       END > $4::bigint
+     RETURNING storage_key`,
+    [lease.pathname, lease.owner, expiresAt, now],
+  )
+  return result.rowCount === 1
+}
+
 export async function registerListener(id: string, active: boolean, listenerLimit: number) {
   const pool = getPool()
   if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
@@ -172,9 +247,20 @@ export const STATE_PATH = STATION_STATE_PATH
 export const LISTENERS_PATH = 'station/listeners-v1.json'
 export const RATINGS_PATH = 'station/ratings-v1.json'
 export const REQUESTS_PATH = 'station/requests-v1.json'
+export const MOR_SYNC_PATH = 'station/mor-sync-v1.json'
+export const QUEUE_LOCK_PATH = 'station/queue-lock-v1.json'
+export const EMPTY_MOR_SYNC_RECORD: MorSyncRecord = {
+  metadata: null,
+  syncStatus: 'HINDI NAKITA YUNG KANTA',
+  lastProcessedKey: null,
+  lastProcessedMatched: null,
+  queuedTitle: null,
+  updatedAt: null,
+}
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   autoDjEnabled: true,
+  morSyncEnabled: false,
   shuffleEnabled: true,
   goodVibesEnabled: false,
   rotationPoolSize: 100,
@@ -215,6 +301,7 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
+    morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
     shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(100, Math.round(saved.rotationPoolSize))) : 100,

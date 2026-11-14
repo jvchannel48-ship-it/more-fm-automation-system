@@ -1,15 +1,17 @@
 import 'server-only'
-import { getRatings, getSettings, getSongRequests, readJson, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
-import type { AdminStatus, NowResponse, Track } from './types'
+import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { orderedPendingRequests } from './song-request-queue'
+import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
+const QUEUE_LEASE_MS = 100_000
 const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
 const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
@@ -18,6 +20,24 @@ const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 // Coalesce simultaneous listener polls that land in the same server runtime.
 let activeQueueFill: Promise<void> | null = null
+
+function monitorStationLease(lease: { pathname: string; owner: string }) {
+  let valid = true
+  let renewal = Promise.resolve()
+  const timer = setInterval(() => {
+    renewal = renewal.then(async () => {
+      if (valid) valid = await renewStationLease(lease, QUEUE_LEASE_MS)
+    }).catch((error) => {
+      valid = false
+      console.error('[morefm] queue lease renewal failed', error)
+    })
+  }, 20_000)
+  timer.unref()
+  return {
+    isValid: async () => { await renewal; return valid },
+    stop: async () => { clearInterval(timer); await renewal },
+  }
+}
 
 interface HistoryEntry {
   id: string
@@ -95,6 +115,47 @@ async function findPendingSongRequest(history: HistoryEntry[]) {
     if (song) return { request, song }
   }
   return null
+}
+
+async function findMorSong(title: string, artist: string) {
+  const data = await fetchJson<{ items?: SearchItem[] }>(
+    `${API_BASE}?search=${encodeURIComponent(`${title} ${artist}`)}`,
+    8_000,
+  )
+  const expectedTitle = normalizeMorMatchText(title)
+  const expectedArtist = normalizeMorMatchText(artist)
+  const candidates = (data?.items ?? []).filter((item) => {
+    const seconds = parseDuration(item.duration ?? '')
+    if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || NON_LATIN.test(item.title)) return false
+    const cleanedTitle = item.title.replace(/^[A-Z]{1,4}\d{1,3}\s+/, '').replace(/\.(?:mp3|m4a|aac|wav)$/i, '').replace(/\s+(?:mp3|m4a|aac|wav)$/i, '')
+    const parts = cleanedTitle.split(/\s+(?:[-–—|]|::)\s+/).map((part) => part.trim())
+    const titleMatches = parts.some((part) => normalizeMorMatchText(part) === expectedTitle) || normalizeMorMatchText(cleanedTitle) === expectedTitle
+    const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
+    const artistInTitle = parts.some((part) => normalizeMorMatchText(part) === expectedArtist)
+    const artistInCredits = ` ${normalizeMorMatchText(credits)} `.includes(` ${expectedArtist} `)
+    return titleMatches && (artistInTitle || artistInCredits)
+  }).slice(0, 6)
+
+  const downloads = await Promise.all(candidates.map(async (item) => {
+    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
+    if (!download?.downloadUrl) return null
+    return {
+      id: item.id,
+      key: songKey(title),
+      artist,
+      title: item.title,
+      src: download.downloadUrl,
+      sourceUrl: item.url,
+      sourceRefreshedAt: Date.now(),
+      duration: parseDuration(item.duration),
+    }
+  }))
+  return downloads.find((song) => song !== null) ?? null
+}
+
+async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean) {
+  const poolProgram = program.pools.tagalog.length > 0 ? program : PROGRAMS['love-mix']
+  return findSong({ ...poolProgram, tagalogOnly: true }, songCount, history, now, false, shuffleEnabled)
 }
 
 const AI_RULE =
@@ -240,7 +301,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
 async function refreshUpcomingSongSources(state: StationState, now: number) {
   const due = state.tracks.filter((track) =>
-    track.kind === 'music' && track.sourceUrl &&
+    (track.kind === 'music' || track.kind === 'mor-sync') && track.sourceUrl &&
     ((track.startAt > now && track.startAt - now <= SOURCE_REFRESH_WINDOW_MS) ||
       (track.startAt <= now && trackEnd(track) > now && track.sourceRefreshedAt !== undefined && now - track.sourceRefreshedAt >= ACTIVE_SOURCE_REFRESH_AFTER_MS)) &&
     (track.sourceRefreshedAt === undefined || now - track.sourceRefreshedAt >= SOURCE_REFRESH_RETRY_MS),
@@ -445,23 +506,159 @@ async function loadState(now: number) {
   return { state, changed: state.tracks.length !== before }
 }
 
+export async function runMorSyncTick(): Promise<MorSyncRecord> {
+  const current = await readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD)
+  const settings = await getSettings()
+  if (!settings.morSyncEnabled) return { ...current, syncStatus: 'MOR SYNC OFF' }
+
+  const metadata = await fetchMorNowPlaying()
+  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+  if (!lease) return await readJson<MorSyncRecord>(MOR_SYNC_PATH, { ...current, metadata })
+  const leaseGuard = monitorStationLease(lease)
+  try {
+    const latestSettings = await getSettings()
+    const latest = await readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD)
+    if (!latestSettings.morSyncEnabled) return { ...latest, syncStatus: 'MOR SYNC OFF' }
+
+    if (!latestSettings.autoDjEnabled) {
+      const record = { ...latest, metadata, syncStatus: 'AUTODJ OFF' as const, updatedAt: Date.now() }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+    if (metadata.status !== 'music' || !metadata.title || !metadata.artist || !metadata.key) {
+      const record: MorSyncRecord = {
+        ...latest,
+        metadata,
+        syncStatus: 'HINDI NAKITA YUNG KANTA',
+        lastProcessedKey: null,
+        lastProcessedMatched: null,
+        queuedTitle: null,
+        updatedAt: Date.now(),
+      }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+    if (latest.lastProcessedKey === metadata.key) {
+      const record = { ...latest, metadata, updatedAt: Date.now() }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+
+    const now = Date.now()
+    if (!latestSettings.broadcastEnabled || isOffAir(now, latestSettings.signOffHour, latestSettings.signOnHour)) {
+      const record: MorSyncRecord = {
+        ...latest,
+        metadata,
+        syncStatus: 'HINDI NAKITA YUNG KANTA',
+        lastProcessedKey: null,
+        lastProcessedMatched: null,
+        queuedTitle: null,
+        updatedAt: Date.now(),
+      }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+    const loaded = await loadState(now)
+    const state = loaded.state
+    const inProgram = programAt(now, latestSettings.signOffHour, latestSettings.signOnHour, latestSettings.discoStartHour, latestSettings.discoEndHour, latestSettings.newsEnabled)
+    const matchedSong = await findMorSong(metadata.title, metadata.artist)
+    const song = matchedSong ?? await findMorFallback(inProgram, state.songCount, state.history, now, latestSettings.shuffleEnabled)
+    if (!(await leaseGuard.isValid())) return latest
+    const verifiedSettings = await getSettings()
+    if (!verifiedSettings.morSyncEnabled || !verifiedSettings.autoDjEnabled) {
+      const record: MorSyncRecord = {
+        ...latest,
+        metadata,
+        syncStatus: verifiedSettings.morSyncEnabled ? 'AUTODJ OFF' : 'MOR SYNC OFF',
+        updatedAt: Date.now(),
+      }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+    const finalNow = Date.now()
+    const freshState = await loadState(finalNow)
+    Object.assign(state, freshState.state)
+    if (isOffAir(finalNow, verifiedSettings.signOffHour, verifiedSettings.signOnHour) || !verifiedSettings.broadcastEnabled) {
+      const record: MorSyncRecord = { ...latest, metadata, syncStatus: 'HINDI NAKITA YUNG KANTA', lastProcessedKey: null, lastProcessedMatched: null, queuedTitle: null, updatedAt: Date.now() }
+      await writeJson(MOR_SYNC_PATH, record)
+      return record
+    }
+    if (song) {
+      const activeTracks = state.tracks.filter((track) => track.startAt <= finalNow && trackEnd(track) > finalNow)
+      state.tracks = activeTracks
+      const startAt = nextStart(state, finalNow)
+      state.tracks.push({
+        uid: `mor-${metadata.key}-${startAt}`,
+        src: song.src,
+        startAt,
+        duration: song.duration,
+        fadeIn: verifiedSettings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
+        fadeOut: verifiedSettings.crossfaderEnabled ? verifiedSettings.crossfadeSeconds : 0,
+        sourceUrl: song.sourceUrl,
+        sourceRefreshedAt: song.sourceRefreshedAt,
+        kind: 'mor-sync',
+        title: matchedSong ? metadata.title : song.title,
+        morKey: metadata.key,
+        morExactMatch: Boolean(matchedSong),
+      })
+      state.history.push({ id: song.id, key: songKey(matchedSong ? metadata.title! : song.title), artist: matchedSong ? metadata.artist! : song.artist, title: matchedSong ? metadata.title! : song.title, t: startAt })
+      state.history = state.history.slice(-verifiedSettings.rotationPoolSize)
+      state.songCount++
+      state.seasonalSongCount++
+      if (!(await leaseGuard.isValid())) return latest
+      await writeJson(STATE_PATH, state)
+    }
+
+    const record: MorSyncRecord = {
+      metadata,
+      syncStatus: matchedSong ? 'SYNCED' : 'HINDI NAKITA YUNG KANTA',
+      lastProcessedKey: metadata.key,
+      lastProcessedMatched: Boolean(matchedSong),
+      queuedTitle: song ? (matchedSong ? metadata.title : song.title) : null,
+      updatedAt: Date.now(),
+    }
+    await writeJson(MOR_SYNC_PATH, record)
+    return record
+  } finally {
+    await leaseGuard.stop()
+    await releaseStationLease(lease)
+  }
+}
+
 async function fillQueueIfNeeded(settings: Awaited<ReturnType<typeof getSettings>>) {
   if (activeQueueFill) return activeQueueFill
 
   const fillPromise = (async () => {
+    const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+    if (!lease) return
+    const leaseGuard = monitorStationLease(lease)
+    try {
     const now = Date.now()
     const { state, changed } = await loadState(now)
-    if (changed) await writeJson(STATE_PATH, state)
+    if (changed && await leaseGuard.isValid()) await writeJson(STATE_PATH, state)
     const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
     if (!settings.autoDjEnabled || !needsFill || state.fillingUntil >= now) return
 
+    if (settings.morSyncEnabled) {
+      const mor = await readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD)
+      const morTrackQueued = state.tracks.some((track) => track.kind === 'mor-sync' && track.startAt > now && trackEnd(track) > now)
+      const awaitingMorTick = mor.metadata?.status === 'music' && mor.lastProcessedKey !== mor.metadata.key
+        && now - mor.metadata.checkedAt < 2 * 60_000
+      if (morTrackQueued || awaitingMorTick) return
+    }
+
     state.fillingUntil = now + FILL_LOCK_MS
+    if (!(await leaseGuard.isValid())) return
     await writeJson(STATE_PATH, state)
     try {
       await fill(state, now, settings)
     } finally {
       state.fillingUntil = 0
-      await writeJson(STATE_PATH, state)
+      if (await leaseGuard.isValid()) await writeJson(STATE_PATH, state)
+    }
+    } finally {
+      await leaseGuard.stop()
+      await releaseStationLease(lease)
     }
   })()
 
@@ -476,7 +673,7 @@ async function fillQueueIfNeeded(settings: Awaited<ReturnType<typeof getSettings
 export async function getNowPlaying(): Promise<NowResponse> {
   const now = Date.now()
   const [loaded, settings] = await Promise.all([loadState(now), getSettings()])
-  let { state, changed } = loaded
+  let { state } = loaded
   const offAir = isOffAir(now, settings.signOffHour, settings.signOnHour) || !settings.broadcastEnabled
 
   if (offAir) {
@@ -495,12 +692,16 @@ export async function getNowPlaying(): Promise<NowResponse> {
     }
   }
 
+  if (!settings.morSyncEnabled && state.tracks.some((track) => track.kind === 'mor-sync' && track.startAt > now)) {
+    state.tracks = state.tracks.filter((track) => track.startAt <= now)
+    await writeJson(STATE_PATH, state)
+  }
+
   const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
     await fillQueueIfNeeded(settings)
     const refreshed = await loadState(Date.now())
     state = refreshed.state
-    changed = refreshed.changed
   }
 
   const responseNow = Date.now()
@@ -517,8 +718,19 @@ export async function getNowPlaying(): Promise<NowResponse> {
       audioConfig: audioConfig(settings),
     }
   } else {
-    const sourcesChanged = await refreshUpcomingSongSources(state, responseNow)
-    if (changed || sourcesChanged) await writeJson(STATE_PATH, state)
+    const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+    if (lease) {
+      try {
+        const latest = await loadState(responseNow)
+        state = latest.state
+        const sourcesChanged = await refreshUpcomingSongSources(state, responseNow)
+        if (latest.changed || sourcesChanged) await writeJson(STATE_PATH, state)
+      } finally {
+        await releaseStationLease(lease)
+      }
+    } else {
+      state = (await loadState(responseNow)).state
+    }
   }
 
   return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
@@ -526,7 +738,13 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [{ state }, settings, listenersNow, ratings, requests] = await Promise.all([loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests()])
+  const [{ state }, settings, listenersNow, ratings, requests, morRecord] = await Promise.all([
+    loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests(),
+    readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD),
+  ])
+  const activeTrack = state.tracks.find((track) => track.startAt <= now && trackEnd(track) > now)
+  const nextTrack = state.tracks.find((track) => track.startAt > now)
+  const morSyncStatus = !settings.morSyncEnabled ? 'MOR SYNC OFF' : !settings.autoDjEnabled ? 'AUTODJ OFF' : morRecord.syncStatus
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
   const last24Hours = state.history.filter((h) => h.t > now - 24 * 60 * 60 * 1000)
   const last7Days = state.history.filter((h) => h.t > now - 7 * 24 * 60 * 60 * 1000)
@@ -540,6 +758,13 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     listenersNow,
     totalRatings: ratings.total,
     pendingRequests: requests.filter((request) => request.status === 'pending').length,
+    morNowPlayingTitle: morRecord.metadata?.title ?? null,
+    morNowPlayingArtist: morRecord.metadata?.artist ?? null,
+    morNowPlayingRaw: morRecord.metadata?.raw ?? null,
+    morNowPlayingStatus: morRecord.metadata?.status ?? null,
+    moreFmNowPlaying: activeTrack?.title ?? nextTrack?.title ?? null,
+    morSyncStatus,
+    morCheckedAt: morRecord.metadata?.checkedAt ?? null,
     playbackStats: {
       last24Hours: last24Hours.length,
       last7Days: last7Days.length,
@@ -550,24 +775,39 @@ export async function getAdminStatus(): Promise<AdminStatus> {
 }
 
 export async function refreshQueue() {
+  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+  if (!lease) return
+  try {
   const now = Date.now()
   const { state } = await loadState(now)
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
+  } finally {
+    await releaseStationLease(lease)
+  }
 }
 
 export async function prioritizePendingRequests() {
+  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+  if (!lease) return
+  try {
   const now = Date.now()
   const { state } = await loadState(now)
   state.tracks = state.tracks.filter((track) =>
     track.startAt <= now || (track.kind === 'music' && track.title?.startsWith('Song request:')))
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
+  } finally {
+    await releaseStationLease(lease)
+  }
 }
 
 export async function queueDjMic(asset: { url: string; name: string; duration: number }) {
+  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
+  if (!lease) return
+  try {
   const now = Date.now()
   const { state } = await loadState(now)
   const current = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now).at(-1)
@@ -584,4 +824,7 @@ export async function queueDjMic(asset: { url: string; name: string; duration: n
     title: asset.name,
   })
   await writeJson(STATE_PATH, state)
+  } finally {
+    await releaseStationLease(lease)
+  }
 }

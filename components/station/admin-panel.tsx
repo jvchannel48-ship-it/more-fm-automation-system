@@ -63,7 +63,7 @@ function audioDuration(file: File) {
 }
 
 export function AdminPanel() {
-  const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30000 })
+  const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 20000, revalidateOnFocus: true, dedupingInterval: 10000 })
   const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 300000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -181,6 +181,31 @@ export function AdminPanel() {
       <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–100-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div><Label htmlFor="mor-sync-enabled">MOR SYNC MODE</Label><p className="text-xs text-muted-foreground">ON follows song-only MOR Manila stream metadata. It looks for the same title and artist, then queues a Tagalog OPM fallback when no exact match is available. Ads, DJ talk, and news are never copied.</p></div>
+        <Switch id="mor-sync-enabled" checked={data?.morSyncEnabled ?? false} disabled={!data || busy}
+          onCheckedChange={(checked) => send('PUT', { morSyncEnabled: checked })} />
+      </div>
+      <div className="grid gap-2">
+        <div className="rounded-lg border border-border/70 bg-background/55 px-3 py-2">
+          <p className="text-[11px] font-medium text-muted-foreground">MOR Manila Now Playing</p>
+          <p className="mt-0.5 truncate text-sm font-semibold">{data?.morNowPlayingTitle ?? data?.morNowPlayingRaw ?? 'Waiting for MOR metadata…'}</p>
+          {data?.morNowPlayingArtist && <p className="truncate text-xs text-muted-foreground">{data.morNowPlayingArtist}</p>}
+        </div>
+        <div className="rounded-lg border border-border/70 bg-background/55 px-3 py-2">
+          <p className="text-[11px] font-medium text-muted-foreground">MoRe FM Now Playing</p>
+          <p className="mt-0.5 truncate text-sm font-semibold">{data?.moreFmNowPlaying ?? 'No track queued'}</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.045] px-3 py-2">
+        <div><p className="text-[11px] font-medium text-muted-foreground">MOR sync status</p>
+          <p className={`text-sm font-bold tracking-wide ${data?.morSyncStatus === 'SYNCED' ? 'text-emerald-300' : 'text-amber-200'}`} role="status" aria-live="polite">{data?.morSyncStatus ?? 'Loading status…'}</p></div>
+        {data?.morCheckedAt && <span className="text-[11px] text-muted-foreground">Checked {new Date(data.morCheckedAt).toLocaleTimeString()}</span>}
+      </div>
+      <p className="text-[11px] text-muted-foreground">Runs from the server cron while the admin is logged out and your computer is off. Deployment must have CRON_SECRET and a minute-level scheduler configured.</p>
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">

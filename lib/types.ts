@@ -10,8 +10,10 @@ export interface Track {
   fadeOut: number
   sourceUrl?: string
   sourceRefreshedAt?: number
-  kind?: 'music' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
+  kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic'
   title?: string
+  morKey?: string
+  morExactMatch?: boolean
 }
 
 export interface AudioAsset {
@@ -24,6 +26,7 @@ export interface AudioAsset {
 export interface StationSettings {
   broadcastEnabled: boolean
   autoDjEnabled: boolean
+  morSyncEnabled: boolean
   shuffleEnabled: boolean
   goodVibesEnabled: boolean
   rotationPoolSize: number
@@ -84,6 +87,27 @@ export interface PlaybackStats {
   recentSongs: Array<{ title: string; artist: string; playedAt: number }>
 }
 
+export type MorMetadataStatus = 'music' | 'non-music' | 'unrecognized' | 'unavailable'
+export type MorSyncStatus = 'SYNCED' | 'HINDI NAKITA YUNG KANTA' | 'MOR SYNC OFF' | 'AUTODJ OFF'
+
+export interface MorNowPlaying {
+  status: MorMetadataStatus
+  raw: string | null
+  title: string | null
+  artist: string | null
+  key: string | null
+  checkedAt: number
+}
+
+export interface MorSyncRecord {
+  metadata: MorNowPlaying | null
+  syncStatus: MorSyncStatus
+  lastProcessedKey: string | null
+  lastProcessedMatched: boolean | null
+  queuedTitle: string | null
+  updatedAt: number | null
+}
+
 export interface AdminStatus extends StationSettings {
   songsThisWeek: number
   artistsThisHour: number
@@ -99,4 +123,11 @@ export interface AdminStatus extends StationSettings {
     stationAudioFiles: number
     measuredAt: number
   }
+  morNowPlayingTitle: string | null
+  morNowPlayingArtist: string | null
+  morNowPlayingRaw: string | null
+  morNowPlayingStatus: MorMetadataStatus | null
+  moreFmNowPlaying: string | null
+  morSyncStatus: MorSyncStatus
+  morCheckedAt: number | null
 }

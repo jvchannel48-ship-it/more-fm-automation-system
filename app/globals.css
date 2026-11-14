@@ -26,6 +26,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-live: var(--live);
+  --color-success: var(--success);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -40,19 +41,20 @@
   --card-foreground: oklch(0.96 0.01 85);
   --popover: oklch(0.17 0.03 255);
   --popover-foreground: oklch(0.96 0.01 85);
-  --primary: oklch(0.82 0.16 78);
-  --primary-foreground: oklch(0.18 0.02 265);
+  --primary: oklch(0.79 0.105 225);
+  --primary-foreground: oklch(0.18 0.025 255);
   --secondary: oklch(0.23 0.035 255);
   --secondary-foreground: oklch(0.96 0.01 85);
   --muted: oklch(0.23 0.035 255);
   --muted-foreground: oklch(0.72 0.02 265);
-  --accent: oklch(0.3 0.05 255);
+  --accent: oklch(0.3 0.045 225);
   --accent-foreground: oklch(0.96 0.01 85);
   --destructive: oklch(0.64 0.21 25);
   --live: oklch(0.64 0.22 25);
+  --success: oklch(0.74 0.12 151);
   --border: oklch(0.32 0.04 255);
   --input: oklch(0.3 0.04 255);
-  --ring: oklch(0.82 0.16 78);
+  --ring: oklch(0.79 0.105 225);
 }
 
 .light {
@@ -73,6 +75,7 @@
   --border: oklch(0.83 0.025 255);
   --input: oklch(0.86 0.025 255);
   --ring: oklch(0.62 0.16 68);
+  --success: oklch(0.55 0.14 151);
 }
 
 @layer base {
