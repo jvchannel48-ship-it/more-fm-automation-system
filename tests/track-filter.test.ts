@@ -21,6 +21,7 @@ for (const title of [
 
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', channel: 'Fan Uploads' }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Music Video)', channel: 'TV Network' }, 'Artist'), true)
+assert.equal(isAllowedTrack({ title: 'Artist - Song (Official HD Video)', channel: null }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song Audio', channel: 'Random Uploads' }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist Official' }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist - Topic' }, 'Artist'), true)

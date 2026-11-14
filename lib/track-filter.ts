@@ -11,7 +11,7 @@ export interface TrackFilterItem {
 
 const BLACKLIST_TITLE_RULE = /\b(?:live|concert|araneta|mall\s+show|it['’]?s\s+showtime|showtime|asap|eat\s+bulaga|tv\s+patrol|performance|studio|guesting|karaoke|lyric\s+video|lyrics?|cover|reaction)\b/i
 const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke)\b/i
-const OFFICIAL_TITLE_RULE = /\bofficial\s+(?:audio|music\s+video)\b/i
+const OFFICIAL_TITLE_RULE = /\bofficial(?:\s+[a-z0-9]+){0,3}\s+(?:audio|video)\b/i
 const AUDIO_TITLE_RULE = /\baudio\b/i
 const OFFICIAL_CHANNEL_RULE = /\b(?:official|vevo|topic)\b/i
 

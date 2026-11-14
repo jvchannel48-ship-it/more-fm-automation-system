@@ -47,7 +47,7 @@ async function main() {
     const initial = await getSettings()
     assert.equal(initial.tagalogOnlyEnabled, true)
     assert.equal(initial.noRepeatEnabled, true)
-    assert.equal(initial.shuffleEnabled, true)
+    assert.equal(initial.shuffleEnabled, false, 'shuffle is permanently disabled for sequential rotation')
     assert.ok(objects.has('app-state/station/settings.json'), 'settings JSON is stored in the private bucket')
     assert.ok(objects.has('app-state/station/settings-migrations-v1.json'), 'migration marker is stored durably')
 
