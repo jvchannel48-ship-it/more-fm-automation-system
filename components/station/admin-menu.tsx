@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { AdminPanel } from './admin-panel'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 const FACEBOOK_PAGE = 'https://www.facebook.com/profile.php?id=61594892455381'
 const FACEBOOK_ADMIN = 'https://www.facebook.com/profile.php?id=61595422155719'
@@ -33,6 +33,7 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Info; children: R
 
 export function AdminMenu() {
   const { data, mutate } = useSWR<{ admin: boolean }>('/api/admin/session', fetcher)
+  const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,43 +42,53 @@ export function AdminMenu() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await fetch('/api/admin/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    setLoading(false)
-    if (!res.ok) {
-      setError('Incorrect password. Please try again.')
-      return
+    try {
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (!res.ok) {
+        setError(res.status === 401 ? 'Incorrect password. Please try again.' : 'Could not sign in. Please try again.')
+        return
+      }
+      setPassword('')
+      await mutate({ admin: true })
+    } catch {
+      setError('Could not reach the admin sign-in service. Check your connection and try again.')
+    } finally {
+      setLoading(false)
     }
-    setPassword('')
-    mutate({ admin: true })
   }
 
   const logout = async () => {
-    await fetch('/api/admin/session', { method: 'DELETE' })
-    mutate({ admin: false })
+    try {
+      await fetch('/api/admin/session', { method: 'DELETE', cache: 'no-store' })
+      await mutate({ admin: false })
+    } catch {
+      setError('Could not log out. Please check your connection and try again.')
+    }
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
         <Menu aria-hidden="true" />
       </SheetTrigger>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>
-            MOR <span className="text-primary">93.5</span> Naga
+            RJ <span className="text-primary">FM</span>
           </SheetTitle>
-          <SheetDescription>MOR 93.5 NAGA LIVESTREAM ONLY</SheetDescription>
+          <SheetDescription>RJ FM LIVESTREAM ONLY</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">MOR 93.5 Naga</p>
+              <p className="font-medium">RJ FM</p>
               <p className="text-muted-foreground">Livestream only · 24/7 automated music</p>
               <p className="text-muted-foreground">Schedule is managed in the Admin Panel.</p>
               <p className="mt-2 text-muted-foreground">Tune in, relax, and enjoy the music.</p>
@@ -108,7 +119,7 @@ export function AdminMenu() {
             <SectionTitle icon={Lock}>Admin</SectionTitle>
             {data?.admin ? (
               <>
-                <AdminPanel />
+                {open && <AdminPanel />}
                 <Button variant="outline" onClick={logout}>
                   <LogOut aria-hidden="true" />
                   Log out
