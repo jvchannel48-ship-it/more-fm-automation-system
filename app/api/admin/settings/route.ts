@@ -2,11 +2,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
 import { getAdminStatus, refreshQueue } from '@/lib/station'
 import { getSettings, SETTINGS_PATH, writeJson } from '@/lib/storage'
-const jsonError = (message: string, status = 500) => NextResponse.json({ error: message }, { status })
+export const dynamic = 'force-dynamic'
+const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+const jsonError = (message: string, status = 500) => NextResponse.json({ error: message }, { status, ...noStore })
 export async function GET() {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
-    return NextResponse.json(await getAdminStatus())
+    return NextResponse.json(await getAdminStatus(), noStore)
   } catch (error) {
     console.error('[morefm] admin settings GET failed', error)
     return jsonError('Could not load admin settings.')
@@ -59,8 +61,8 @@ export async function PUT(request: NextRequest) {
       crossfaderEnabled: typeof body.crossfaderEnabled === 'boolean' ? body.crossfaderEnabled : current.crossfaderEnabled,
       crossfaderCurve: crossfaderCurves.includes(body.crossfaderCurve as typeof crossfaderCurves[number]) ? body.crossfaderCurve as typeof crossfaderCurves[number] : current.crossfaderCurve,
       crossfadeSeconds, replayGainEnabled: typeof body.replayGainEnabled === 'boolean' ? body.replayGainEnabled : current.replayGainEnabled, replayGainTargetLufs,
-      christmasEnabled: typeof body.christmasEnabled === 'boolean' ? body.christmasEnabled : current.christmasEnabled,
-      autoVoiceEnabled: typeof body.autoVoiceEnabled === 'boolean' ? body.autoVoiceEnabled : current.autoVoiceEnabled,
+      christmasEnabled: false,
+      autoVoiceEnabled: false,
       autoVoiceAnnouncement: current.autoVoiceAnnouncement,
       djMicEnabled: typeof body.djMicEnabled === 'boolean' ? body.djMicEnabled : current.djMicEnabled,
       newsEnabled: typeof body.newsEnabled === 'boolean' ? body.newsEnabled : current.newsEnabled,
@@ -72,17 +74,20 @@ export async function PUT(request: NextRequest) {
     }
     await writeJson(SETTINGS_PATH, next)
     if (next.morSyncEnabled !== current.morSyncEnabled || next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.goodVibesEnabled !== current.goodVibesEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled || next.noRepeatEnabled !== current.noRepeatEnabled || next.crossfaderEnabled !== current.crossfaderEnabled || next.crossfadeSeconds !== current.crossfadeSeconds) await refreshQueue()
-    return NextResponse.json(await getAdminStatus())
+    return NextResponse.json(await getAdminStatus(), noStore)
   } catch (error) {
     console.error('[morefm] admin settings PUT failed', error)
-    return jsonError('Could not update admin settings.')
+    const message = error instanceof Error && error.message.includes('Supabase Postgres is not configured')
+      ? 'Cannot save admin settings: Supabase Postgres is not configured for this deployment.'
+      : 'Could not update admin settings. Please retry.'
+    return jsonError(message)
   }
 }
 export async function POST() {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     await refreshQueue()
-    return NextResponse.json(await getAdminStatus())
+    return NextResponse.json(await getAdminStatus(), noStore)
   } catch (error) {
     console.error('[morefm] admin rotation refresh failed', error)
     return jsonError('Could not refresh rotation.')

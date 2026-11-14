@@ -8,13 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
-import { RequestInbox } from './request-inbox'
 
 // Keep the admin rotation-history control aligned with the server's 50–300 song range.
-const fetcher = (url: string) => fetch(url).then((r) => {
-  if (!r.ok) throw new Error('Unauthorized')
-  return r.json() as Promise<AdminStatus>
-})
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { cache: 'no-store' })
+  const result = await response.json().catch(() => null) as (AdminStatus & { error?: string }) | null
+  if (!response.ok) throw new Error(result?.error ?? (response.status === 401 ? 'Admin session expired. Log out and sign in again.' : `Could not load admin settings (${response.status}).`))
+  if (!result) throw new Error('The server returned an empty admin settings response.')
+  return result
+}
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return <div className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-secondary px-3 py-2">
@@ -64,7 +66,7 @@ function audioDuration(file: File) {
 }
 
 export function AdminPanel() {
-  const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 20000, revalidateOnFocus: true, dedupingInterval: 10000 })
+  const { data, error: loadError, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 20000, revalidateOnFocus: true, dedupingInterval: 10000 })
   const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 300000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -82,7 +84,7 @@ export function AdminPanel() {
   const [bassGainDb, setBassGainDb] = useState('0')
   const [crossfadeSeconds, setCrossfadeSeconds] = useState('8')
   const [replayGainTargetLufs, setReplayGainTargetLufs] = useState('-14')
-  const [recordingKind, setRecordingKind] = useState<'dj-mic' | 'auto-voice' | null>(null)
+  const [recordingKind, setRecordingKind] = useState<'dj-mic' | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
 
@@ -106,19 +108,21 @@ export function AdminPanel() {
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
     setError('')
+    setMessage('')
     try {
       const res = await fetch('/api/admin/settings', {
-        method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
+        method, cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
       })
       const result = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(result.error ?? 'Could not update settings.')
       mutate(result as AdminStatus, { revalidate: false })
+      setMessage(method === 'POST' ? 'Rotation refreshed.' : 'Settings saved.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not update settings.')
     } finally { setBusy(false) }
   }
 
-  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic' | 'auto-voice', file: File | undefined, slot = 0) => {
+  const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic', file: File | undefined, slot = 0) => {
     if (!file) return
     setBusy(true); setError(''); setMessage('')
     try {
@@ -130,14 +134,14 @@ export function AdminPanel() {
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
       void mutateUsage()
-      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : kind === 'auto-voice' ? 'Auto Voice' : `Commercial ${slot + 1}`
+      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
       setMessage(`${label} uploaded. A new selection replaces the previous file.`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Audio upload failed.')
     } finally { setBusy(false) }
   }
 
-  const startDjRecording = async (kind: 'dj-mic' | 'auto-voice') => {
+  const startDjRecording = async (kind: 'dj-mic') => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setError('This browser does not support microphone recording.')
       return
@@ -175,6 +179,10 @@ export function AdminPanel() {
       <h2 className="text-base font-semibold">Station Settings</h2>
       <p className="mt-1 text-xs text-muted-foreground">Control the broadcast status and what listeners see on the public player.</p>
     </div>
+    {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
+    {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
+    {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
+    {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
@@ -275,14 +283,10 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas music</Label><p className="text-xs text-muted-foreground">Include seasonal Christmas songs in the automated rotation.</p></div>
-        <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="news-enabled">4:00–4:50 PM news block</Label><p className="text-xs text-muted-foreground">Pause Disco during the news window; regular music plays if no bulletin is configured.</p></div>
         <Switch id="news-enabled" checked={data?.newsEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { newsEnabled: checked })} /></div>
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="dj-mic-enabled">DJ Mic</Label><p className="text-xs text-muted-foreground">Play a recorded microphone announcement to every listener after the current track.</p></div>
         <Switch id="dj-mic-enabled" checked={data?.djMicEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djMicEnabled: checked })} /></div>
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="auto-voice-enabled">Auto Voice for song requests</Label><p className="text-xs text-muted-foreground">When ON, play your real recorded voice clip before newly matched listener requests. No AI voice is generated; already queued tracks are unchanged.</p></div>
-        <Switch id="auto-voice-enabled" checked={data?.autoVoiceEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { autoVoiceEnabled: checked })} /></div>
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -361,7 +365,6 @@ export function AdminPanel() {
       <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />
       <Stat label="Heart ratings" value={data?.totalRatings ?? '–'} />
-      <Stat label="Pending requests" value={data?.pendingRequests ?? '–'} />
     </div>
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Playback statistics</Label><p className="text-xs text-muted-foreground">Based on songs successfully added to station history.</p></div>
@@ -387,7 +390,6 @@ export function AdminPanel() {
         <li>Audio uploads are limited to 4 MB per file, and song rotation keeps only recent history.</li>
       </ul>
     </div>
-    <RequestInbox />
 
     <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label htmlFor="upload-golden-sunday">Golden Sunday</Label>
@@ -398,7 +400,6 @@ export function AdminPanel() {
         onChange={(event) => { void upload('golden-sunday', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
       {data?.goldenSunday && <a href={data.goldenSunday.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.goldenSunday.name}</a>}
     </div>
-    <p className="text-[11px] text-muted-foreground">Christmas rotation: September–October one in every five songs; November three in a row, then regular songs; December three Christmas songs out of every four; normal rotation resumes in January.</p>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a smooth microphone clip. It is uploaded and queued after the current track so every listener hears it.</p></div>
@@ -407,17 +408,6 @@ export function AdminPanel() {
         {!data?.djMicEnabled && <span className="self-center text-xs text-muted-foreground">Turn on DJ Mic above first.</span>}
       </div>
       {data?.djMic && <p className="truncate text-xs text-muted-foreground">Last clip: {data.djMic.name}</p>}
-    </div>
-
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Auto Voice announcement</Label><p className="text-xs text-muted-foreground">Record a real human announcement such as “A song request is coming up.” It will play before a matched request. It cannot speak changing song names unless you record a new clip each time.</p></div>
-      <div className="flex flex-wrap gap-2">
-        {recordingKind !== 'auto-voice' ? <Button type="button" variant="secondary" disabled={busy || recordingKind !== null} onClick={() => void startDjRecording('auto-voice')}><Mic2 aria-hidden="true" /> Record real voice announcement</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop and save voice</Button>}
-        <label htmlFor="upload-auto-voice" className={`flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary ${busy || recordingKind !== null ? 'pointer-events-none opacity-50' : ''}`}><Upload className="size-4" aria-hidden="true" /> Upload recorded voice</label>
-        <input id="upload-auto-voice" type="file" accept="audio/*" className="sr-only" disabled={busy || recordingKind !== null} onChange={(event) => { void upload('auto-voice', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
-      </div>
-      {data?.autoVoiceAnnouncement && <a href={data.autoVoiceAnnouncement.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current announcement: {data.autoVoiceAnnouncement.name}</a>}
-      {data?.autoVoiceEnabled && !data.autoVoiceAnnouncement && <p className="text-xs text-amber-300" role="status">Auto Voice is ON; record or upload a real voice clip before it can play.</p>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
@@ -446,8 +436,6 @@ export function AdminPanel() {
         </div>
       })}
     </div>
-    {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
-    {message && <p className="text-xs text-emerald-400" role="status">{message}</p>}
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>

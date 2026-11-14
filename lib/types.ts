@@ -117,7 +117,6 @@ export interface AdminStatus extends StationSettings {
   queued: number
   listenersNow: number
   totalRatings: number
-  pendingRequests: number
   playbackStats: PlaybackStats
   storageUsage?: {
     provider: string

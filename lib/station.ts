@@ -1,9 +1,8 @@
 import 'server-only'
-import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
-import { orderedPendingRequests } from './song-request-queue'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 
@@ -64,13 +63,11 @@ interface StationState {
   lastBreakSongCount: number
   lastGoldenSundayBreakSongCount: number
   lastNewsDate: string
-  seasonalSongCount: number
-  seasonalMonthKey: string
   dailyPlayedDate: string
   dailyPlayedTitles: DailyPlayedTitle[]
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastGoldenSundayBreakSongCount: 0, lastNewsDate: '', seasonalSongCount: 0, seasonalMonthKey: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastGoldenSundayBreakSongCount: 0, lastNewsDate: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
 
 interface SearchItem {
   id: string
@@ -99,34 +96,8 @@ function isDisallowedSearchItem(item: SearchItem) {
   return liveFlag || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
 }
 
-async function findSongRequest(request: { title: string; artist: string }, history: HistoryEntry[], blockedTitleKeys: Set<string>) {
-  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${request.title} ${request.artist}`)}`, 8_000)
-  const requestedTitle = normalize(request.title)
-  const requestedWords = requestedTitle.split(' ').filter((word) => word.length > 1)
-  const candidates = (data?.items ?? []).filter((item) => {
-    const seconds = parseDuration(item.duration ?? '')
-    const normalizedTitle = normalize(item.title)
-    const titleMatches = normalizedTitle.includes(requestedTitle) || requestedWords.every((word) => normalizedTitle.includes(word))
-    return seconds >= 90 && seconds <= 540 && titleMatches && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !blockedTitleKeys.has(repeatTitleKey(item.title, request.artist))
-  }).slice(0, 8)
-  const downloads = await Promise.all(candidates.map(async (candidate) => {
-    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 12_000)
-    if (!download?.downloadUrl) return null
-    return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, sourceUrl: candidate.url, sourceRefreshedAt: Date.now(), duration: parseDuration(candidate.duration) }
-  }))
-  return downloads.find((song) => song !== null) ?? null
-}
-
-async function findPendingSongRequest(history: HistoryEntry[], blockedTitleKeys: Set<string>) {
-  const pending = orderedPendingRequests(await getSongRequests())
-  for (const request of pending) {
-    const song = await findSongRequest(request, history, blockedTitleKeys)
-    if (song) return { request, song }
-  }
-  return null
-}
-
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set()) {
+  if (CHRISTMAS_TITLE_RULE.test(title)) return null
   if (blockedTitleKeys.has(repeatTitleKey(title, artist))) return null
   const data = await fetchJson<{ items?: SearchItem[] }>(
     `${API_BASE}?search=${encodeURIComponent(`${title} ${artist}`)}`,
@@ -136,7 +107,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
   const expectedArtist = normalizeMorMatchText(artist)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || NON_LATIN.test(item.title)) return false
+    if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || CHRISTMAS_TITLE_RULE.test(item.title) || NON_LATIN.test(item.title)) return false
     const cleanedTitle = item.title.replace(/^[A-Z]{1,4}\d{1,3}\s+/, '').replace(/\.(?:mp3|m4a|aac|wav)$/i, '').replace(/\s+(?:mp3|m4a|aac|wav)$/i, '')
     const parts = cleanedTitle.split(/\s+(?:[-–—|]|::)\s+/).map((part) => part.trim())
     const titleMatches = parts.some((part) => normalizeMorMatchText(part) === expectedTitle) || normalizeMorMatchText(cleanedTitle) === expectedTitle
@@ -165,7 +136,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
 
 async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean, blockedTitleKeys: Set<string>) {
   const poolProgram = program.pools.tagalog.length > 0 ? program : PROGRAMS['love-mix']
-  return findSong({ ...poolProgram, tagalogOnly: true }, songCount, history, now, false, shuffleEnabled, blockedTitleKeys)
+  return findSong({ ...poolProgram, tagalogOnly: true }, songCount, history, now, shuffleEnabled, blockedTitleKeys)
 }
 
 const AI_RULE =
@@ -260,12 +231,10 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number, s
   return shuffleEnabled ? shuffle(selected) : selected
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, christmas = false, shuffleEnabled = true, blockedTitleKeys: Set<string> = new Set()) {
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled = true, blockedTitleKeys: Set<string> = new Set()) {
   const language = languageForSlot(program, songCount)
-  const candidatesArtists = eligibleArtists(christmas ? CHRISTMAS_ARTISTS[language] : program.pools[language], history, now, shuffleEnabled)
-  const variants = christmas
-    ? language === 'english' ? ['Christmas song', 'Christmas classic'] : ['Tagalog Christmas song', 'Pasko OPM']
-    : program.variants[language]
+  const candidatesArtists = eligibleArtists(program.pools[language], history, now, shuffleEnabled)
+  const variants = program.variants[language]
 
   const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
     const variant = (shuffleEnabled ? variants[Math.floor(Math.random() * variants.length)] : variants[0]) ?? ''
@@ -281,8 +250,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 90 || seconds > 540) return false
       const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
-      if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
-      if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
+      if (isDisallowedSearchItem(item) || CHRISTMAS_TITLE_RULE.test(item.title) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
       return !blockedTitleKeys.has(repeatTitleKey(item.title, artist.name))
     })
     .map((item) => ({ artist, item })))
@@ -365,15 +333,12 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
           .filter(Boolean),
       ])
     : new Set<string>()
-  const pendingRequestCount = settings.tagalogOnlyEnabled ? 0 : (await getSongRequests()).filter((request) => request.status === 'pending').length
-  const targetFutureTracks = pendingRequestCount > 0
-    ? Math.min(5, Math.max(queueAheadTarget(state, now), pendingRequestCount))
-    : queueAheadTarget(state, now)
+  const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
-    if (pendingRequestCount === 0 && isGoldenSundayWindow(breakAt)) {
+    if (isGoldenSundayWindow(breakAt)) {
       const localDay = new Date(breakAt + MANILA_OFFSET_MS)
       localDay.setUTCHours(4, 0, 0, 0)
       const sundayStart = localDay.getTime() - MANILA_OFFSET_MS
@@ -396,7 +361,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
           continue
         }
       }
-    } else if (pendingRequestCount === 0 && state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
+    } else if (state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
       if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
@@ -447,34 +412,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       ? PROGRAMS['sunday-tagalog']
       : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
       : program.id === 'news' ? PROGRAMS['love-mix'] : program
-    let fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-
-    let song = null
-    const requestMatch = settings.tagalogOnlyEnabled ? null : await findPendingSongRequest(state.history, blockedTitleKeys)
-    const requested = requestMatch?.request
-    if (requestMatch) {
-      song = requestMatch.song
-      if (song && settings.autoVoiceEnabled && settings.autoVoiceAnnouncement) {
-        const announcementStart = nextStart(state, now)
-        const previous = state.tracks.at(-1)
-        if (previous) previous.fadeOut = 0
-        state.tracks.push({
-          uid: `auto-voice-${requestMatch.request.id}-${announcementStart}`,
-          src: settings.autoVoiceAnnouncement.url,
-          startAt: announcementStart,
-          duration: settings.autoVoiceAnnouncement.duration,
-          fadeIn: 0,
-          fadeOut: 0,
-          kind: 'dj-mic',
-          title: settings.autoVoiceAnnouncement.name,
-        })
-        fadeIn = 0
-      }
-    }
-    if (!song && settings.christmasEnabled && isChristmasSlot(state.seasonalSongCount, startAt)) {
-      song = await findSong(rotationProgram, state.songCount, state.history, startAt, true, settings.shuffleEnabled, blockedTitleKeys)
-    }
-    if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt, false, settings.shuffleEnabled, blockedTitleKeys)
+    const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
+    const song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -494,14 +433,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
-    state.seasonalSongCount++
-    if (requested && song) {
-      await updateSongRequest(requested.id, 'played')
-      const remainingPending = (await getSongRequests()).some((request) => request.status === 'pending')
-      if (remainingPending) continue
-    }
-    // One song per request keeps the now-playing endpoint responsive; subsequent polls
-    // fill the second queue slot well before the current track finishes.
+    // One song per station poll keeps the now-playing endpoint responsive.
     break
   }
 }
@@ -511,14 +443,8 @@ async function loadState(now: number) {
   state.lastBreakSongCount = state.lastBreakSongCount ?? 0
   state.lastGoldenSundayBreakSongCount = state.lastGoldenSundayBreakSongCount ?? 0
   state.lastNewsDate = state.lastNewsDate ?? ''
-  state.seasonalSongCount = state.seasonalSongCount ?? 0
   state.dailyPlayedTitles = Array.isArray(state.dailyPlayedTitles) ? state.dailyPlayedTitles.filter((entry) => Boolean(entry && typeof entry.key === 'string' && typeof entry.title === 'string' && typeof entry.artist === 'string' && typeof entry.playedAt === 'number')) : []
   state.dailyPlayedDate = typeof state.dailyPlayedDate === 'string' ? state.dailyPlayedDate : ''
-  const monthKey = manilaMonthKey(now)
-  if (state.seasonalMonthKey !== monthKey) {
-    state.seasonalMonthKey = monthKey
-    state.seasonalSongCount = 0
-  }
   let dailyChanged = false
   const currentDay = manilaDateKey(now)
   const rolledLog = rollDailyPlayedLog(state.dailyPlayedDate, currentDay, state.dailyPlayedTitles)
@@ -553,7 +479,10 @@ async function loadState(now: number) {
     }
   }
   const before = state.tracks.length
-  state.tracks = state.tracks.filter((track) => isInPlaybackQueue(trackEnd(track), now) && (
+  state.tracks = state.tracks.filter((track) => isInPlaybackQueue(trackEnd(track), now) && !(
+    track.startAt > now && (track.kind === 'music' || track.kind === 'mor-sync') &&
+    (track.title?.startsWith('Song request:') || CHRISTMAS_TITLE_RULE.test(track.title ?? ''))
+  ) && (
     track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
   ))
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
@@ -664,7 +593,6 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
       state.history.push({ id: song.id, key: songKey(matchedSong ? metadata.title! : song.title), artist: matchedSong ? metadata.artist! : song.artist, title: matchedSong ? metadata.title! : song.title, t: startAt })
       state.history = state.history.slice(-verifiedSettings.rotationPoolSize)
       state.songCount++
-      state.seasonalSongCount++
       if (!(await leaseGuard.isValid())) return latest
       await writeJson(STATE_PATH, state)
     }
@@ -802,8 +730,8 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [loaded, settings, listenersNow, ratings, requests, morRecord] = await Promise.all([
-    loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests(),
+  const [loaded, settings, listenersNow, ratings, morRecord] = await Promise.all([
+    loadState(now), getSettings(), getListenerCount(), getRatings(),
     readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD),
   ])
   const { state } = loaded
@@ -823,7 +751,6 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     queued: state.tracks.filter((t) => t.startAt > now).length,
     listenersNow,
     totalRatings: ratings.total,
-    pendingRequests: requests.filter((request) => request.status === 'pending').length,
     morNowPlayingTitle: morRecord.metadata?.title ?? null,
     morNowPlayingArtist: morRecord.metadata?.artist ?? null,
     morNowPlayingRaw: morRecord.metadata?.raw ?? null,
@@ -850,21 +777,6 @@ export async function refreshQueue() {
   const { state } = await loadState(now)
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
-  state.fillingUntil = 0
-  await writeJson(STATE_PATH, state)
-  } finally {
-    await releaseStationLease(lease)
-  }
-}
-
-export async function prioritizePendingRequests() {
-  const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
-  if (!lease) return
-  try {
-  const now = Date.now()
-  const { state } = await loadState(now)
-  state.tracks = state.tracks.filter((track) =>
-    track.startAt <= now || (track.kind === 'music' && track.title?.startsWith('Song request:')))
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
   } finally {

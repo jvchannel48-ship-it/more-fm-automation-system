@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { AdminPanel } from './admin-panel'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 const FACEBOOK_PAGE = 'https://www.facebook.com/profile.php?id=61594892455381'
 const FACEBOOK_ADMIN = 'https://www.facebook.com/profile.php?id=61595422155719'
@@ -42,23 +42,33 @@ export function AdminMenu() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await fetch('/api/admin/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    setLoading(false)
-    if (!res.ok) {
-      setError('Incorrect password. Please try again.')
-      return
+    try {
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (!res.ok) {
+        setError(res.status === 401 ? 'Incorrect password. Please try again.' : 'Could not sign in. Please try again.')
+        return
+      }
+      setPassword('')
+      await mutate({ admin: true })
+    } catch {
+      setError('Could not reach the admin sign-in service. Check your connection and try again.')
+    } finally {
+      setLoading(false)
     }
-    setPassword('')
-    mutate({ admin: true })
   }
 
   const logout = async () => {
-    await fetch('/api/admin/session', { method: 'DELETE' })
-    mutate({ admin: false })
+    try {
+      await fetch('/api/admin/session', { method: 'DELETE', cache: 'no-store' })
+      await mutate({ admin: false })
+    } catch {
+      setError('Could not log out. Please check your connection and try again.')
+    }
   }
 
   return (
