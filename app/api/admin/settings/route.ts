@@ -38,9 +38,9 @@ export async function PUT(request: NextRequest) {
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const bounded = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
     const crossfaderCurves = ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut'] as const
-    const masterVolume = Math.round(bounded(body.masterVolume, current.masterVolume, 0, 100))
-    const nightVolumePercent = Math.round(bounded(body.nightVolumePercent, current.nightVolumePercent, 0, 100))
-    const bassGainDb = bounded(body.bassGainDb, current.bassGainDb, -12, 12)
+    const masterVolume = 80
+    const nightVolumePercent = 70
+    const bassGainDb = 12
     const crossfadeSeconds = bounded(body.crossfadeSeconds, current.crossfadeSeconds, 0, 30)
     const replayGainTargetLufs = bounded(body.replayGainTargetLufs, current.replayGainTargetLufs, -24, -5)
     const transmitterWatts: typeof current.transmitterWatts = typeof body.transmitterWatts === 'number' && [0, 5000, 20000, 100000].includes(body.transmitterWatts) ? body.transmitterWatts as typeof current.transmitterWatts : current.transmitterWatts
@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest) {
       shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,
       goodVibesEnabled: typeof body.goodVibesEnabled === 'boolean' ? body.goodVibesEnabled : current.goodVibesEnabled,
       rotationPoolSize: typeof body.rotationPoolSize === 'number' ? body.rotationPoolSize : current.rotationPoolSize,
-      listenerLimit: typeof body.listenerLimit === 'number' ? body.listenerLimit : current.listenerLimit,
+      listenerLimit: 0,
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
       transmitterWatts, signOffHour, signOnHour, discoStartHour, discoEndHour,
       masterVolume, nightVolumePercent, bassGainDb,
@@ -70,8 +70,8 @@ export async function PUT(request: NextRequest) {
       autoVoiceAnnouncement: current.autoVoiceAnnouncement,
       djMicEnabled: typeof body.djMicEnabled === 'boolean' ? body.djMicEnabled : current.djMicEnabled,
       newsEnabled: typeof body.newsEnabled === 'boolean' ? body.newsEnabled : current.newsEnabled,
-      nightVolumeEnabled: typeof body.nightVolumeEnabled === 'boolean' ? body.nightVolumeEnabled : current.nightVolumeEnabled,
-      nightVolumeStartHour, nightVolumeEndHour,
+      nightVolumeEnabled: true,
+      nightVolumeStartHour: 22, nightVolumeEndHour: 6,
       jingleEnabled: typeof body.jingleEnabled === 'boolean' ? body.jingleEnabled : current.jingleEnabled,
       commercialEnabled: typeof body.commercialEnabled === 'boolean' ? body.commercialEnabled : current.commercialEnabled,
       jingle: current.jingle, commercials: current.commercials, goldenSunday: current.goldenSunday, news: current.news, djMic: current.djMic,
