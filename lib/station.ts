@@ -788,9 +788,12 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
   const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
-    await fillQueueIfNeeded(settings)
-    const refreshed = await loadState(Date.now())
-    state = refreshed.state
+    // Never block the live audio response while YouTube/provider search is running.
+    // Render keeps this process alive, so the refill continues in the background and
+    // the next 8-second poll receives the newly persisted tracks.
+    void fillQueueIfNeeded(settings).catch((error) => {
+      console.error('[morefm] background AutoDJ refill failed', error)
+    })
   }
 
   const responseNow = Date.now()
