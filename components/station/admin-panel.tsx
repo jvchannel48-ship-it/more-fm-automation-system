@@ -182,7 +182,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–100-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
+      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–300-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
     </div>
@@ -229,14 +229,14 @@ export function AdminPanel() {
         {(data?.dailyPlayedTitles ?? []).length > 0 ? <div className="max-h-48 space-y-1 overflow-y-auto">{data?.dailyPlayedTitles.map((song) => <div key={`${song.playedAt}-${song.title}`} className="flex items-center justify-between gap-3 rounded border border-border/60 px-2 py-1.5 text-xs"><span className="truncate">{song.title}</span><span className="shrink-0 text-muted-foreground">{song.artist} · {new Date(song.playedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}</span></div>)}</div> : <p className="text-xs text-muted-foreground">No songs completed today yet.</p>}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label htmlFor="rotation-pool-size" className="flex flex-col gap-1 text-xs font-medium">Rotation history size (50–100 songs)
-          <Input id="rotation-pool-size" type="number" min={50} max={100} step={1} value={rotationPoolSize} onChange={(event) => setRotationPoolSize(event.target.value)} disabled={!data || busy} />
+        <label htmlFor="rotation-pool-size" className="flex flex-col gap-1 text-xs font-medium">Rotation history size (50–300 songs)
+          <Input id="rotation-pool-size" type="number" min={50} max={300} step={1} value={rotationPoolSize} onChange={(event) => setRotationPoolSize(event.target.value)} disabled={!data || busy} />
         </label>
         <label htmlFor="listener-limit" className="flex flex-col gap-1 text-xs font-medium">Listener cap (0 = unlimited)
           <Input id="listener-limit" type="number" min={0} max={1000} step={1} value={listenerLimit} onChange={(event) => setListenerLimit(event.target.value)} disabled={!data || busy} />
         </label>
       </div>
-      <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 100 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
+      <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 300 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
         onClick={() => send('PUT', { rotationPoolSize: Number(rotationPoolSize), listenerLimit: Number(listenerLimit) })}>Save rotation and listener limits</Button>
       <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION IS LIMITED LISTENER. Please try again later.” Existing listeners stay connected. Listener cap defaults to unlimited.</p>
       <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">

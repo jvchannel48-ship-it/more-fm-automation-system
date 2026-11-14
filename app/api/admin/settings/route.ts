@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
     const crossfadeSeconds = bounded(body.crossfadeSeconds, current.crossfadeSeconds, 0, 30)
     const replayGainTargetLufs = bounded(body.replayGainTargetLufs, current.replayGainTargetLufs, -24, -5)
     const transmitterWatts: typeof current.transmitterWatts = typeof body.transmitterWatts === 'number' && [0, 5000, 20000, 100000].includes(body.transmitterWatts) ? body.transmitterWatts as typeof current.transmitterWatts : current.transmitterWatts
-    if (body.rotationPoolSize !== undefined && (typeof body.rotationPoolSize !== 'number' || !Number.isInteger(body.rotationPoolSize) || body.rotationPoolSize < 50 || body.rotationPoolSize > 100)) return jsonError('Song rotation pool must be between 50 and 100.', 400)
+    if (body.rotationPoolSize !== undefined && (typeof body.rotationPoolSize !== 'number' || !Number.isInteger(body.rotationPoolSize) || body.rotationPoolSize < 50 || body.rotationPoolSize > 300)) return jsonError('Song rotation pool must be between 50 and 300.', 400)
     if (body.listenerLimit !== undefined && (typeof body.listenerLimit !== 'number' || !Number.isInteger(body.listenerLimit) || body.listenerLimit < 0 || body.listenerLimit > 1000)) return jsonError('Listener limit must be between 0 and 1,000; use 0 for unlimited.', 400)
     if (signOffHour === signOnHour) return jsonError('Sign-off and sign-on must be different.', 400)
     if (discoStartHour === discoEndHour) return jsonError('Disco start and end must be different.', 400)
