@@ -79,16 +79,16 @@ export function AdminMenu() {
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>
-            MOR <span className="text-primary">93.5</span> Naga
+            RJ <span className="text-primary">FM</span>
           </SheetTitle>
-          <SheetDescription>MOR 93.5 NAGA LIVESTREAM ONLY</SheetDescription>
+          <SheetDescription>RJ FM LIVESTREAM ONLY</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">MOR 93.5 Naga</p>
+              <p className="font-medium">RJ FM</p>
               <p className="text-muted-foreground">Livestream only · 24/7 automated music</p>
               <p className="text-muted-foreground">Schedule is managed in the Admin Panel.</p>
               <p className="mt-2 text-muted-foreground">Tune in, relax, and enjoy the music.</p>

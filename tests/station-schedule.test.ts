@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isChristmasTitle, languageForSlot, MANILA_OFFSET_MS, manilaTime, PROGRAMS, programAt } from '../lib/schedule.ts'
+import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, PROGRAMS, programAt } from '../lib/schedule.ts'
 
 function manilaTimeAt(year: number, month: number, day: number, hour = 12) {
   return Date.UTC(year, month - 1, day, hour) - MANILA_OFFSET_MS
@@ -22,5 +22,12 @@ assert.equal(isChristmasTitle('Blue Christmas'), true)
 assert.equal(isChristmasTitle('Maligayang Pasko'), true)
 assert.equal(isChristmasTitle('Because You Loved Me'), false)
 assert.notEqual(programAt(manilaTimeAt(2026, 11, 14, 12)).id, 'sunday-oldies', 'weekday programming remains separate from Sunday oldies')
+
+for (const date of [14, 16, 17, 18, 19, 20]) {
+  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 1)), true, `weekday ${date} signs off at 1 AM`)
+  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 3)), true, `weekday ${date} remains off air before 4 AM`)
+  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 4)), false, `weekday ${date} signs on at 4 AM`)
+}
+assert.equal(isOffAir(manilaTimeAt(2026, 11, 15, 2)), false, 'Sunday stays on air overnight')
 
 console.log('station-schedule: Christmas disabled and all-day Tagalog Sunday oldies passed')

@@ -15,7 +15,7 @@ export function FeedbackForm() {
     event.preventDefault()
     const text = message.trim()
     if (!text) return
-    const subject = encodeURIComponent('MOR 93.5 Naga — Report / Feedback')
+    const subject = encodeURIComponent('RJ FM — Report / Feedback')
     const body = encodeURIComponent(text)
     window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`
     setOpen(false)

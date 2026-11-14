@@ -8,17 +8,16 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'MOR 93.5 Naga — Livestream Only',
+  title: 'RJ FM — Livestream Only',
   description:
-    'MOR 93.5 Naga livestream only. 24/7 automated English and Tagalog music. Enjoy the music.',
+    'RJ FM livestream only. Automated English and Tagalog music from Naga.',
   generator: 'v0.app',
   icons: {
     icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/rj-fm-logo.jpg', media: '(prefers-color-scheme: light)' },
+      { url: '/rj-fm-logo.jpg', media: '(prefers-color-scheme: dark)' },
     ],
-    apple: '/apple-icon.png',
+    apple: '/rj-fm-logo.jpg',
   },
 }
 

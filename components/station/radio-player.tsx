@@ -17,7 +17,7 @@ const fetcher = (url: string) =>
 function StationVerifiedBadge() {
   return (
     <svg
-      aria-label="RJ FM 93.5 station badge"
+      aria-label="RJ FM station badge"
       role="img"
       viewBox="0 0 24 24"
       className="inline-block size-6 shrink-0 align-middle drop-shadow-[0_2px_8px_rgba(24,119,242,0.35)]"
@@ -148,7 +148,7 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MOR 93.5 Naga live player" className="studio-deck flex w-full flex-col items-center gap-8 px-4 py-8 text-center">
+    <section aria-label="RJ FM live player" className="studio-deck flex w-full flex-col items-center gap-8 px-4 py-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -178,7 +178,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={() => void togglePlay()}
           disabled={offAir || checkingCapacity}
-          aria-label={playing ? 'Pause RJ FM 93.5 Naga' : 'Play RJ FM 93.5 Naga'}
+          aria-label={playing ? 'Pause RJ FM' : 'Play RJ FM'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -197,10 +197,10 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          RJ FM <span className="text-primary">93.5</span> Naga <StationVerifiedBadge />
+          RJ <span className="text-primary">FM</span> <StationVerifiedBadge />
         </h2>
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
-          <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />93.5 FM</span>
+          <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />RJ FM</span>
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
           <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />ABS-CBN Complex · Naga City</span>
         </div>

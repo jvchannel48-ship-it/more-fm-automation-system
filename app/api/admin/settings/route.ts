@@ -30,8 +30,8 @@ export async function PUT(request: NextRequest) {
     }
     const current = await getSettings()
     const hour = (value: unknown, fallback: number) => typeof value === 'number' && value >= 0 && value <= 23 ? value : fallback
-    const signOffHour = hour(body.signOffHour, current.signOffHour)
-    const signOnHour = hour(body.signOnHour, current.signOnHour)
+    const signOffHour = 1
+    const signOnHour = 4
     const discoStartHour = hour(body.discoStartHour, current.discoStartHour)
     const discoEndHour = hour(body.discoEndHour, current.discoEndHour)
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
