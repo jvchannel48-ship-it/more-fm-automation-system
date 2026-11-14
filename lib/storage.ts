@@ -416,13 +416,16 @@ export async function addRating(voterId: string) {
 
 export async function getSongRequests() {
   const saved = await readJson<unknown>(REQUESTS_PATH, [])
-  return Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(
+  const requests = Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(
     item && typeof item === 'object'
     && typeof (item as SongRequest).id === 'string'
     && typeof (item as SongRequest).title === 'string'
     && typeof (item as SongRequest).artist === 'string'
     && ['pending', 'played', 'skipped'].includes((item as SongRequest).status),
   )) : []
+  const activeRequests = requests.filter((request) => request.status !== 'played')
+  if (activeRequests.length !== requests.length) await writeJson(REQUESTS_PATH, activeRequests)
+  return activeRequests
 }
 export async function addSongRequest(title: string, artist: string) {
   const requests = await getSongRequests()
@@ -438,7 +441,11 @@ export async function addSongRequest(title: string, artist: string) {
 }
 export async function updateSongRequest(id: string, status: SongRequest['status']) {
   const requests = await getSongRequests()
-  const next = requests.map((request) => request.id === id ? { ...request, status } : request)
+  const updated = requests.find((request) => request.id === id)
+  if (!updated) return null
+  const next = status === 'played'
+    ? requests.filter((request) => request.id !== id)
+    : requests.map((request) => request.id === id ? { ...request, status } : request)
   await writeJson(REQUESTS_PATH, next)
-  return next.find((request) => request.id === id) ?? null
+  return { ...updated, status }
 }
