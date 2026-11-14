@@ -11,7 +11,7 @@ const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3j
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
-const FILL_LOCK_MS = 45_000
+const FILL_LOCK_MS = 15_000
 const QUEUE_LEASE_MS = 100_000
 const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
@@ -300,6 +300,10 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
     const item = items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
       return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
+    }) ?? items.find((candidate) => {
+      const seconds = parseDuration(candidate.duration ?? '')
+      const live = candidate.live === true || candidate.isLive === true
+      return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title)
     })
     if (!item) continue
     const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
