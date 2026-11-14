@@ -397,7 +397,7 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
     const item = playlist[(songCount + offset) % playlist.length]
     const artist = playlistArtist(item.title, item.channel)
     if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist))) continue
-    const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
+    const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 8_000)
     if (!download?.downloadUrl) continue
     return {
       id: item.id,
@@ -620,18 +620,25 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-    const song = await findPlaylistSong(state.songCount, blockedTitleKeys)
-      ?? await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+    const playlistTracks = await getRjFmPlaylistTracks()
+    const song = playlistTracks.length > 0
+      ? await findPlaylistSong(state.songCount, blockedTitleKeys)
+      : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
       ?? await findEmergencySong(state.songCount, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     const sundayEnglishBoundary = program.id === 'sunday-english-oldies' ? manilaHourBoundary(songStart, 6) : Number.POSITIVE_INFINITY
+    // A slow lookup can cross the 6 AM Sunday program boundary. Do not turn
+    // the newly downloaded song into a one-second track when that happens.
+    const playableDuration = sundayEnglishBoundary > songStart
+      ? Math.min(song.duration, (sundayEnglishBoundary - songStart) / 1000)
+      : song.duration
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
       startAt: songStart,
-      duration: Math.max(1, Math.min(song.duration, (sundayEnglishBoundary - songStart) / 1000)),
+      duration: Math.max(1, playableDuration),
       fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
