@@ -93,32 +93,36 @@ export function EngagePanel() {
   }
 
   return <div className="flex w-full max-w-md flex-col gap-3">
-    <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="flex w-full flex-wrap items-center justify-center gap-3">
+      <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/45 py-1 pl-1 pr-3 shadow-sm">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          onClick={() => void rate()}
+          disabled={rated || ratingBusy}
+          className={`size-11 rounded-full transition-colors ${rated ? 'text-rose-400' : 'hover:text-rose-400'}`}
+          aria-label={rated ? 'Thanks for rating MOR 93.5' : 'Rate MOR 93.5'}
+          title={rated ? 'You rated this station' : 'Rate this station'}
+        >
+          {ratingBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Heart className={rated ? 'fill-current' : undefined} aria-hidden="true" />}
+        </Button>
+        <span className="min-w-12 text-left text-xs leading-tight text-muted-foreground">
+          <span className="block font-semibold text-foreground">{ratingTotal}</span>
+          <span>{ratingTotal === 1 ? 'rating' : 'ratings'}</span>
+        </span>
+      </div>
       <Button
         type="button"
-        variant={rated ? 'secondary' : 'outline'}
-        onClick={() => void rate()}
-        disabled={rated || ratingBusy}
-        className={`rounded-full ${rated ? 'text-rose-400' : ''}`}
-        aria-label={rated ? 'Thanks for rating MOR 93.5' : 'Rate MOR 93.5'}
-      >
-        {ratingBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Heart className={rated ? 'fill-current' : undefined} aria-hidden="true" />}
-        {ratingBusy ? 'Saving rating…' : rated ? 'Thanks for rating us!' : 'Rate this station'}
-      </Button>
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {ratingTotal} {ratingTotal === 1 ? 'rating' : 'ratings'}
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
         onClick={() => {
           setOpen((value) => !value)
           setRequestMessage('')
           setRequestError('')
         }}
         aria-expanded={open}
+        className="h-12 min-w-48 rounded-full px-6 shadow-md shadow-primary/20 transition-transform hover:-translate-y-0.5"
       >
-        <MessageCircle aria-hidden="true" /> {open ? 'Close request' : 'Request a song'}
+        <MessageCircle aria-hidden="true" /> {open ? 'Close song request' : 'Request a song'}
       </Button>
     </div>
 
@@ -128,10 +132,10 @@ export function EngagePanel() {
     </div>}
     {ratingError && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{ratingError}</p>}
 
-    {open && <form onSubmit={submitRequest} className="ui-depth flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
-      <div>
-        <h3 className="font-semibold">Request a song</h3>
-        <p className="text-xs text-muted-foreground">Requests are checked in order. When a suitable match is available, requests play consecutively after the current song. Unmatched requests remain pending and do not block later requests.</p>
+    {open && <form onSubmit={submitRequest} className="ui-depth flex flex-col gap-4 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
+      <div className="space-y-1.5">
+        <h3 className="text-base font-semibold">Request a song</h3>
+        <p className="text-xs leading-relaxed text-muted-foreground">Requests are checked in order and played consecutively after the current song when a suitable match is available. An unmatched request stays pending without blocking later requests.</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="request-title">Song title</Label>
@@ -145,9 +149,9 @@ export function EngagePanel() {
         <div className="flex items-center gap-2 text-sm text-primary"><Loader2 className="size-4 animate-spin" aria-hidden="true" /> Submitting your request…</div>
         <div className="h-1 overflow-hidden rounded-full bg-primary/15" aria-hidden="true"><div className="h-full w-full animate-pulse rounded-full bg-primary/70" /></div>
       </div>}
-      <Button type="submit" disabled={requestBusy || !title.trim() || !artist.trim()} aria-busy={requestBusy}>
+      <Button type="submit" disabled={requestBusy || !title.trim() || !artist.trim()} aria-busy={requestBusy} className="h-11 w-full rounded-full shadow-md shadow-primary/15">
         {requestBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
-        {requestBusy ? 'Submitting…' : 'Submit song request'}
+        {requestBusy ? 'Submitting request…' : 'Submit song request'}
       </Button>
       {requestMessage && <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-100" role="status" aria-live="polite">
         <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-400" aria-hidden="true" />
