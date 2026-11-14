@@ -58,6 +58,7 @@ function mediaErrorMessage(code: number) {
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
+  const failedUids = useRef(new Set<string>())
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
   const [playbackIssue, setPlaybackIssue] = useState<string | null>(null)
@@ -66,6 +67,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!data) return
     offset.current = data.serverTime - Date.now()
+    const currentIds = new Set(data.tracks.map((track) => track.uid))
+    failedUids.current.forEach((uid) => {
+      if (!currentIds.has(uid)) failedUids.current.delete(uid)
+    })
   }, [data])
 
   const unlock = useCallback(() => {
@@ -94,7 +99,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const masterGain = (config?.masterVolume ?? 100) / 100
       const replayGain = config?.replayGainEnabled ? Math.pow(10, ((config.replayGainTargetLufs ?? -14) + 14) / 20) : 1
       const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
-      const wanted = [...active, ...upcoming].slice(0, slots.current.length)
+      const wanted = [...active, ...upcoming].filter((track) => !failedUids.current.has(track.uid)).slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
       for (const slot of slots.current) {
@@ -138,15 +143,20 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
 
         const expected = (now - track.startAt) / 1000
-        if (el.error && now - slot.lastPlayAttemptAt >= 2_000) {
-          // Expiring third-party download URLs can fail after the queue was built.
-          // Reload the same element so the next poll/source refresh can recover it.
-          slot.lastPlayAttemptAt = now
-          slot.synced = false
-          // Keep the player alive while the station refreshes the expiring source URL.
-          // The next now-playing poll will replace the URL without requiring another Play click.
-          onStreamError?.(track.uid)
+        if (el.error || (isActive && el.ended && now < track.startAt + track.duration * 1000 - 1_000)) {
+          // Do not reload a broken source forever. Remove it from this listener's
+          // slots immediately, ask the server to remove it from the shared queue,
+          // and let AutoDJ provide the next track.
+          failedUids.current.add(track.uid)
+          el.pause()
+          el.removeAttribute('src')
           el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.lastPlayAttemptAt = now
+          onStreamError?.(track.uid)
+          continue
         }
         if (el.readyState >= 1) {
           // Live radio relays do not have a seekable timeline like an MP3.
