@@ -36,20 +36,12 @@ export function RadioPlayer() {
   const [nowPlayingIssue, setNowPlayingIssue] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
-  const [clockNow, setClockNow] = useState(() => Date.now())
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: 8000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume)
-  useEffect(() => {
-    const serverBase = data?.serverTime ?? Date.now()
-    const clientBase = Date.now()
-    setClockNow(serverBase)
-    const interval = window.setInterval(() => setClockNow(serverBase + Date.now() - clientBase), 1000)
-    return () => window.clearInterval(interval)
-  }, [data?.serverTime])
   useEffect(() => {
     if (!playbackIssue) return
     setPlaying(false)
@@ -106,11 +98,6 @@ export function RadioPlayer() {
   }, [playing, data?.offAir])
 
   const offAir = (data?.offAir ?? false) || scheduledOffAir
-  const currentTrack = !offAir ? data?.tracks.find((track) => track.title && clockNow >= track.startAt && clockNow < track.startAt + track.duration * 1000) : undefined
-  const trackProgress = currentTrack ? Math.min(100, Math.max(0, ((clockNow - currentTrack.startAt) / (currentTrack.duration * 1000)) * 100)) : 0
-  const elapsedSeconds = currentTrack ? Math.floor((clockNow - currentTrack.startAt) / 1000) : 0
-  const formatTrackTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
-  const currentTrackTitle = currentTrack?.title?.replace(/^song request\s*:\s*/i, '')
   const live = playing && !buffering && !offAir && !playbackIssue
   const listenerId = () => {
     let id = localStorage.getItem('morefm-listener-id')
@@ -215,21 +202,7 @@ export function RadioPlayer() {
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
           <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />93.5 FM</span>
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
-          <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />ABS-CBN Broadcasting Complex, Panganiban Drive, Naga City</span>
-        </div>
-        <div className="mt-2 w-full max-w-sm rounded-2xl border border-border/70 bg-background/45 px-4 py-3 text-left shadow-sm" aria-live="polite">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Now playing</span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-success"><span className="size-1.5 rounded-full bg-success" aria-hidden="true" />Updates live</span>
-          </div>
-          <p className="truncate text-sm font-semibold" title={currentTrackTitle ?? undefined}>{currentTrackTitle ?? (offAir ? 'We’ll be back on air soon' : 'Waiting for the next song…')}</p>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="w-9 shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">{currentTrack ? formatTrackTime(elapsedSeconds) : 'LIVE'}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/80" role="progressbar" aria-label="Current song progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(trackProgress)}>
-              <div className="h-full rounded-full bg-primary transition-[width] duration-1000" style={{ width: `${trackProgress}%` }} />
-            </div>
-            <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">{currentTrack ? formatTrackTime(currentTrack.duration) : '93.5'}</span>
-          </div>
+          <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />ABS-CBN Complex · Naga City</span>
         </div>
         {data?.boardOperatorEnabled && (
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">
