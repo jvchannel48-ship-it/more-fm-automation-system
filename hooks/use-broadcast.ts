@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 120_000
+// Keep one network audio request active. Preloading several multi-megabyte
+// songs makes mobile browsers stay buffering and starves the current track.
+const PRELOAD_AHEAD_MS = 0
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
@@ -71,7 +73,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 4 }, () => {
+    slots.current = Array.from({ length: 1 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
@@ -119,7 +121,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
       }
       if (forcedNextUid.current && tracks.some((track) => track.uid === forcedNextUid.current && now >= track.startAt)) forcedNextUid.current = null
-      const active = scheduleOffAir ? [] : tracks.filter((track) => scheduledActive.includes(track) || track.uid === forcedNextUid.current)
+      // During a crossfade window two tracks can overlap. Prefer the newest
+      // track and never download/play both at once; reliable playback is more
+      // important than a transition effect on constrained devices.
+      const activeCandidates = scheduleOffAir ? [] : tracks.filter((track) => scheduledActive.includes(track) || track.uid === forcedNextUid.current)
+      const active = activeCandidates.length > 0 ? [activeCandidates.at(-1)!] : []
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
       const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
@@ -209,7 +215,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
             }
           }
         }
-        const minimumReadyState = 1
+        const minimumReadyState = 2
         if (el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
@@ -240,7 +246,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.activeWaitSince = null
         }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'smooth') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
+        const outputGain = clamp01(volume * masterGain * nightVolumeGain * replayGain * duckGain)
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
