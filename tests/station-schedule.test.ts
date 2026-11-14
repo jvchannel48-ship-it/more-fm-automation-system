@@ -18,7 +18,7 @@ assert.equal(programAt(manilaTimeAt(2026, 11, 15, 4)).id, 'sunday-english-oldies
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 5, 59)).id, 'sunday-english-oldies', 'Sunday 5:59 AM remains English senior oldies')
 assert.equal(languageForSlot(sundayEnglishOldies, 0), 'english', 'Sunday early oldies use English rotation')
 assert.ok(sundayEnglishOldies.pools.english.some((artist) => artist.name === 'Victor Wood'), 'Sunday early oldies include Victor Wood')
-assert.equal(programAt(manilaTimeAt(2026, 11, 15, 6)).id, 'brigada-news', 'Sunday 6 AM switches to Brigada News FM')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 6)).id, 'sunday-oldies', 'Sunday 6 AM continues RJ FM songs')
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 7)).id, 'sunday-oldies', 'Sunday 7 AM returns to RJ FM oldies')
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 7, 1)).id, 'sunday-oldies', 'Sunday 7:01 AM remains RJ FM oldies')
 

@@ -5,7 +5,6 @@ import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manil
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
-import { BRIGADA_NAGA_STATION_NAME, BRIGADA_NAGA_STREAM_URL } from './brigada'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -398,20 +397,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    if (program.id === 'brigada-news') {
-      const endAt = manilaHourBoundary(startAt, 7)
-      state.tracks.push({
-        uid: `brigada-news-${startAt}`,
-        src: BRIGADA_NAGA_STREAM_URL,
-        startAt,
-        duration: Math.max(1, (endAt - startAt) / 1000),
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'brigada-news',
-        title: BRIGADA_NAGA_STATION_NAME,
-      })
-      break
-    }
     const rotationProgram = manilaTime(startAt).day === 0
       ? program.id === 'sunday-english-oldies' ? PROGRAMS['sunday-english-oldies'] : PROGRAMS['sunday-oldies']
       : settings.tagalogOnlyEnabled
@@ -496,6 +481,7 @@ async function loadState(now: number) {
     const isFutureTrack = track.startAt > now
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
     const removeChristmas = isMusicTrack && isChristmasTrack
+    const removeBrigada = track.kind === 'brigada-news'
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const trackManila = manilaTime(track.startAt)
@@ -511,6 +497,7 @@ async function loadState(now: number) {
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest
       && !removeChristmas
+      && !removeBrigada
       && !removeSundayBreak
       && !removeSundayMusic
       && (
