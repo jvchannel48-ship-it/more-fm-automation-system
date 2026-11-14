@@ -114,6 +114,7 @@ export interface MorSyncRecord {
 
 export interface AdminStatus extends StationSettings {
   persistenceConfigured?: boolean
+  queuePersistenceConfigured?: boolean
   songsThisWeek: number
   artistsThisHour: number
   queued: number

@@ -21,6 +21,7 @@ const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number 
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasPersistentStorage = Boolean(databaseUrl)
 export const hasSettingsPersistence = hasPersistentStorage || hasSupabaseStorageConfig()
+export const hasQueuePersistence = hasPersistentStorage || hasSupabaseStorageConfig()
 const SETTINGS_CACHE_TTL_MS = 2_000
 
 function getPool() {
@@ -69,12 +70,12 @@ async function ensureStateTable() {
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   const pool = getPool()
   if (!pool) {
-    if (isPersistentSettingsPath(pathname) && hasSupabaseStorageConfig()) {
+    if (hasSupabaseStorageConfig()) {
       const cached = settingsObjectCache.get(pathname)
-      if (cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
+      if (isPersistentSettingsPath(pathname) && cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
       const remote = await readSupabaseJson(`app-state/${pathname}`)
       if (remote !== null) {
-        settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+        if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
         return remote as T
       }
     }
@@ -99,13 +100,10 @@ export async function writeJson(pathname: string, data: unknown) {
   if (serialized === undefined) throw new Error('State value could not be serialized as JSON.')
   const pool = getPool()
   if (!pool) {
-    if (isPersistentSettingsPath(pathname)) {
-      if (!hasSupabaseStorageConfig()) {
-        throw new Error('No persistent settings backend is configured; set POSTGRES_URL or Supabase Storage credentials.')
-      }
+    if (hasSupabaseStorageConfig()) {
       const value = JSON.parse(serialized)
       await writeSupabaseJson(`app-state/${pathname}`, value)
-      settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+      if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
       return
     }
     if (pathname === STATION_STATE_PATH) {

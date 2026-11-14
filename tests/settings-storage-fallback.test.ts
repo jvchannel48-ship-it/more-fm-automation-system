@@ -40,7 +40,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
 async function main() {
   try {
-    const { getSettings, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
+    const { getSettings, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, STATE_PATH, readJson, writeJson } = await import('../lib/storage.ts')
     assert.equal(hasPersistentStorage, false, 'test is running without PostgreSQL')
     assert.equal(hasSettingsPersistence, true, 'private Supabase Storage is enough for admin settings')
 
@@ -57,6 +57,10 @@ async function main() {
     assert.equal(reloaded.tagalogOnlyEnabled, false, 'an explicit saved Tagalog-only admin choice is preserved')
     assert.equal(reloaded.noRepeatEnabled, true, 'no-repeat remains enforced')
     assert.equal(reloaded.shuffleEnabled, false, 'an explicit saved shuffle choice is preserved')
+    await writeJson(STATE_PATH, { dailyPlayedDate: '2026-11-14', dailyPlayedTitles: [{ title: 'Because You Loved Me', artist: 'Celine Dion', playedAt: 1, key: 'because you loved me' }] })
+    const restoredState = await readJson<{ dailyPlayedDate?: string; dailyPlayedTitles?: Array<{ key: string }> }>(STATE_PATH, {})
+    assert.equal(restoredState.dailyPlayedDate, '2026-11-14', 'queue state survives a process restart through private storage')
+    assert.equal(restoredState.dailyPlayedTitles?.[0]?.key, 'because you loved me', 'daily no-repeat ledger survives redeploy')
     console.log('settings-storage-fallback: durable private JSON fallback without PostgreSQL passed')
   } finally {
     globalThis.fetch = originalFetch

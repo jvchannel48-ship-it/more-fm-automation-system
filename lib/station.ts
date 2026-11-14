@@ -1,5 +1,5 @@
 import 'server-only'
-import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
+import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
@@ -341,6 +341,10 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   const blockedTitleKeys = settings.noRepeatEnabled
     ? new Set([
         ...state.dailyPlayedTitles.map((entry) => entry.key),
+        ...state.history
+          .filter((entry) => manilaDateKey(entry.t) === manilaDateKey(now))
+          .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
+          .filter(Boolean),
         ...state.tracks
           .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
           .map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''))
@@ -576,6 +580,10 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
     const blockedTitleKeys = latestSettings.noRepeatEnabled
       ? new Set([
           ...state.dailyPlayedTitles.map((entry) => entry.key),
+          ...state.history
+            .filter((entry) => manilaDateKey(entry.t) === manilaDateKey(now))
+            .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
+            .filter(Boolean),
           ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? '')).filter(Boolean),
         ])
       : new Set<string>()
@@ -782,6 +790,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
   for (const entry of last7Days) artistCounts.set(entry.artist, (artistCounts.get(entry.artist) ?? 0) + 1)
   return {
     ...settings,
+    queuePersistenceConfigured: hasQueuePersistence,
     songsThisWeek: state.history.length,
     artistsThisHour: hourArtists.size,
     queued: state.tracks.filter((t) => t.startAt > now).length,
