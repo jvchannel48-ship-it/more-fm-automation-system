@@ -20,6 +20,28 @@ const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 30
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 30
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
+const EMERGENCY_OPM_ROTATION = [
+  ['Rey Valera', 'Kung Kailangan Mo Ako'],
+  ['Basil Valdez', 'Ngayon at Kailanman'],
+  ['Martin Nievera', 'Kahit Isang Saglit'],
+  ['Regine Velasquez', 'Pangako'],
+  ['Gary Valenciano', 'Sana Maulit Muli'],
+  ['Ariel Rivera', 'Sana Kahit Minsan'],
+  ['Ogie Alcasid', 'Nandito Ako'],
+  ['Lea Salonga', 'Paano Kita Mapapasalamatan'],
+  ['Kuh Ledesma', 'Till I Met You'],
+  ['Zsa Zsa Padilla', 'Ikaw Lamang'],
+  ['Freddie Aguilar', 'Anak'],
+  ['Jose Mari Chan', 'Please Be Careful With My Heart'],
+  ['Vina Morales', 'Hanggang Saan Hanggang Kailan'],
+  ['Janno Gibbs', 'Ipagpatawad Mo'],
+  ['Sharon Cuneta', 'Sana’y Wala Nang Wakas'],
+  ['Apo Hiking Society', 'When I Met You'],
+  ['Eraserheads', 'Ang Huling El Bimbo'],
+  ['Side A', 'Forevermore'],
+  ['MYMP', 'Especially for You'],
+  ['South Border', 'Rainbow'],
+] as const
 // Coalesce simultaneous listener polls that land in the same server runtime.
 let activeQueueFill: Promise<void> | null = null
 
@@ -269,6 +291,33 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number, s
   return shuffleEnabled ? shuffle(selected) : selected
 }
 
+async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string>) {
+  for (let offset = 0; offset < EMERGENCY_OPM_ROTATION.length; offset++) {
+    const [artist, title] = EMERGENCY_OPM_ROTATION[(songCount + offset) % EMERGENCY_OPM_ROTATION.length]
+    if (blockedTitleKeys.has(repeatTitleKey(title, artist))) continue
+    const items = await searchMusicItems(`${artist} ${title}`)
+    const item = items.find((candidate) => {
+      const seconds = parseDuration(candidate.duration ?? '')
+      return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
+    })
+    if (!item) continue
+    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
+    if (!download?.downloadUrl) continue
+    return {
+      id: item.id,
+      key: songKey(item.title),
+      artist,
+      title: displayTitle(item.title, artist) || title,
+      src: playableSource(download.downloadUrl),
+      sourceUrl: item.url,
+      sourceChannel: item.channel,
+      sourceRefreshedAt: Date.now(),
+      duration: parseDuration(item.duration),
+    }
+  }
+  return null
+}
+
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled = true, blockedTitleKeys: Set<string> = new Set()) {
   const language = languageForSlot(program, songCount)
   const candidatesArtists = eligibleArtists(program.pools[language], history, now, shuffleEnabled)
@@ -446,6 +495,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+      ?? await findEmergencySong(state.songCount, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
