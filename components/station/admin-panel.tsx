@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
 import { RequestInbox } from './request-inbox'
 
+// Keep the admin rotation-history control aligned with the server's 50–300 song range.
 const fetcher = (url: string) => fetch(url).then((r) => {
   if (!r.ok) throw new Error('Unauthorized')
   return r.json() as Promise<AdminStatus>
