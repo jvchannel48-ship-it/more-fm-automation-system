@@ -18,6 +18,7 @@ const SOURCE_REFRESH_RETRY_MS = 45_000
 const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 30
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 30
+const FILL_BATCH_SIZE = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 const EMERGENCY_OPM_ROTATION = [
@@ -432,7 +433,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     : new Set<string>()
   const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
-  while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
+  while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < FILL_BATCH_SIZE) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
     const breakTime = manilaTime(breakAt)
@@ -844,12 +845,11 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
   const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
-    // Never block the live audio response while YouTube/provider search is running.
-    // Render keeps this process alive, so the refill continues in the background and
-    // the next 8-second poll receives the newly persisted tracks.
-    void fillQueueIfNeeded(settings).catch((error) => {
-      console.error('[morefm] background AutoDJ refill failed', error)
-    })
+    // Bootstrap exactly one next track in this request. This is intentionally
+    // bounded so Render never times out while the rolling queue grows to 30.
+    await fillQueueIfNeeded(settings)
+    const refreshed = await loadState(Date.now())
+    state = refreshed.state
   }
 
   const responseNow = Date.now()
