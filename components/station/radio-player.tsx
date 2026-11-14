@@ -17,14 +17,14 @@ const fetcher = (url: string) =>
 function StationVerifiedBadge() {
   return (
     <svg
-      aria-label="MOR 93.5 station badge"
+      aria-label="RJ FM 93.5 station badge"
       role="img"
       viewBox="0 0 24 24"
       className="inline-block size-6 shrink-0 align-middle drop-shadow-[0_2px_8px_rgba(24,119,242,0.35)]"
     >
       <circle cx="12" cy="12" r="10" fill="#1877F2" />
       <path d="m7.3 12.1 3.05 3.05 6.45-6.4" fill="none" stroke="white" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <title>MOR 93.5 station badge</title>
+      <title>RJ FM station badge</title>
     </svg>
   )
 }
@@ -178,7 +178,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={() => void togglePlay()}
           disabled={offAir || checkingCapacity}
-          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
+          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play RJ FM 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -197,7 +197,7 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          MOR <span className="text-primary">93.5</span> Naga <StationVerifiedBadge />
+          RJ FM <span className="text-primary">93.5</span> Naga <StationVerifiedBadge />
         </h2>
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
           <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />93.5 FM</span>
