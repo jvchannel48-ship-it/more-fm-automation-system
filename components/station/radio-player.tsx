@@ -45,8 +45,8 @@ export function RadioPlayer() {
       body: JSON.stringify({ uid }),
     }).then(() => mutate()).catch(() => undefined)
   }, [mutate])
-  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
-  const activeTrack = data?.tracks.find((track) => {
+  const { buffering, currentUid, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
+  const activeTrack = data?.tracks.find((track) => track.uid === currentUid) ?? data?.tracks.find((track) => {
     const now = data.serverTime
     return track.startAt <= now && track.startAt + track.duration * 1000 > now && (track.kind === 'music' || track.kind === 'mor-sync')
   })

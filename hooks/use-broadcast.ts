@@ -15,6 +15,7 @@ interface Slot {
   lastPlayAttemptAt: number
   activeWaitSince: number | null
   reloadAttempts: number
+  ended: boolean
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -53,8 +54,9 @@ function playErrorMessage(error: unknown) {
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
   const failedUids = useRef(new Set<string>())
+  const forcedNextUid = useRef<string | null>(null)
   const offset = useRef(0)
-  const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
+  const [state, setState] = useState({ onAir: false, buffering: false, offAir: false, currentUid: null as string | null })
   const [playbackIssue, setPlaybackIssue] = useState<string | null>(null)
 
   useEffect(() => {
@@ -75,7 +77,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0 }
+      el.onended = () => {
+        const slot = slots.current.find((candidate) => candidate.el === el)
+        if (slot) slot.ended = true
+      }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
     })
   }, [])
 
@@ -85,7 +91,35 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const tracks = data?.tracks ?? []
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
-      const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt - Math.max(0, t.fadeIn) * 1000 && now < t.startAt + t.duration * 1000)
+      const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt - Math.max(0, t.fadeIn) * 1000 && now < t.startAt + t.duration * 1000)
+      for (const slot of slots.current) {
+        if (!slot.ended || !slot.uid) continue
+        const finished = tracks.find((track) => track.uid === slot.uid)
+        const next = finished && tracks.find((track) => track.startAt > finished.startAt && !failedUids.current.has(track.uid))
+        if (next) {
+          forcedNextUid.current = next.uid
+          failedUids.current.add(finished.uid)
+          slot.el.pause()
+          slot.el.removeAttribute('src')
+          slot.el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.ended = false
+        } else if (finished) {
+          failedUids.current.add(finished.uid)
+          onStreamError?.(finished.uid)
+          slot.el.pause()
+          slot.el.removeAttribute('src')
+          slot.el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.ended = false
+        }
+      }
+      if (forcedNextUid.current && tracks.some((track) => track.uid === forcedNextUid.current && now >= track.startAt)) forcedNextUid.current = null
+      const active = scheduleOffAir ? [] : tracks.filter((track) => scheduledActive.includes(track) || track.uid === forcedNextUid.current)
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
       const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
@@ -116,6 +150,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.lastPlayAttemptAt = 0
           slot.activeWaitSince = null
           slot.reloadAttempts = 0
+          slot.ended = false
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -125,6 +160,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.lastPlayAttemptAt = 0
           slot.activeWaitSince = null
           slot.reloadAttempts = 0
+          slot.ended = false
           slot.el.src = track.src
           slot.el.load()
         }
@@ -215,9 +251,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       }
 
       const onAir = active.length > 0
+      const currentUid = active.at(-1)?.uid ?? null
       setState((prev) => {
-        const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir }
-        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir ? prev : next
+        const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir, currentUid }
+        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir && prev.currentUid === next.currentUid ? prev : next
       })
     }
 
