@@ -5,6 +5,7 @@ import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manil
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
+import { BRIGADA_NAGA_STATION_NAME, BRIGADA_NAGA_STREAM_URL } from './brigada'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -325,7 +326,11 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
-
+function manilaHourBoundary(ms: number, hour: number) {
+  const date = new Date(ms + MANILA_OFFSET_MS)
+  date.setUTCHours(hour, 0, 0, 0)
+  return date.getTime() - MANILA_OFFSET_MS
+}
 async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
   const blockedTitleKeys = settings.noRepeatEnabled
     ? new Set([
@@ -393,8 +398,22 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
+    if (program.id === 'brigada-news') {
+      const endAt = manilaHourBoundary(startAt, 7)
+      state.tracks.push({
+        uid: `brigada-news-${startAt}`,
+        src: BRIGADA_NAGA_STREAM_URL,
+        startAt,
+        duration: Math.max(1, (endAt - startAt) / 1000),
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'brigada-news',
+        title: BRIGADA_NAGA_STATION_NAME,
+      })
+      break
+    }
     const rotationProgram = manilaTime(startAt).day === 0
-      ? PROGRAMS['sunday-oldies']
+      ? program.id === 'sunday-english-oldies' ? PROGRAMS['sunday-english-oldies'] : PROGRAMS['sunday-oldies']
       : settings.tagalogOnlyEnabled
         ? PROGRAMS['sunday-tagalog']
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
@@ -404,11 +423,12 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    const sundayEnglishBoundary = program.id === 'sunday-english-oldies' ? manilaHourBoundary(songStart, 6) : Number.POSITIVE_INFINITY
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
       startAt: songStart,
-      duration: song.duration,
+      duration: Math.max(1, Math.min(song.duration, (sundayEnglishBoundary - songStart) / 1000)),
       fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
@@ -441,6 +461,11 @@ async function loadState(now: number) {
   const dailyKeys = new Set(state.dailyPlayedTitles.map((entry) => entry.key))
   for (const track of state.tracks) {
     if (!track.title) continue
+    const trackManila = manilaTime(track.startAt)
+    if (trackManila.day === 0 && trackManila.hour >= 4 && trackManila.hour < 6) {
+      const endAt = manilaHourBoundary(track.startAt, 6)
+      if (trackEnd(track) > endAt) track.duration = Math.max(1, (endAt - track.startAt) / 1000)
+    }
     if (!isCompletedDailyMusicTrack({
       kind: track.kind,
       title: track.title,
@@ -473,13 +498,15 @@ async function loadState(now: number) {
     const removeChristmas = isMusicTrack && isChristmasTrack
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
+    const trackManila = manilaTime(track.startAt)
+    const validSundayEnglishOldies = trackManila.hour >= 4 && trackManila.hour < 6
     const validSundayOldies = isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
     const removeSundayBreak = sunday && (
       ['jingle', 'commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
       || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
     )
     const removeSundayMusic = sunday && isMusicTrack && (
-      manilaTime(track.startAt).day !== 0 || !validSundayOldies
+      manilaTime(track.startAt).day !== 0 || (!validSundayOldies && !validSundayEnglishOldies)
     )
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest
