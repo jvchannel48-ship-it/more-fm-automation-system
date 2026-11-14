@@ -4,9 +4,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// Free converter CDNs rotate domains. Keep the allow-list focused on known
-// temporary download hosts used by the station's MP3 provider.
-const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com)$/i
+// YouTube returns short-lived media URLs on googlevideo.com. No third-party
+// converter/download API is accepted by this proxy.
+const ALLOWED_HOST = /(^|\.)googlevideo\.com$/i
 
 export async function GET(request: Request) {
   const rawUrl = new URL(request.url).searchParams.get('url')
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     }
 
     const contentType = upstream.headers.get('content-type')?.split(';')[0] || 'audio/mpeg'
-    // Reject HTML error pages that some free converters return instead of audio.
+    // Reject HTML/error responses instead of passing them to the audio element.
     if (contentType.includes('text/html') || contentType.includes('application/json')) {
       console.error('[morefm] upstream returned non-audio content-type', contentType, target.hostname)
       return NextResponse.json({ error: 'Audio source unavailable.' }, { status: 502 })

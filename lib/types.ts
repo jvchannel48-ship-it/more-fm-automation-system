@@ -13,6 +13,7 @@ export interface Track {
   sourceRefreshedAt?: number
   kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic' | 'brigada-news'
   title?: string
+  artist?: string
   morKey?: string
   morExactMatch?: boolean
 }
