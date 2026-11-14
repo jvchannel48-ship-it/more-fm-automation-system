@@ -131,7 +131,7 @@ export function EngagePanel() {
     {open && <form onSubmit={submitRequest} className="ui-depth flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/80 p-4 text-left shadow-xl shadow-black/20 backdrop-blur">
       <div>
         <h3 className="font-semibold">Request a song</h3>
-        <p className="text-xs text-muted-foreground">Requests are checked in order and played consecutively after the current song when a suitable match is available. An unmatched request stays pending without blocking later requests.</p>
+        <p className="text-xs text-muted-foreground">Requests are checked in order. When a suitable match is available, requests play consecutively after the current song. Unmatched requests remain pending and do not block later requests.</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="request-title">Song title</Label>

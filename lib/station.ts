@@ -685,6 +685,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     return {
       serverTime: Date.now(),
       offAir: true,
+      boardOperatorEnabled: settings.boardOperatorEnabled,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
@@ -712,6 +713,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     return {
       serverTime: responseNow,
       offAir: true,
+      boardOperatorEnabled: settings.boardOperatorEnabled,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(responseNow, settings.signOnHour) : null,
       signOffAt: settings.broadcastEnabled ? null : responseNow,
       tracks: [],
@@ -734,7 +736,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     }
   }
 
-  return { serverTime: responseNow, offAir: false, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
+  return { serverTime: responseNow, offAir: false, boardOperatorEnabled: settings.boardOperatorEnabled, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

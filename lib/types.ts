@@ -25,6 +25,7 @@ export interface AudioAsset {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  boardOperatorEnabled: boolean
   autoDjEnabled: boolean
   morSyncEnabled: boolean
   shuffleEnabled: boolean
@@ -73,6 +74,7 @@ export interface SongRequest {
 export interface NowResponse {
   serverTime: number
   offAir: boolean
+  boardOperatorEnabled: boolean
   nextOnAir: number | null
   signOffAt: number | null
   tracks: Track[]

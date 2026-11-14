@@ -177,6 +177,12 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] p-3">
+      <div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">When ON, the public player displays “Board Operator Active”. When OFF, the indicator is hidden from listeners.</p></div>
+      <Switch id="board-operator-enabled" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy}
+        onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} />
+    </div>
+
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–100-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}

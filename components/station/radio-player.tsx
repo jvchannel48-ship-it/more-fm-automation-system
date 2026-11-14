@@ -202,6 +202,12 @@ export function RadioPlayer() {
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           MOR 93.5 NAGA LIVESTREAM ONLY
         </p>
+        {data?.boardOperatorEnabled && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">
+            <span className="size-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden="true" />
+            Board Operator Active
+          </div>
+        )}
         {offAir && (
           <p className="text-sm text-muted-foreground">
             {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}

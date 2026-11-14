@@ -16,7 +16,7 @@ export async function PUT(request: NextRequest) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const body = (await request.json().catch(() => ({}))) as {
-      broadcastEnabled?: unknown; autoDjEnabled?: unknown; morSyncEnabled?: unknown; shuffleEnabled?: unknown; goodVibesEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
+      broadcastEnabled?: unknown; boardOperatorEnabled?: unknown; autoDjEnabled?: unknown; morSyncEnabled?: unknown; shuffleEnabled?: unknown; goodVibesEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
       christmasEnabled?: unknown; autoVoiceEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
@@ -45,6 +45,7 @@ export async function PUT(request: NextRequest) {
     if (nightVolumeStartHour === nightVolumeEndHour) return jsonError('Night-volume start and end must be different.', 400)
     const next = {
       broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
+      boardOperatorEnabled: typeof body.boardOperatorEnabled === 'boolean' ? body.boardOperatorEnabled : current.boardOperatorEnabled,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
       morSyncEnabled: typeof body.morSyncEnabled === 'boolean' ? body.morSyncEnabled : current.morSyncEnabled,
       shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,
