@@ -398,7 +398,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a microphone clip. It is queued after the current track on regular days; Sunday’s Tagalog oldies stream stays uninterrupted, so mic clips are not played then.</p></div>
+      <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a microphone clip. It is queued after the current track on regular days; Sunday’s golden jingle schedule remains separate, so mic clips are not played then.</p></div>
       <div className="flex flex-wrap gap-2">
         {recordingKind !== 'dj-mic' ? <Button type="button" variant="secondary" disabled={!data?.djMicEnabled || busy || recordingKind !== null} onClick={() => void startDjRecording('dj-mic')}><Mic2 aria-hidden="true" /> Record DJ Mic</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop recording</Button>}
         {!data?.djMicEnabled && <span className="self-center text-xs text-muted-foreground">Turn on DJ Mic above first.</span>}
@@ -407,7 +407,7 @@ export function AdminPanel() {
     </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, the station jingle plays automatically after every 4 songs, then the next music track starts. Jingles are suppressed all day Sunday. MP3 supported · max 4 MB.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, the station jingle plays automatically after every 4 songs, then the next music track starts. Sunday uses the golden jingle after every 5 songs from 6:00 AM; songs stay continuous from midnight until morning. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -435,6 +435,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, jingles, commercials, or news. Christmas tracks are excluded for now. On other days, the RJ FM jingle plays after every four songs before the next music track. Rotation is Tagalog-only by default, shuffled, and avoids repeats within the configured history.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, commercials, or news. From 6:00 AM, the Sunday golden jingle plays after every five songs; from 12:00 AM until morning, songs remain continuous. On other days, the RJ FM jingle plays after every four songs before the next music track.</p>
   </div>
 }

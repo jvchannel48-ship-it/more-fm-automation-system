@@ -343,7 +343,11 @@ export const DEFAULT_SETTINGS: StationSettings = {
     duration: 8.04,
   },
   commercials: [null, null, null],
-  goldenSunday: null,
+  goldenSunday: {
+    url: '/rj-fm-golden-sunday.mp3',
+    name: 'RJFMGoldenSunday-usesuno.com.mp3',
+    duration: 8.688,
+  },
   news: null,
   djMic: null,
 }
@@ -410,7 +414,7 @@ export async function getSettings(): Promise<StationSettings> {
       const asset = saved.commercials?.[i]
       return asset && typeof asset.url === 'string' ? asset : null
     }),
-    goldenSunday: saved.goldenSunday && typeof saved.goldenSunday.url === 'string' ? saved.goldenSunday : null,
+    goldenSunday: DEFAULT_SETTINGS.goldenSunday,
     news: saved.news && typeof saved.news.url === 'string' ? saved.news : null,
     djMic: saved.djMic && typeof saved.djMic.url === 'string' ? saved.djMic : null,
   }

@@ -341,12 +341,16 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
-    const sunday = manilaTime(breakAt).day === 0
-    if (!sunday && state.songCount > 0 && state.songCount % 4 === 0 && state.lastBreakSongCount !== state.songCount) {
+    const breakTime = manilaTime(breakAt)
+    const sunday = breakTime.day === 0
+    const sundayGoldenBreak = sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
+    const regularBreak = !sunday && state.songCount > 0 && state.songCount % 4 === 0
+    if ((sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
-      const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
-      if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
-      if (settings.jingleEnabled && settings.commercialEnabled) {
+      const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' | 'golden-sunday' }> = []
+      if (sundayGoldenBreak && settings.goldenSunday) spots.push({ asset: settings.goldenSunday, kind: 'golden-sunday' })
+      if (regularBreak && settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
+      if (regularBreak && settings.jingleEnabled && settings.commercialEnabled) {
         for (const asset of settings.commercials) if (asset) spots.push({ asset, kind: 'commercial' })
       }
       if (spots.length > 0) {
@@ -470,7 +474,10 @@ async function loadState(now: number) {
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const validSundayOldies = isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
-    const removeSundayBreak = sunday && ['jingle', 'commercial', 'news', 'golden-sunday', 'dj-mic'].includes(track.kind ?? '')
+    const removeSundayBreak = sunday && (
+      ['jingle', 'commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
+      || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
+    )
     const removeSundayMusic = sunday && isMusicTrack && (
       manilaTime(track.startAt).day !== 0 || !validSundayOldies
     )
