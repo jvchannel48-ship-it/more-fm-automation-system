@@ -23,14 +23,15 @@ export async function GET(request: Request) {
   }
 
   try {
+    const range = request.headers.get('range')
     const upstream = await fetch(target, {
       cache: 'no-store',
       headers: {
         Accept: 'audio/mpeg,audio/*;q=0.9,*/*;q=0.5',
         Referer: 'https://www.youtube.com/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ...(range ? { Range: range } : {}),
       },
-      signal: AbortSignal.timeout(55_000),
       redirect: 'follow',
     })
     if (!upstream.ok || !upstream.body) {
@@ -50,9 +51,11 @@ export async function GET(request: Request) {
       'Content-Type': contentType,
       'Accept-Ranges': 'bytes',
     })
-    const length = upstream.headers.get('content-length')
-    if (length) headers.set('Content-Length', length)
-    return new Response(upstream.body, { status: 200, headers })
+    for (const name of ['content-length', 'content-range', 'content-disposition', 'etag', 'last-modified']) {
+      const value = upstream.headers.get(name)
+      if (value) headers.set(name, value)
+    }
+    return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers })
   } catch (error) {
     console.error('[morefm] audio proxy failed', target.hostname, error)
     return NextResponse.json({ error: 'Audio source unavailable.' }, { status: 502 })

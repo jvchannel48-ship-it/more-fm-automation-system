@@ -6,7 +6,7 @@ const AUDIO_PATH_PATTERN = /^[a-zA-Z0-9._-]+$/
 
 // Only audio paths listed in the persisted station settings can be streamed.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params
@@ -34,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: 'Audio not found.' }, { status: 404 })
     }
 
-    const audio = await fetchSupabaseAudio(pathname)
+    const audio = await fetchSupabaseAudio(pathname, request.headers.get('range'))
     if (audio.status === 404) return NextResponse.json({ error: 'Audio not found.' }, { status: 404 })
     if (!audio.ok || !audio.body) {
       console.error(`[morefm] Supabase audio fetch failed (${audio.status}).`)
@@ -45,12 +45,13 @@ export async function GET(
       'Content-Type': audio.headers.get('content-type') || 'application/octet-stream',
       'Content-Disposition': 'inline',
       'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
+      'Accept-Ranges': 'bytes',
     })
-    const contentLength = audio.headers.get('content-length')
-    const etag = audio.headers.get('etag')
-    if (contentLength) headers.set('Content-Length', contentLength)
-    if (etag) headers.set('ETag', etag)
-    return new Response(audio.body, { headers })
+    for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
+      const value = audio.headers.get(name)
+      if (value) headers.set(name, value)
+    }
+    return new Response(audio.body, { status: audio.status, statusText: audio.statusText, headers })
   } catch (error) {
     console.error('[morefm] private Supabase audio playback failed', error)
     return NextResponse.json({ error: 'Audio could not be loaded.' }, { status: 502 })
