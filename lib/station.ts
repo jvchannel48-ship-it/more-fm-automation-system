@@ -99,6 +99,21 @@ function asSearchItems(items: YouTubeSearchResult[]): SearchItem[] {
   return items.map((item) => ({ ...item }))
 }
 
+async function searchMusicItems(query: string) {
+  const [youtubeItems, providerData] = await Promise.all([
+    searchYouTube(`${query} official audio`, 12),
+    fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(query)}`, 8_000),
+  ])
+  const merged = [...asSearchItems(youtubeItems), ...(providerData?.items ?? [])]
+  const seen = new Set<string>()
+  return merged.filter((item) => {
+    const key = item.id || item.url
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function isDisallowedSearchItem(item: SearchItem) {
   const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
   return liveFlag || hasBlacklistedTitle(item.title) || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
@@ -107,7 +122,7 @@ function isDisallowedSearchItem(item: SearchItem) {
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set(), requireTagalog = false) {
   if (isChristmasTitle(title) || (requireTagalog && !TAGALOG_TITLE_RULE.test(title))) return null
   if (blockedTitleKeys.has(repeatTitleKey(title, artist))) return null
-  const items = asSearchItems(await searchYouTube(`${title} ${artist} official audio`, 12))
+  const items = await searchMusicItems(`${title} ${artist}`)
   const expectedTitle = normalizeMorMatchText(title)
   const expectedArtist = normalizeMorMatchText(artist)
   const candidates = items.filter((item) => {
@@ -261,7 +276,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
   const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
     const variant = (shuffleEnabled ? variants[Math.floor(Math.random() * variants.length)] : variants[0]) ?? ''
-    const items = asSearchItems(await searchYouTube(`${artist.name} ${variant} official audio`, 12))
+    const items = await searchMusicItems(`${artist.name} ${variant}`)
     return { artist, items }
   }))
 
