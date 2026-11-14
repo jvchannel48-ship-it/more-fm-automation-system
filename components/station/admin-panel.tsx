@@ -28,12 +28,12 @@ function hourLabel(hour: number) {
   return `${displayHour}:00 ${suffix}`
 }
 
-type UsageResponse = { usage: { provider: string; databaseBytes: number; stationAudioBytes: number; stationAudioFiles: number; measuredAt: number } }
+type UsageResponse = { usage: { provider: string; databaseBytes: number; stationAudioBytes: number; stationAudioFiles: number; measuredAt: number } | null; unavailable?: boolean; error?: string }
 async function usageFetcher(url: string): Promise<UsageResponse> {
   const response = await fetch(url, { cache: 'no-store' })
   const result = await response.json().catch(() => null) as (UsageResponse & { error?: string }) | null
-  if (!response.ok || !result?.usage) throw new Error(result?.error ?? 'Could not load storage usage.')
-  return result
+  if (!response.ok) throw new Error(result?.error ?? 'Could not load storage usage.')
+  return result ?? { usage: null, unavailable: true }
 }
 function formatBytes(value: number) {
   if (value < 1024) return `${value} B`
@@ -370,11 +370,11 @@ export function AdminPanel() {
     </div>
     <p className="-mt-2 text-[11px] text-muted-foreground">Estimated browsers currently playing; inactive sessions expire after one minute.</p>
     <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-      <div className="flex items-center gap-2"><Database className="size-4 text-primary" aria-hidden="true" /><div><h3 className="text-sm font-semibold">Live storage usage</h3><p className="text-xs text-muted-foreground">{usageData?.usage.provider ?? 'Supabase connected to Vercel'}</p></div></div>
-      {usageError ? <p className="text-xs text-destructive" role="alert">{usageError.message} — check Supabase Storage permissions and database connection.</p> : usageData ? <div className="grid grid-cols-2 gap-2">
+      <div className="flex items-center gap-2"><Database className="size-4 text-primary" aria-hidden="true" /><div><h3 className="text-sm font-semibold">Live storage usage</h3><p className="text-xs text-muted-foreground">{usageData?.usage?.provider ?? 'Optional monitor'}</p></div></div>
+      {usageError ? <p className="text-xs text-muted-foreground">Storage usage unavailable. Station controls remain available.</p> : usageData?.usage ? <div className="grid grid-cols-2 gap-2">
         <Stat label="Supabase database" value={formatBytes(usageData.usage.databaseBytes)} />
         <Stat label="Station audio files" value={`${formatBytes(usageData.usage.stationAudioBytes)} · ${usageData.usage.stationAudioFiles} files`} />
-      </div> : <p className="text-xs text-muted-foreground">Loading live Supabase usage…</p>}
+      </div> : <p className="text-xs text-muted-foreground">Storage usage unavailable. Station controls remain available.</p>}
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Database size is reported by PostgreSQL; audio totals use stored object file sizes in this app’s Supabase Storage bucket. This is app storage, not total Vercel bandwidth, build, or function quota.</p>
         <Button type="button" variant="ghost" size="sm" onClick={() => void mutateUsage()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh usage</Button></div>
     </div>

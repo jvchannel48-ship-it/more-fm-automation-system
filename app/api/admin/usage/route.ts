@@ -10,6 +10,6 @@ export async function GET() {
     return NextResponse.json({ usage: await getStorageUsage() }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('[morefm] admin storage usage failed', error)
-    return NextResponse.json({ error: 'Could not read Supabase storage usage.' }, { status: 503 })
+    return NextResponse.json({ usage: null, unavailable: true, error: 'Storage usage is unavailable for this deployment.' }, { headers: { 'Cache-Control': 'no-store' } })
   }
 }
