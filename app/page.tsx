@@ -11,7 +11,7 @@ export default function Home() {
       />
       <header className="glass-surface mx-auto mt-3 flex w-[calc(100%-1.5rem)] max-w-3xl items-center justify-between gap-3 rounded-2xl px-4 py-3 sm:mt-5">
         <div className="flex items-center gap-3">
-          <div className="size-11 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10">
+          <div className="size-16 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10 sm:size-20">
             <img src="/rj-fm-logo.jpg" alt="RJ FM station logo" className="size-full rounded-full object-cover" />
           </div>
           <span className="font-mono text-sm font-bold tracking-widest">
