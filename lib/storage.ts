@@ -1,7 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
-import type { CrossfaderCurve, MorSyncRecord, SongRequest, StationSettings } from './types'
+import type { CrossfaderCurve, ListenerGeoLocation, ListenerGeoSummary, MorSyncRecord, SongRequest, StationSettings } from './types'
 
 const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
@@ -47,8 +47,14 @@ async function ensureStateTable() {
       );
       CREATE TABLE IF NOT EXISTS public.morefm_listeners (
         listener_id text PRIMARY KEY,
-        last_seen_at timestamptz NOT NULL DEFAULT now()
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        country_code text,
+        region text,
+        city text
       );
+      ALTER TABLE public.morefm_listeners ADD COLUMN IF NOT EXISTS country_code text;
+      ALTER TABLE public.morefm_listeners ADD COLUMN IF NOT EXISTS region text;
+      ALTER TABLE public.morefm_listeners ADD COLUMN IF NOT EXISTS city text;
       ALTER TABLE public.morefm_state ENABLE ROW LEVEL SECURITY;
     `).then(() => undefined).catch((error) => {
       globals.__moreFmSchemaPromise = undefined
@@ -171,7 +177,7 @@ export async function renewStationLease(lease: StationLease, leaseMs: number): P
   return result.rowCount === 1
 }
 
-export async function registerListener(id: string, active: boolean, listenerLimit: number) {
+export async function registerListener(id: string, active: boolean, listenerLimit: number, location?: Pick<ListenerGeoLocation, 'city' | 'region' | 'countryCode'>) {
   const pool = getPool()
   if (!pool) throw new Error('Supabase Postgres is not configured for this deployment.')
   await ensureStateTable()
@@ -188,9 +194,12 @@ export async function registerListener(id: string, active: boolean, listenerLimi
         accepted = false
       } else {
         await client.query(
-          `INSERT INTO public.morefm_listeners (listener_id, last_seen_at) VALUES ($1, now())
-           ON CONFLICT (listener_id) DO UPDATE SET last_seen_at = now()`,
-          [id],
+          `INSERT INTO public.morefm_listeners (listener_id, last_seen_at, country_code, region, city)
+           VALUES ($1, now(), $2, $3, $4)
+           ON CONFLICT (listener_id) DO UPDATE
+           SET last_seen_at = now(), country_code = EXCLUDED.country_code,
+               region = EXCLUDED.region, city = EXCLUDED.city`,
+          [id, location?.countryCode ?? null, location?.region ?? null, location?.city ?? null],
         )
       }
     } else {
@@ -214,6 +223,35 @@ export async function getStoredListenerCount() {
   await pool.query("DELETE FROM public.morefm_listeners WHERE last_seen_at < now() - interval '60 seconds'")
   const result = await pool.query<{ count: string }>('SELECT count(*)::text AS count FROM public.morefm_listeners')
   return Number(result.rows[0]?.count ?? 0)
+}
+
+export async function getStoredListenerGeo(): Promise<ListenerGeoSummary> {
+  const pool = getPool()
+  if (!pool) return { locations: [], locatedListeners: 0, unlocatedListeners: 0 }
+  await ensureStateTable()
+  await pool.query("DELETE FROM public.morefm_listeners WHERE last_seen_at < now() - interval '60 seconds'")
+  const result = await pool.query<{
+    country_code: string | null
+    region: string | null
+    city: string | null
+    listeners: string
+  }>(`
+    SELECT country_code, region, city, count(*)::text AS listeners
+    FROM public.morefm_listeners
+    WHERE last_seen_at >= now() - interval '60 seconds'
+    GROUP BY country_code, region, city
+    ORDER BY count(*) DESC, country_code NULLS LAST, region NULLS LAST, city NULLS LAST
+  `)
+  const groups = result.rows.map((row) => ({
+    countryCode: row.country_code,
+    region: row.region,
+    city: row.city,
+    listeners: Number(row.listeners),
+  }))
+  const locations = groups.filter((group) => Boolean(group.countryCode || group.region || group.city))
+  const locatedListeners = locations.reduce((total, group) => total + group.listeners, 0)
+  const totalListeners = groups.reduce((total, group) => total + group.listeners, 0)
+  return { locations, locatedListeners, unlocatedListeners: Math.max(0, totalListeners - locatedListeners) }
 }
 
 async function getListenerCountFromState() {

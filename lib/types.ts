@@ -108,6 +108,19 @@ export interface MorSyncRecord {
   updatedAt: number | null
 }
 
+export interface ListenerGeoLocation {
+  city: string | null
+  region: string | null
+  countryCode: string | null
+  listeners: number
+}
+
+export interface ListenerGeoSummary {
+  locations: ListenerGeoLocation[]
+  locatedListeners: number
+  unlocatedListeners: number
+}
+
 export interface AdminStatus extends StationSettings {
   songsThisWeek: number
   artistsThisHour: number
@@ -130,4 +143,5 @@ export interface AdminStatus extends StationSettings {
   moreFmNowPlaying: string | null
   morSyncStatus: MorSyncStatus
   morCheckedAt: number | null
+  listenerGeo: ListenerGeoSummary
 }

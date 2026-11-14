@@ -1,5 +1,5 @@
 import 'server-only'
-import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, getStoredListenerGeo, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
@@ -738,9 +738,10 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [{ state }, settings, listenersNow, ratings, requests, morRecord] = await Promise.all([
+  const [{ state }, settings, listenersNow, ratings, requests, morRecord, listenerGeo] = await Promise.all([
     loadState(now), getSettings(), getListenerCount(), getRatings(), getSongRequests(),
     readJson<MorSyncRecord>(MOR_SYNC_PATH, EMPTY_MOR_SYNC_RECORD),
+    getStoredListenerGeo(),
   ])
   const activeTrack = state.tracks.find((track) => track.startAt <= now && trackEnd(track) > now)
   const nextTrack = state.tracks.find((track) => track.startAt > now)
@@ -765,6 +766,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     moreFmNowPlaying: activeTrack?.title ?? nextTrack?.title ?? null,
     morSyncStatus,
     morCheckedAt: morRecord.metadata?.checkedAt ?? null,
+    listenerGeo,
     playbackStats: {
       last24Hours: last24Hours.length,
       last7Days: last7Days.length,

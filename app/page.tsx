@@ -35,6 +35,7 @@ export default function Home() {
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-success"><span className="size-1.5 rounded-full bg-success shadow-[0_0_12px_var(--success)]" /> On air from Naga</div>
+        <p className="max-w-xl text-[10px] leading-relaxed text-muted-foreground">When you listen, the station may process approximate city, region, or country information supplied by the hosting network. This feature does not request GPS or store raw IP addresses; active location records expire after 60 seconds without a heartbeat.</p>
       </footer>
     </div>
   )

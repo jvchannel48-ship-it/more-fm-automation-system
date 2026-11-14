@@ -33,14 +33,33 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [checkingCapacity, setCheckingCapacity] = useState(false)
   const [listenerMessage, setListenerMessage] = useState('')
+  const [nowPlayingIssue, setNowPlayingIssue] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
-  const { data, error } = useSWR('/api/now', fetcher, {
+  const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume)
+  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume)
+  useEffect(() => {
+    if (!playbackIssue) return
+    setPlaying(false)
+    void mutate()
+  }, [playbackIssue, mutate])
+  useEffect(() => {
+    if (!playing || data) {
+      setNowPlayingIssue('')
+      return
+    }
+    const timeout = window.setTimeout(() => setNowPlayingIssue('The station has not returned a playback response. Press Play again to reconnect.'), 25_000)
+    return () => window.clearTimeout(timeout)
+  }, [playing, data])
+  useEffect(() => {
+    if (!nowPlayingIssue) return
+    setPlaying(false)
+    void mutate()
+  }, [nowPlayingIssue, mutate])
   useEffect(() => {
     if (!playing || data?.offAir) return
     let id = localStorage.getItem('morefm-listener-id')
@@ -79,7 +98,7 @@ export function RadioPlayer() {
   }, [playing, data?.offAir])
 
   const offAir = (data?.offAir ?? false) || scheduledOffAir
-  const live = playing && !buffering && !offAir
+  const live = playing && !buffering && !offAir && !playbackIssue
   const listenerId = () => {
     let id = localStorage.getItem('morefm-listener-id')
     if (!id) {
@@ -100,6 +119,7 @@ export function RadioPlayer() {
     unlock()
     setCheckingCapacity(true)
     setListenerMessage('')
+    setNowPlayingIssue('')
     try {
       const response = await fetch('/api/listeners', {
         method: 'POST',
@@ -192,6 +212,8 @@ export function RadioPlayer() {
             Could not connect to the station. Retrying...
           </p>
         )}
+        {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
+        {nowPlayingIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{nowPlayingIssue}</p>}
         {listenerMessage && <p className="max-w-sm text-sm font-semibold text-destructive" role="alert" aria-live="assertive">{listenerMessage}</p>}
       </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Clock3, Database, Mic2, RefreshCw, Square, Upload } from 'lucide-react'
+import { Clock3, Database, MapPin, Mic2, RefreshCw, Square, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -223,6 +223,13 @@ export function AdminPanel() {
       <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 100 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
         onClick={() => send('PUT', { rotationPoolSize: Number(rotationPoolSize), listenerLimit: Number(listenerLimit) })}>Save rotation and listener limits</Button>
       <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION IS LIMITED LISTENER. Please try again later.” Existing listeners stay connected. Listener cap defaults to unlimited.</p>
+      <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
+        <div className="flex items-start gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-sky-300" aria-hidden="true" /><div><Label>Listener Location Monitor</Label><p className="text-xs text-muted-foreground">Approximate city, region, and country from hosting network headers. No GPS is requested and this app does not store raw IP addresses.</p></div></div>
+        <div className="flex flex-col gap-2">
+          {(data?.listenerGeo?.locations ?? []).length > 0 ? data?.listenerGeo?.locations.map((location, index) => <div key={`${location.countryCode ?? ''}-${location.region ?? ''}-${location.city ?? ''}-${index}`} className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/55 px-3 py-2 text-sm"><span className="truncate">{[location.city, location.region, location.countryCode].filter(Boolean).join(', ')}</span><span className="shrink-0 font-mono text-xs text-muted-foreground">{location.listeners}</span></div>) : <p className="rounded-md border border-border/70 bg-background/55 px-3 py-2 text-xs text-muted-foreground">{data?.listenersNow ? 'No approximate location headers are available for active listeners.' : 'No active listeners right now.'}</p>}
+        </div>
+        <p className="text-[11px] text-muted-foreground">{data?.listenerGeo?.locatedListeners ?? 0} located · {data?.listenerGeo?.unlocatedListeners ?? 0} without location · active records expire 60 seconds after the last heartbeat.</p>
+      </div>
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">

@@ -4,6 +4,18 @@ import { getSettings } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 
+function geoHeader(request: NextRequest, ...names: string[]) {
+  for (const name of names) {
+    const raw = request.headers.get(name)
+    if (!raw) continue
+    let value = raw.trim()
+    try { value = decodeURIComponent(value.replace(/\+/g, '%20')) } catch { /* Keep the sanitized raw header. */ }
+    const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+    if (cleaned) return cleaned
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json().catch(() => ({}))) as { id?: unknown; active?: unknown }
@@ -11,7 +23,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid listener heartbeat' }, { status: 400 })
     }
     const settings = await getSettings()
-    const result = await updateListener(body.id, body.active, settings.listenerLimit)
+    const rawCountry = geoHeader(request, 'x-vercel-ip-country', 'cf-ipcountry')?.toUpperCase() ?? null
+    const location = {
+      city: geoHeader(request, 'x-vercel-ip-city'),
+      region: geoHeader(request, 'x-vercel-ip-country-region'),
+      countryCode: rawCountry && /^[A-Z]{2}$/.test(rawCountry) && rawCountry !== 'XX' ? rawCountry : null,
+    }
+    const result = await updateListener(body.id, body.active, settings.listenerLimit, location)
     return NextResponse.json({
       accepted: result.accepted,
       listenersNow: result.listenersNow,

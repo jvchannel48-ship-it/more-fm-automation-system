@@ -13,6 +13,7 @@ interface Slot {
   src: string | null
   synced: boolean
   lastPlayAttemptAt: number
+  activeWaitSince: number | null
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -41,10 +42,26 @@ function trackGain(track: Track, now: number, enabled: boolean, curveName: strin
   return Math.min(fadeIn, fadeOut)
 }
 
+function playErrorMessage(error: unknown) {
+  const name = error instanceof DOMException ? error.name : ''
+  if (name === 'NotAllowedError') return 'Your browser blocked audio playback. Press Play again to allow the station audio.'
+  if (name === 'NotSupportedError') return 'This browser could not decode the station audio. Try another browser or device.'
+  return 'The station audio could not start. Press Play again to reconnect.'
+}
+
+function mediaErrorMessage(code: number) {
+  if (code === 2) return 'The station audio connection failed. Press Play again to reconnect.'
+  if (code === 3) return 'The station audio could not be decoded. Press Play again to retry.'
+  if (code === 4) return 'The station audio source is unavailable. Press Play again to refresh it.'
+  return 'The station audio stopped unexpectedly. Press Play again to reconnect.'
+}
+
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
+  const [playbackIssue, setPlaybackIssue] = useState<string | null>(null)
+  const noTrackSince = useRef<number | null>(null)
 
   useEffect(() => {
     if (!data) return
@@ -52,6 +69,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   }, [data])
 
   const unlock = useCallback(() => {
+    setPlaybackIssue(null)
     if (slots.current.length > 0) return
     slots.current = Array.from({ length: 5 }, () => {
       const el = new Audio()
@@ -59,7 +77,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0 }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null }
     })
   }, [])
 
@@ -98,6 +116,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.src = track.src
           slot.synced = false
           slot.lastPlayAttemptAt = 0
+          slot.activeWaitSince = null
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -105,6 +124,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.src = track.src
           slot.synced = false
           slot.lastPlayAttemptAt = 0
+          slot.activeWaitSince = null
           slot.el.src = track.src
           slot.el.load()
         }
@@ -112,6 +132,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         const el = slot.el
 
         if (!playing || !isActive) {
+          slot.activeWaitSince = null
           if (!el.paused) el.pause()
           continue
         }
@@ -122,6 +143,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           // Reload the same element so the next poll/source refresh can recover it.
           slot.lastPlayAttemptAt = now
           slot.synced = false
+          setPlaybackIssue(mediaErrorMessage(el.error.code))
           el.load()
         }
         if (el.readyState >= 1) {
@@ -133,7 +155,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
         // HAVE_CURRENT_DATA (2) is enough to begin playback. Waiting for HAVE_FUTURE_DATA
         // (3) made the UI report an endless loading state for some valid remote MP3s.
-        if (el.readyState < 2 && !el.ended) buffering = true
+        if (el.readyState < 2 && !el.ended) {
+          buffering = true
+          slot.activeWaitSince ??= now
+          if (now - slot.activeWaitSince >= 25_000) setPlaybackIssue('The stream is taking too long to load. Press Play again to reconnect.')
+        } else {
+          slot.activeWaitSince = null
+        }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
         const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
         // Keep playback on the native element: third-party MP3 hosts may not send
@@ -141,11 +169,19 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
-          el.play().catch(() => undefined)
+          el.play().then(() => setPlaybackIssue(null)).catch((error: unknown) => {
+            if (!(error instanceof DOMException) || error.name !== 'AbortError') setPlaybackIssue(playErrorMessage(error))
+          })
         }
       }
 
       const onAir = active.length > 0
+      if (data && playing && !onAir && !scheduleOffAir) {
+        noTrackSince.current ??= now
+        if (now - noTrackSince.current >= 25_000) setPlaybackIssue('No active audio stream is available right now. Press Play again to reconnect.')
+      } else {
+        noTrackSince.current = null
+      }
       setState((prev) => {
         const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir }
         return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir ? prev : next
@@ -178,5 +214,5 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     [],
   )
 
-  return { ...state, unlock }
+  return { ...state, playbackIssue, unlock }
 }
