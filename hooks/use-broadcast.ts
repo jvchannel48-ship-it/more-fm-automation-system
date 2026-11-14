@@ -160,9 +160,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
             }
           }
         }
-        // HAVE_CURRENT_DATA (2) is enough to begin playback. Waiting for HAVE_FUTURE_DATA
-        // (3) made the UI report an endless loading state for some valid remote MP3s.
-        if (el.readyState < 2 && !el.ended) {
+        // A live radio relay can begin from HAVE_METADATA (1) while the browser
+        // continues filling its rolling buffer. Waiting for HAVE_CURRENT_DATA
+        // makes valid live streams appear stuck in loading on mobile browsers.
+        const minimumReadyState = track.kind === 'brigada-news' ? 1 : 2
+        if (el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
           if (now - slot.activeWaitSince >= 25_000) setPlaybackIssue('The stream is taking too long to load. Press Play again to reconnect.')
