@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, PROGRAMS, programAt } from '../lib/schedule.ts'
+import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, nextSundayPlaylistBoundary, PROGRAMS, programAt, sundayPlaylistAt } from '../lib/schedule.ts'
 
 function manilaTimeAt(year: number, month: number, day: number, hour = 12, minute = 0) {
   return Date.UTC(year, month - 1, day, hour, minute) - MANILA_OFFSET_MS
@@ -59,5 +59,14 @@ for (const date of [14, 16, 17, 18, 19, 20]) {
   assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 4)), false, `weekday ${date} signs on at 4 AM`)
 }
 assert.equal(isOffAir(manilaTimeAt(2026, 11, 15, 2)), false, 'Sunday stays on air overnight')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 3, 59)), 'rj-fm', 'Sunday before 4 AM uses RJ FM playlist')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 4)), 'golden-sunday', 'Sunday 4 AM starts Golden Sunday playlist')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 11, 59)), 'golden-sunday', 'Golden Sunday runs through 11:59 AM')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 12)), 'sunday-afternoon', 'Sunday noon switches to the afternoon playlist')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 22, 1)), 'sunday-afternoon', 'Sunday 10:01 PM remains on the afternoon playlist')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 22, 2)), 'rj-fm', 'Sunday 10:02 PM switches to RJ FM playlist')
+assert.equal(nextSundayPlaylistBoundary(manilaTimeAt(2026, 11, 15, 11, 59)), manilaTimeAt(2026, 11, 15, 12), 'Golden Sunday tracks end at noon')
+assert.equal(nextSundayPlaylistBoundary(manilaTimeAt(2026, 11, 15, 22, 1)), manilaTimeAt(2026, 11, 15, 22, 2), 'Afternoon tracks end at 10:02 PM')
+assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 16, 12)), null, 'Weekday playlist selection is not Sunday-specific')
 
 console.log('station-schedule: Christmas disabled and all-day Tagalog Sunday oldies passed')

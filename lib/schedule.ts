@@ -3,6 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
+export type SundayPlaylistId = 'golden-sunday' | 'sunday-afternoon' | 'rj-fm'
 export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
@@ -347,6 +348,29 @@ export interface ManilaTime {
 export function manilaTime(ms: number): ManilaTime {
   const d = new Date(ms + MANILA_OFFSET_MS)
   return { hour: d.getUTCHours(), minute: d.getUTCMinutes(), day: d.getUTCDay() }
+}
+
+/** Sunday playlist windows in Manila time. Other days return null. */
+export function sundayPlaylistAt(ms: number): SundayPlaylistId | null {
+  const { hour, minute, day } = manilaTime(ms)
+  if (day !== 0) return null
+  const minutes = hour * 60 + minute
+  if (minutes >= 4 * 60 && minutes < 12 * 60) return 'golden-sunday'
+  if (minutes >= 12 * 60 && minutes < 22 * 60 + 2) return 'sunday-afternoon'
+  return 'rj-fm'
+}
+
+/** Return the next Sunday playlist boundary for a track that starts on Sunday. */
+export function nextSundayPlaylistBoundary(ms: number): number | null {
+  const playlist = sundayPlaylistAt(ms)
+  if (!playlist) return null
+  const boundaryHour = playlist === 'golden-sunday' ? 12 : playlist === 'sunday-afternoon' ? 22 : null
+  const boundaryMinute = playlist === 'sunday-afternoon' ? 2 : 0
+  if (boundaryHour === null) return null
+  const date = new Date(ms + MANILA_OFFSET_MS)
+  date.setUTCHours(boundaryHour, boundaryMinute, 0, 0)
+  const boundary = date.getTime() - MANILA_OFFSET_MS
+  return boundary > ms ? boundary : null
 }
 
 export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {

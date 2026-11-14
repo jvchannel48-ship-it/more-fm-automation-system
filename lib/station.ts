@@ -1,14 +1,13 @@
 import 'server-only'
 import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, sundayPlaylistAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
-import { getRjFmPlaylistTracks, searchYouTube, type YouTubeSearchResult } from './youtube-search'
+import { GOLDEN_SUNDAY_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, SUNDAY_AFTERNOON_PLAYLIST_URL, searchYouTube, type YouTubeSearchResult } from './youtube-search'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
-const RJ_FM_PLAYLIST_ID = 'PLd469-e1TkbM'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
@@ -390,11 +389,14 @@ function playlistArtist(title: string, channel?: string) {
   return firstPart && firstPart.length <= 80 ? firstPart : channel?.trim() || 'RJ FM Playlist'
 }
 
-async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>) {
-  const playlist = await getRjFmPlaylistTracks()
+async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>, playlistUrl: string, startAt: number) {
+  const playlist = playlistUrl === RJ_FM_PLAYLIST_URL
+    ? await getRjFmPlaylistTracks()
+    : await getPlaylistTracks(playlistUrl)
   if (playlist.length === 0) return null
+  const weeklyOffset = weeklyPlaylistOffset(startAt, playlist.length)
   for (let offset = 0; offset < playlist.length; offset++) {
-    const item = playlist[(songCount + offset) % playlist.length]
+    const item = playlist[(weeklyOffset + songCount + offset) % playlist.length]
     const artist = playlistArtist(item.title, item.channel)
     if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist))) continue
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 8_000)
@@ -407,7 +409,7 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
       src: playableSource(download.downloadUrl),
       sourceUrl: item.url,
       sourceChannel: item.channel,
-      sourcePlaylist: RJ_FM_PLAYLIST_ID,
+      sourcePlaylist: playlistUrl,
       sourceRefreshedAt: Date.now(),
       duration: item.duration,
     }
@@ -508,11 +510,20 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
-function manilaHourBoundary(ms: number, hour: number) {
-  const date = new Date(ms + MANILA_OFFSET_MS)
-  date.setUTCHours(hour, 0, 0, 0)
-  return date.getTime() - MANILA_OFFSET_MS
+function playlistUrlForStart(ms: number) {
+  switch (sundayPlaylistAt(ms)) {
+    case 'golden-sunday': return GOLDEN_SUNDAY_PLAYLIST_URL
+    case 'sunday-afternoon': return SUNDAY_AFTERNOON_PLAYLIST_URL
+    default: return RJ_FM_PLAYLIST_URL
+  }
 }
+
+function weeklyPlaylistOffset(ms: number, length: number) {
+  if (length <= 0) return 0
+  const week = Math.floor((ms + MANILA_OFFSET_MS) / (7 * 24 * 60 * 60 * 1000))
+  return Math.abs(week) % length
+}
+
 async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
   const blockedTitleKeys = settings.noRepeatEnabled
     ? new Set([
@@ -620,19 +631,23 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-    const playlistTracks = await getRjFmPlaylistTracks()
+    const playlistUrl = playlistUrlForStart(startAt)
+    const playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
+      ? await getRjFmPlaylistTracks()
+      : await getPlaylistTracks(playlistUrl)
     const song = playlistTracks.length > 0
-      ? await findPlaylistSong(state.songCount, blockedTitleKeys)
+      ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
       : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
       ?? await findEmergencySong(state.songCount, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    const sundayEnglishBoundary = program.id === 'sunday-english-oldies' ? manilaHourBoundary(songStart, 6) : Number.POSITIVE_INFINITY
-    // A slow lookup can cross the 6 AM Sunday program boundary. Do not turn
-    // the newly downloaded song into a one-second track when that happens.
-    const playableDuration = sundayEnglishBoundary > songStart
-      ? Math.min(song.duration, (sundayEnglishBoundary - songStart) / 1000)
+    const sundayPlaylistBoundary = nextSundayPlaylistBoundary(songStart) ?? Number.POSITIVE_INFINITY
+    const playlistBoundary = sundayPlaylistBoundary
+    // A slow lookup can cross a Sunday playlist boundary. Do not let a track
+    // selected from the previous window continue into the next playlist.
+    const playableDuration = playlistBoundary > songStart
+      ? Math.min(song.duration, (playlistBoundary - songStart) / 1000)
       : song.duration
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
@@ -691,9 +706,8 @@ async function loadState(now: number) {
   const dailyKeys = new Set(state.dailyPlayedTitles.map((entry) => entry.key))
   for (const track of state.tracks) {
     if (!track.title) continue
-    const trackManila = manilaTime(track.startAt)
-    if (trackManila.day === 0 && trackManila.hour >= 4 && trackManila.hour < 6) {
-      const endAt = manilaHourBoundary(track.startAt, 6)
+    const endAt = nextSundayPlaylistBoundary(track.startAt)
+    if (endAt) {
       if (trackEnd(track) > endAt) track.duration = Math.max(1, (endAt - track.startAt) / 1000)
     }
     if (!isCompletedDailyMusicTrack({

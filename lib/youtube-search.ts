@@ -28,11 +28,11 @@ const STATIC_PLAYLIST: PlaylistTrackResult[] = (playlistCatalog as Array<Omit<Pl
   ...track,
   durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
 }))
-const RJ_FM_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLd469-e1TkbM'
+export const RJ_FM_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLd469-e1TkbM'
+export const GOLDEN_SUNDAY_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLZxu4AZwv5H0'
+export const SUNDAY_AFTERNOON_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M'
 const PLAYLIST_REFRESH_MS = 60_000
-let playlistCache = STATIC_PLAYLIST
-let playlistLastCheckedAt = 0
-let playlistRefresh: Promise<void> | null = null
+const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
 
 export async function searchYouTube(query: string, limit = 12): Promise<YouTubeSearchResult[]> {
   try {
@@ -62,22 +62,30 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
 
 /** Load the station's curated playlist in its original order. */
 export async function getRjFmPlaylistTracks(): Promise<PlaylistTrackResult[]> {
-  const now = Date.now()
-  if (!playlistRefresh && now - playlistLastCheckedAt >= PLAYLIST_REFRESH_MS) {
-    playlistLastCheckedAt = now
-    playlistRefresh = refreshRjFmPlaylist().finally(() => { playlistRefresh = null })
-  }
-  // Never make /api/now wait for YouTube. The previous catalog keeps playback
-  // alive while the refresh runs, and the next queue fill sees new tracks.
-  return playlistCache
+  return getPlaylistTracks(RJ_FM_PLAYLIST_URL, STATIC_PLAYLIST)
 }
 
-async function refreshRjFmPlaylist() {
+export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = []): Promise<PlaylistTrackResult[]> {
+  const now = Date.now()
+  const cache = playlistCaches.get(playlistUrl) ?? { tracks: fallback, lastCheckedAt: 0, refresh: null }
+  if (!playlistCaches.has(playlistUrl)) playlistCaches.set(playlistUrl, cache)
+  if (!cache.refresh && now - cache.lastCheckedAt >= PLAYLIST_REFRESH_MS) {
+    cache.lastCheckedAt = now
+    cache.refresh = refreshPlaylist(playlistUrl, cache).finally(() => { cache.refresh = null })
+  }
+  // Static RJ FM has a fallback catalog. A new Sunday playlist has no safe
+  // fallback, so wait for its first refresh instead of selecting the wrong
+  // playlist during a cold start.
+  if (cache.tracks.length === 0 && cache.refresh) await cache.refresh
+  return cache.tracks
+}
+
+async function refreshPlaylist(playlistUrl: string, cache: { tracks: PlaylistTrackResult[] }) {
   try {
     const playlist = await Promise.race([
-      YouTube.getPlaylist(RJ_FM_PLAYLIST_URL, {
-      // Fetch the full current playlist so additions after the first 100 songs
-      // are also available to AutoDJ after the next background refresh.
+      YouTube.getPlaylist(playlistUrl, {
+        // Fetch the full current playlist so additions after the first 100 songs
+        // are also available to AutoDJ after the next background refresh.
       limit: 500,
         fetchAll: true,
         requestOptions: {
@@ -102,10 +110,10 @@ async function refreshRjFmPlaylist() {
       }]
     })
     if (tracks.length > 0) {
-      playlistCache = tracks
-      console.info(`[morefm] playlist refreshed: ${tracks.length} tracks`)
+      cache.tracks = tracks
+      console.info(`[morefm] playlist refreshed: ${tracks.length} tracks from ${playlistUrl}`)
     }
   } catch (error) {
-    console.warn('[morefm] playlist refresh failed; using cached catalog', error)
+    console.warn(`[morefm] playlist refresh failed; using cached catalog for ${playlistUrl}`, error)
   }
 }
