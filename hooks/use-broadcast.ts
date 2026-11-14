@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 180_000
+// Keep one network audio request active. Preloading several multi-megabyte
+// songs makes mobile browsers stay buffering and starves the current track.
+const PRELOAD_AHEAD_MS = 0
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
@@ -14,6 +16,8 @@ interface Slot {
   synced: boolean
   lastPlayAttemptAt: number
   activeWaitSince: number | null
+  reloadAttempts: number
+  ended: boolean
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -44,40 +48,42 @@ function trackGain(track: Track, now: number, enabled: boolean, curveName: strin
 
 function playErrorMessage(error: unknown) {
   const name = error instanceof DOMException ? error.name : ''
-  if (name === 'NotAllowedError') return 'Your browser blocked audio playback. Press Play again to allow the station audio.'
+  if (name === 'NotAllowedError') return 'Your browser blocked audio playback. Click Play once to allow the station audio.'
   if (name === 'NotSupportedError') return 'This browser could not decode the station audio. Try another browser or device.'
-  return 'The station audio could not start. Press Play again to reconnect.'
+  return 'Audio playback could not start. Click Play to try again.'
 }
 
-function mediaErrorMessage(code: number) {
-  if (code === 2) return 'The station audio connection failed. Press Play again to reconnect.'
-  if (code === 3) return 'The station audio could not be decoded. Press Play again to retry.'
-  if (code === 4) return 'The station audio source is unavailable. Press Play again to refresh it.'
-  return 'The station audio stopped unexpectedly. Press Play again to reconnect.'
-}
-
-export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
+export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
+  const failedUids = useRef(new Set<string>())
+  const forcedNextUid = useRef<string | null>(null)
   const offset = useRef(0)
-  const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
+  const [state, setState] = useState({ onAir: false, buffering: false, offAir: false, currentUid: null as string | null })
   const [playbackIssue, setPlaybackIssue] = useState<string | null>(null)
-  const noTrackSince = useRef<number | null>(null)
 
   useEffect(() => {
     if (!data) return
     offset.current = data.serverTime - Date.now()
+    const currentIds = new Set(data.tracks.map((track) => track.uid))
+    failedUids.current.forEach((uid) => {
+      if (!currentIds.has(uid)) failedUids.current.delete(uid)
+    })
   }, [data])
 
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 5 }, () => {
+    slots.current = Array.from({ length: 1 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null }
+      el.onended = () => {
+        const slot = slots.current.find((candidate) => candidate.el === el)
+        if (slot) slot.ended = true
+      }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
     })
   }, [])
 
@@ -87,14 +93,46 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const tracks = data?.tracks ?? []
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
-      const active = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
+      const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt - Math.max(0, t.fadeIn) * 1000 && now < t.startAt + t.duration * 1000)
+      for (const slot of slots.current) {
+        if (!slot.ended || !slot.uid) continue
+        const finished = tracks.find((track) => track.uid === slot.uid)
+        const next = finished && tracks.find((track) => track.startAt > finished.startAt && !failedUids.current.has(track.uid))
+        if (next) {
+          forcedNextUid.current = next.uid
+          failedUids.current.add(finished.uid)
+          slot.el.pause()
+          slot.el.removeAttribute('src')
+          slot.el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.ended = false
+        } else if (finished) {
+          failedUids.current.add(finished.uid)
+          onStreamError?.(finished.uid)
+          slot.el.pause()
+          slot.el.removeAttribute('src')
+          slot.el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.ended = false
+        }
+      }
+      if (forcedNextUid.current && tracks.some((track) => track.uid === forcedNextUid.current && now >= track.startAt)) forcedNextUid.current = null
+      // During a crossfade window two tracks can overlap. Prefer the newest
+      // track and never download/play both at once; reliable playback is more
+      // important than a transition effect on constrained devices.
+      const activeCandidates = scheduleOffAir ? [] : tracks.filter((track) => scheduledActive.includes(track) || track.uid === forcedNextUid.current)
+      const active = activeCandidates.length > 0 ? [activeCandidates.at(-1)!] : []
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
       const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
       const masterGain = (config?.masterVolume ?? 100) / 100
       const replayGain = config?.replayGainEnabled ? Math.pow(10, ((config.replayGainTargetLufs ?? -14) + 14) / 20) : 1
       const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
-      const wanted = [...active, ...upcoming].slice(0, slots.current.length)
+      const wanted = [...active, ...upcoming].filter((track) => !failedUids.current.has(track.uid)).slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
       for (const slot of slots.current) {
@@ -117,6 +155,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.synced = false
           slot.lastPlayAttemptAt = 0
           slot.activeWaitSince = null
+          slot.reloadAttempts = 0
+          slot.ended = false
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -125,6 +165,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.synced = false
           slot.lastPlayAttemptAt = 0
           slot.activeWaitSince = null
+          slot.reloadAttempts = 0
+          slot.ended = false
           slot.el.src = track.src
           slot.el.load()
         }
@@ -137,35 +179,74 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           continue
         }
 
-        const expected = (now - track.startAt) / 1000
-        if (el.error && now - slot.lastPlayAttemptAt >= 2_000) {
-          // Expiring third-party download URLs can fail after the queue was built.
-          // Reload the same element so the next poll/source refresh can recover it.
-          slot.lastPlayAttemptAt = now
-          slot.synced = false
-          setPlaybackIssue(mediaErrorMessage(el.error.code))
+        const expected = Math.max(0, (now - track.startAt) / 1000)
+        if (el.error || (isActive && el.ended && now < track.startAt + track.duration * 1000 - 1_000)) {
+          if (slot.reloadAttempts < 3 && slot.src) {
+            slot.reloadAttempts += 1
+            slot.synced = false
+            slot.lastPlayAttemptAt = now
+            slot.activeWaitSince = now
+            el.pause()
+            el.src = slot.src
+            el.load()
+            setPlaybackIssue('The station audio hiccuped. Retrying this song…')
+            continue
+          }
+          failedUids.current.add(track.uid)
+          el.pause()
+          el.removeAttribute('src')
           el.load()
+          slot.uid = null
+          slot.src = null
+          slot.synced = false
+          slot.lastPlayAttemptAt = now
+          slot.reloadAttempts = 0
+          onStreamError?.(track.uid)
+          continue
         }
         if (el.readyState >= 1) {
-          const drift = Math.abs(el.currentTime - expected)
-          if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
-            if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
+          if (track.kind === 'brigada-news') {
             slot.synced = true
+          } else {
+            const drift = Math.abs(el.currentTime - expected)
+            if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
+              if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
+              slot.synced = true
+            }
           }
         }
-        // HAVE_CURRENT_DATA (2) is enough to begin playback. Waiting for HAVE_FUTURE_DATA
-        // (3) made the UI report an endless loading state for some valid remote MP3s.
-        if (el.readyState < 2 && !el.ended) {
+        const minimumReadyState = 2
+        if (el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
-          if (now - slot.activeWaitSince >= 25_000) setPlaybackIssue('The stream is taking too long to load. Press Play again to reconnect.')
+          if (now - slot.activeWaitSince >= 8_000) {
+            if (slot.reloadAttempts < 3 && slot.src) {
+              slot.reloadAttempts += 1
+              slot.synced = false
+              slot.lastPlayAttemptAt = now
+              slot.activeWaitSince = now
+              el.pause()
+              el.src = slot.src
+              el.load()
+              setPlaybackIssue('The stream is taking too long to load. Retrying automatically…')
+            } else {
+              setPlaybackIssue('This song could not load. AutoDJ is moving to the next track…')
+              failedUids.current.add(track.uid)
+              el.pause()
+              el.removeAttribute('src')
+              el.load()
+              slot.uid = null
+              slot.src = null
+              slot.synced = false
+              slot.reloadAttempts = 0
+              onStreamError?.(track.uid)
+            }
+          }
         } else {
           slot.activeWaitSince = null
         }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
-        // Keep playback on the native element: third-party MP3 hosts may not send
-        // CORS headers, and routing those sources through Web Audio can mute them.
+        const outputGain = clamp01(volume * masterGain * nightVolumeGain * replayGain * duckGain)
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
@@ -176,22 +257,17 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       }
 
       const onAir = active.length > 0
-      if (data && playing && !onAir && !scheduleOffAir) {
-        noTrackSince.current ??= now
-        if (now - noTrackSince.current >= 25_000) setPlaybackIssue('No active audio stream is available right now. Press Play again to reconnect.')
-      } else {
-        noTrackSince.current = null
-      }
+      const currentUid = active.at(-1)?.uid ?? null
       setState((prev) => {
-        const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir }
-        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir ? prev : next
+        const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir, currentUid }
+        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir && prev.currentUid === next.currentUid ? prev : next
       })
     }
 
     tick()
     const id = window.setInterval(tick, 250)
     return () => window.clearInterval(id)
-  }, [data, playing, volume])
+  }, [data, playing, volume, onStreamError])
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return

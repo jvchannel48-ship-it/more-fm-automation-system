@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, MapPin, Moon, Pause, Play, Radio, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,6 @@ function StationVerifiedBadge() {
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [nowPlayingIssue, setNowPlayingIssue] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
@@ -39,25 +38,22 @@ export function RadioPlayer() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume)
+  const recoverStream = useCallback((uid: string) => {
+    void fetch('/api/now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    }).then(() => mutate()).catch(() => undefined)
+  }, [mutate])
+  const { buffering, currentUid, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
+  const activeTrack = data?.tracks.find((track) => track.uid === currentUid) ?? data?.tracks.find((track) => {
+    const now = data.serverTime
+    return track.startAt <= now && track.startAt + track.duration * 1000 > now && (track.kind === 'music' || track.kind === 'mor-sync')
+  })
   useEffect(() => {
     if (!playbackIssue) return
-    setPlaying(false)
     void mutate()
   }, [playbackIssue, mutate])
-  useEffect(() => {
-    if (!playing || data) {
-      setNowPlayingIssue('')
-      return
-    }
-    const timeout = window.setTimeout(() => setNowPlayingIssue('The station has not returned a playback response. Press Play again to reconnect.'), 25_000)
-    return () => window.clearTimeout(timeout)
-  }, [playing, data])
-  useEffect(() => {
-    if (!nowPlayingIssue) return
-    setPlaying(false)
-    void mutate()
-  }, [nowPlayingIssue, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir && !playbackIssue
 
@@ -67,7 +63,6 @@ export function RadioPlayer() {
       return
     }
     unlock()
-    setNowPlayingIssue('')
     setPlaying(true)
   }
 
@@ -145,13 +140,23 @@ export function RadioPlayer() {
             {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
           </p>
         )}
+        {!offAir && (
+          <div className="mt-3 w-full max-w-md rounded-2xl border border-primary/25 bg-background/45 px-5 py-4 text-left shadow-inner" aria-live="polite">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Now playing</p>
+            <p className="mt-1 min-w-0 max-w-full break-words text-lg font-semibold leading-snug text-foreground">
+              {activeTrack?.title ?? 'On air'}
+            </p>
+            <p className="mt-0.5 min-w-0 max-w-full break-words text-sm text-muted-foreground">
+              {activeTrack?.artist ?? '—'}
+            </p>
+          </div>
+        )}
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
             Could not connect to the station. Retrying...
           </p>
         )}
         {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
-        {nowPlayingIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{nowPlayingIssue}</p>}
       </div>
 
       <div className="flex w-full max-w-xs items-center gap-3">

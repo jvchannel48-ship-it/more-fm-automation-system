@@ -123,10 +123,13 @@ export async function deleteSupabaseAudio(pathname: string) {
   }
 }
 
-export async function fetchSupabaseAudio(pathname: string) {
+export async function fetchSupabaseAudio(pathname: string, range?: string | null) {
   const { url, key } = config()
   return fetch(`${url}/storage/v1/object/${BUCKET}/${encodedPath(pathname)}`, {
-    headers: authHeaders(key),
+    headers: {
+      ...authHeaders(key),
+      ...(range ? { Range: range } : {}),
+    },
     cache: 'no-store',
   })
 }

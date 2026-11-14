@@ -3,15 +3,19 @@ export type CrossfaderCurve = 'transition' | 'smooth' | 'constant-power' | 'dipp
 
 export interface Track {
   uid: string
+  requestId?: string
   src: string
   startAt: number
   duration: number
   fadeIn: number
   fadeOut: number
   sourceUrl?: string
+  sourceChannel?: string
+  sourcePlaylist?: string
   sourceRefreshedAt?: number
   kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic' | 'brigada-news'
   title?: string
+  artist?: string
   morKey?: string
   morExactMatch?: boolean
 }
@@ -113,6 +117,7 @@ export interface MorSyncRecord {
 
 export interface AdminStatus extends StationSettings {
   persistenceConfigured?: boolean
+  queuePersistenceConfigured?: boolean
   songsThisWeek: number
   artistsThisHour: number
   queued: number

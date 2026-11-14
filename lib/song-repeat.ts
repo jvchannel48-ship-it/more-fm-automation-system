@@ -50,6 +50,10 @@ export function repeatTitleKey(title: string, artist = '') {
     previous = key
     for (const suffix of suffixes) key = key.replace(suffix, '').trim()
   }
+  // Provider titles often include different singer-credit orderings. Keep well-known
+  // songs canonical so "Regine - Hanggang Ngayon" and "Hanggang Ngayon - Ogie"
+  // cannot enter the same daily rotation twice.
+  if (/\bhanggang\s+ngayon\b/i.test(key)) return 'hanggang ngayon'
   return key
 }
 

@@ -19,6 +19,9 @@ for (const version of [
   assert.equal(repeatTitleKey(version, 'Celine Dion'), baseKey, `alternate version should share key: ${version}`)
 }
 assert.notEqual(repeatTitleKey('Live and Let Die', 'Paul McCartney'), repeatTitleKey('And Let Die', 'Paul McCartney'), 'words that are part of a title must not be stripped as version labels')
+const hanggangNgayonKey = repeatTitleKey('Regine Velasquez & Ogie Alcasid - Hanggang Ngayon (Official HD Music Video)', 'Ogie Alcasid')
+assert.equal(repeatTitleKey('Hanggang Ngayon - Ogie Alcasid (Official Audio)', 'Ogie Alcasid'), hanggangNgayonKey, 'Hanggang Ngayon provider title variants must share one key')
+assert.equal(repeatTitleKey('Ogie Alcasid - Regine Velasquez - Hanggang Ngayon', 'Ogie Alcasid'), hanggangNgayonKey, 'co-artist credit order must not create a duplicate key')
 
 const day1 = '2026-11-14'
 const day2 = '2026-11-15'

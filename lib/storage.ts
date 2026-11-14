@@ -21,6 +21,7 @@ const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number 
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasPersistentStorage = Boolean(databaseUrl)
 export const hasSettingsPersistence = hasPersistentStorage || hasSupabaseStorageConfig()
+export const hasQueuePersistence = hasPersistentStorage || hasSupabaseStorageConfig()
 const SETTINGS_CACHE_TTL_MS = 2_000
 
 function getPool() {
@@ -69,12 +70,12 @@ async function ensureStateTable() {
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   const pool = getPool()
   if (!pool) {
-    if (isPersistentSettingsPath(pathname) && hasSupabaseStorageConfig()) {
+    if (hasSupabaseStorageConfig()) {
       const cached = settingsObjectCache.get(pathname)
-      if (cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
+      if (isPersistentSettingsPath(pathname) && cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
       const remote = await readSupabaseJson(`app-state/${pathname}`)
       if (remote !== null) {
-        settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+        if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
         return remote as T
       }
     }
@@ -99,13 +100,10 @@ export async function writeJson(pathname: string, data: unknown) {
   if (serialized === undefined) throw new Error('State value could not be serialized as JSON.')
   const pool = getPool()
   if (!pool) {
-    if (isPersistentSettingsPath(pathname)) {
-      if (!hasSupabaseStorageConfig()) {
-        throw new Error('No persistent settings backend is configured; set POSTGRES_URL or Supabase Storage credentials.')
-      }
+    if (hasSupabaseStorageConfig()) {
       const value = JSON.parse(serialized)
       await writeSupabaseJson(`app-state/${pathname}`, value)
-      settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+      if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
       return
     }
     if (pathname === STATION_STATE_PATH) {
@@ -309,7 +307,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   noRepeatEnabled: true,
   autoDjEnabled: true,
   morSyncEnabled: false,
-  shuffleEnabled: true,
+  shuffleEnabled: false,
   goodVibesEnabled: false,
   rotationPoolSize: 100,
   listenerLimit: 0,
@@ -331,7 +329,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   nightVolumePercent: 70,
   bassGainDb: 12,
   crossfaderEnabled: true,
-  crossfaderCurve: 'constant-power',
+  crossfaderCurve: 'smooth',
   crossfadeSeconds: 8,
   replayGainEnabled: false,
   replayGainTargetLufs: -14,
@@ -360,7 +358,7 @@ export async function getSettings(): Promise<StationSettings> {
       ...saved,
       tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
       noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
-      shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+      shuffleEnabled: false,
     }
     try {
       await writeJson(SETTINGS_PATH, migrated)
@@ -375,9 +373,9 @@ export async function getSettings(): Promise<StationSettings> {
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
     // Keep song rotation from repeating titles across the active daily history.
     noRepeatEnabled: true,
-    autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
+    autoDjEnabled: true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
-    shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+    shuffleEnabled: false,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(300, Math.round(saved.rotationPoolSize))) : 100,
     // Listener limits are temporarily disabled; keep the persisted field for backwards compatibility.
@@ -404,8 +402,8 @@ export async function getSettings(): Promise<StationSettings> {
     nightVolumePercent: 70,
     bassGainDb: 12,
     crossfaderEnabled: typeof saved.crossfaderEnabled === 'boolean' ? saved.crossfaderEnabled : true,
-    crossfaderCurve: ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut'].includes(saved.crossfaderCurve as string) ? saved.crossfaderCurve as CrossfaderCurve : 'constant-power',
-    crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' ? Math.max(0, Math.min(30, saved.crossfadeSeconds)) : 8,
+    crossfaderCurve: 'smooth',
+    crossfadeSeconds: 8,
     replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
     replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
     // The RJ FM jingle is automatic on regular days; Sunday suppression is enforced by the queue.

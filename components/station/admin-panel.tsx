@@ -187,6 +187,7 @@ export function AdminPanel() {
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
     {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes need PostgreSQL or private Supabase Storage. Configure <code>POSTGRES_URL</code>, or <code>SUPABASE_URL</code> and server-only <code>SUPABASE_SERVICE_ROLE_KEY</code>, then redeploy; see <code>docs/deployment-env.md</code>.</p>}
+    {data?.queuePersistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Shared queue history is not persistent. Configure <code>POSTGRES_URL</code> or private Supabase Storage so the no-repeat ledger survives renders, restarts, and redeploys.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
     <div className="flex items-center justify-between gap-3">
@@ -230,8 +231,8 @@ export function AdminPanel() {
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle</Label><p className="text-xs text-muted-foreground">ON randomizes eligible artists and tracks; OFF follows source search order.</p></div>
-          <Switch id="shuffle-enabled" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle: OFF</Label><p className="text-xs text-muted-foreground">Fixed OFF so the eligible catalog follows source order and the no-repeat ledger can work through every song.</p></div>
+          <Switch id="shuffle-enabled" checked={false} disabled /></div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
           <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
       </div>
