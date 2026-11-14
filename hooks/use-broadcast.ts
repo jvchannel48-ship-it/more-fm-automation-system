@@ -147,10 +147,17 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           el.load()
         }
         if (el.readyState >= 1) {
-          const drift = Math.abs(el.currentTime - expected)
-          if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
-            if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
+          // Live radio relays do not have a seekable timeline like an MP3.
+          // Always play them from the current live edge instead of seeking to
+          // the elapsed station schedule time (which can be several hours).
+          if (track.kind === 'brigada-news') {
             slot.synced = true
+          } else {
+            const drift = Math.abs(el.currentTime - expected)
+            if (!slot.synced || (drift > DRIFT_TOLERANCE_S && el.readyState >= 3 && !el.seeking)) {
+              if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
+              slot.synced = true
+            }
           }
         }
         // HAVE_CURRENT_DATA (2) is enough to begin playback. Waiting for HAVE_FUTURE_DATA
