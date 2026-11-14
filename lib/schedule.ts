@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'sunday-english' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'christmas' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -18,7 +18,6 @@ export interface Program {
   pools: Record<Language, Artist[]>
   variants: Record<Language, string[]>
   tagalogOnly?: boolean
-  christmasOnly?: boolean
 }
 
 function artists(language: Language, entries: string[]): Artist[] {
@@ -52,6 +51,13 @@ const PINOY_OLDIES = artists('tagalog', [
   'Celeste Legaspi',
   'Merci Molina',
   'Asin',
+  'Freddie Aguilar',
+  'Florante',
+  'Sampaguita',
+  'APO Hiking Society|apo hiking',
+  'VST & Company|vst',
+  'Jose Mari Chan',
+  'Dulce',
 ])
 
 const PINOY_LOVE = artists('tagalog', [
@@ -96,18 +102,6 @@ const PINOY_LOVE = artists('tagalog', [
   'Zack Tabudlo',
 ])
 
-const SUNDAY_ENGLISH_OLDIES = artists('english', [
-  'Victor Wood',
-  'Engelbert Humperdinck|engelbert',
-  'Tom Jones',
-  'Andy Williams',
-  'Perry Como',
-  'Elvis Presley',
-  'Frank Sinatra',
-  'Nat King Cole',
-  'Bing Crosby',
-])
-
 const SUNDAY_TAGALOG_OLDIES = [
   ...artists('tagalog', [
   'Imelda Papin',
@@ -124,17 +118,6 @@ const SUNDAY_TAGALOG_OLDIES = [
   ]),
   ...PINOY_OLDIES,
 ]
-
-export const CHRISTMAS_ARTISTS: Record<Language, Artist[]> = {
-  english: artists('english', [
-    'Andy Williams', 'Nat King Cole', 'Bing Crosby', 'Brenda Lee', 'Frank Sinatra',
-    'Carpenters', 'Elvis Presley', 'Perry Como', 'Jose Mari Chan',
-  ]),
-  tagalog: artists('tagalog', [
-    'Jose Mari Chan', 'APO Hiking Society|apo hiking', 'Gary Valenciano',
-    'Sharon Cuneta', 'Regine Velasquez|regine', 'Kuh Ledesma', 'Imelda Papin',
-  ]),
-}
 
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
@@ -275,33 +258,15 @@ const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
-    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: SUNDAY_TAGALOG_OLDIES },
-    variants: { english: ['', 'oldies', 'classic hits'], tagalog: ['', 'official audio', 'OPM oldies'] },
-  },
-  'sunday-english': {
-    id: 'sunday-english',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [] },
-    variants: { english: LOVE_VARIANTS, tagalog: [] },
-  },
-  'sunday-english-oldies': {
-    id: 'sunday-english-oldies',
-    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
-    variants: { english: ['', 'oldies', 'classic hits'], tagalog: [] },
+    pools: { english: [], tagalog: SUNDAY_TAGALOG_OLDIES },
+    variants: { english: [], tagalog: ['Tagalog oldies', 'classic OPM Tagalog', 'Filipino classics', 'OPM oldies 80s 90s'] },
+    tagalogOnly: true,
   },
   'sunday-tagalog': {
     id: 'sunday-tagalog',
     pools: { english: [], tagalog: PINOY_LOVE },
     variants: { english: [], tagalog: OPM_VARIANTS },
     tagalogOnly: true,
-  },
-  christmas: {
-    id: 'christmas',
-    pools: CHRISTMAS_ARTISTS,
-    variants: {
-      english: ['Christmas songs', 'classic Christmas', 'Christmas official audio'],
-      tagalog: ['Pasko OPM', 'Tagalog Christmas songs', 'Christmas official audio'],
-    },
-    christmasOnly: true,
   },
   'english-love': {
     id: 'english-love',
@@ -377,20 +342,13 @@ export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
 }
 
 /**
- * Sunday 1–4 AM: English favorites; 4–8 AM: English senior classics; 8–11 AM: Tagalog senior classics.
- * 11:01 AM–midnight: Tagalog favorites. Sunday runs continuously with no sign-off.
- * 4–7 PM (incl. the 7 o'clock hour): mellow classic pop, soft disco, and soul hits. 8 PM–12 AM: English & Tagalog love songs.
- * Every other on-air hour: English love songs mixed with Tagalog.
+ * Sunday runs continuously with Tagalog senior classics and no English-language music all day.
+ * Other days follow the configured program schedule; the default station settings enforce Tagalog-only rotation.
  */
 export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 20, newsEnabled = true): Program {
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
-  if (day === 0) {
-    if (hour >= 4 && hour < 8) return PROGRAMS['sunday-english-oldies']
-    if ((hour >= 8 && hour < 11) || (hour === 11 && minute === 0)) return PROGRAMS['sunday-oldies']
-    if (hour > 11 || (hour === 11 && minute >= 1)) return PROGRAMS['sunday-tagalog']
-    return PROGRAMS['sunday-english']
-  }
+  if (day === 0) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   if (newsEnabled && hour === 16 && minute < 50) return PROGRAMS.news
   const inDiscoWindow = discoStartHour < discoEndHour
@@ -403,9 +361,7 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
 export function languageForSlot(program: Program, songCount: number): Language {
-  if (program.id === 'sunday-english' || program.id === 'sunday-english-oldies') return 'english'
   if (program.tagalogOnly) return 'tagalog'
-  if (program.christmasOnly) return songCount % 2 === 0 ? 'english' : 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }
 
@@ -426,29 +382,6 @@ export function manilaDateKey(ms: number): string {
 export function isNightVolumeWindow(ms: number, startHour: number, endHour: number): boolean {
   const { hour } = manilaTime(ms)
   return startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour
-}
-
-export function isGoldenSundayWindow(ms: number): boolean {
-  const { hour, day } = manilaTime(ms)
-  return day === 0 && hour >= 4 && hour < 13
-}
-
-/** Sep–Oct: one Christmas song per five songs; Nov–Dec: every music selection is Christmas. */
-export function isChristmasSlot(monthlySongIndex: number, ms: number): boolean {
-  const month = manilaMonth(ms)
-  if (month === 9 || month === 10) return monthlySongIndex % 5 === 4
-  if (month === 11 || month === 12) return true
-  return false
-}
-
-export function isChristmasSeason(ms: number): boolean {
-  const month = manilaMonth(ms)
-  return month >= 9 && month <= 12
-}
-
-export function isContinuousChristmasPeriod(ms: number): boolean {
-  const month = manilaMonth(ms)
-  return month === 11 || month === 12
 }
 
 export function isChristmasTitle(title: string): boolean {

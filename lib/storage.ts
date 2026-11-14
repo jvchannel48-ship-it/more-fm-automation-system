@@ -2,6 +2,7 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
 import type { CrossfaderCurve, MorSyncRecord, SongRequest, StationSettings } from './types'
+import { hasSupabaseStorageConfig, readSupabaseJson, writeSupabaseJson } from './supabase-media.ts'
 
 const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
@@ -16,8 +17,11 @@ const globals = globalThis as MoreFmGlobals
 const memoryState = new Map<string, string>()
 const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
 const memoryListeners = new Map<string, { lastSeenAt: number }>()
+const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasPersistentStorage = Boolean(databaseUrl)
+export const hasSettingsPersistence = hasPersistentStorage || hasSupabaseStorageConfig()
+const SETTINGS_CACHE_TTL_MS = 2_000
 
 function getPool() {
   if (!databaseUrl) return null
@@ -65,6 +69,15 @@ async function ensureStateTable() {
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   const pool = getPool()
   if (!pool) {
+    if (isPersistentSettingsPath(pathname) && hasSupabaseStorageConfig()) {
+      const cached = settingsObjectCache.get(pathname)
+      if (cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
+      const remote = await readSupabaseJson(`app-state/${pathname}`)
+      if (remote !== null) {
+        settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+        return remote as T
+      }
+    }
     if (pathname === STATION_STATE_PATH) {
       const cached = memoryState.get(pathname)
       if (cached) {
@@ -86,6 +99,15 @@ export async function writeJson(pathname: string, data: unknown) {
   if (serialized === undefined) throw new Error('State value could not be serialized as JSON.')
   const pool = getPool()
   if (!pool) {
+    if (isPersistentSettingsPath(pathname)) {
+      if (!hasSupabaseStorageConfig()) {
+        throw new Error('No persistent settings backend is configured; set POSTGRES_URL or Supabase Storage credentials.')
+      }
+      const value = JSON.parse(serialized)
+      await writeSupabaseJson(`app-state/${pathname}`, value)
+      settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+      return
+    }
     if (pathname === STATION_STATE_PATH) {
       memoryState.set(pathname, serialized)
       return
@@ -264,6 +286,9 @@ export const REQUESTS_PATH = 'station/requests-v1.json'
 export const MOR_SYNC_PATH = 'station/mor-sync-v1.json'
 export const QUEUE_LOCK_PATH = 'station/queue-lock-v1.json'
 const SETTINGS_MIGRATIONS_PATH = 'station/settings-migrations-v1.json'
+function isPersistentSettingsPath(pathname: string) {
+  return pathname === SETTINGS_PATH || pathname === SETTINGS_MIGRATIONS_PATH
+}
 export const EMPTY_MOR_SYNC_RECORD: MorSyncRecord = {
   metadata: null,
   syncStatus: 'HINDI NAKITA YUNG KANTA',
@@ -322,11 +347,16 @@ export const DEFAULT_SETTINGS: StationSettings = {
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
   const migrations = await readJson<{ tagalogLoveRotation?: number }>(SETTINGS_MIGRATIONS_PATH, {})
-  if (hasPersistentStorage && migrations.tagalogLoveRotation !== 1) {
-    const migrated = { ...saved, tagalogOnlyEnabled: true, noRepeatEnabled: true, shuffleEnabled: true }
+  if (hasSettingsPersistence && migrations.tagalogLoveRotation !== 2) {
+    const migrated = {
+      ...saved,
+      tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
+      noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
+      shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+    }
     try {
       await writeJson(SETTINGS_PATH, migrated)
-      await writeJson(SETTINGS_MIGRATIONS_PATH, { ...migrations, tagalogLoveRotation: 1 })
+      await writeJson(SETTINGS_MIGRATIONS_PATH, { ...migrations, tagalogLoveRotation: 2 })
       Object.assign(saved, migrated)
     } catch (error) {
       console.error('[morefm] could not apply the Tagalog love rotation settings migration', error)

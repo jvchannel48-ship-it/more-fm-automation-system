@@ -107,7 +107,7 @@ export function AdminPanel() {
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     if (data?.persistenceConfigured === false) {
-      setError('Cannot save admin settings: add the Supabase PostgreSQL connection string as POSTGRES_URL in the deployment environment, then redeploy.')
+      setError('Cannot save admin settings: configure POSTGRES_URL or Supabase Storage credentials (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY), then redeploy.')
       setMessage('')
       return
     }
@@ -139,7 +139,7 @@ export function AdminPanel() {
       if (!res.ok) throw new Error(result.error ?? 'Audio upload failed.')
       mutate(result.status as AdminStatus, { revalidate: false })
       void mutateUsage()
-      const label = kind === 'golden-sunday' ? 'Golden Sunday' : kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
+      const label = kind === 'jingle' ? 'Jingle' : kind === 'dj-mic' ? 'DJ Mic' : `Commercial ${slot + 1}`
       setMessage(`${label} uploaded. A new selection replaces the previous file.`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Audio upload failed.')
@@ -186,7 +186,7 @@ export function AdminPanel() {
     </div>
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
-    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes cannot be saved until the deployment has a Supabase PostgreSQL connection. Set <code>POSTGRES_URL</code> in the hosting environment and redeploy; see <code>docs/deployment-env.md</code>.</p>}
+    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes need PostgreSQL or private Supabase Storage. Configure <code>POSTGRES_URL</code>, or <code>SUPABASE_URL</code> and server-only <code>SUPABASE_SERVICE_ROLE_KEY</code>, then redeploy; see <code>docs/deployment-env.md</code>.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
     <div className="flex items-center justify-between gap-3">
@@ -392,32 +392,22 @@ export function AdminPanel() {
       <div className="flex items-center gap-2"><Database className="size-4 text-emerald-400" aria-hidden="true" /><div><h3 className="text-sm font-semibold">Storage Protection</h3><p className="text-xs text-muted-foreground">Enabled automatically to help avoid unnecessary storage upgrades.</p></div></div>
       <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
         <li>Identical audio uploads reuse the same stored file instead of creating duplicates.</li>
-        <li>Replacing a jingle, commercial, DJ Mic, voice clip, or Golden Sunday file removes the old stored copy.</li>
+        <li>Replacing a jingle, commercial, DJ Mic, or voice clip removes the old stored copy.</li>
         <li>Audio uploads are limited to 4 MB per file, and song rotation keeps only recent history.</li>
       </ul>
     </div>
 
-    <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="upload-golden-sunday">Golden Sunday</Label>
-        <p className="text-xs text-muted-foreground">Sunday 4:00 AM–1:00 PM only · one play after every 3 songs · regular jingle and commercial breaks are suppressed</p></div>
-      <label htmlFor="upload-golden-sunday" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
-        <Upload className="size-4" aria-hidden="true" /> {data?.goldenSunday ? 'Replace Golden Sunday audio' : 'Upload Golden Sunday audio'}</label>
-      <input id="upload-golden-sunday" type="file" accept="audio/*" className="sr-only" disabled={busy}
-        onChange={(event) => { void upload('golden-sunday', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
-      {data?.goldenSunday && <a href={data.goldenSunday.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.goldenSunday.name}</a>}
-    </div>
-
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a smooth microphone clip. It is uploaded and queued after the current track so every listener hears it.</p></div>
+      <div><Label>Shared DJ Mic</Label><p className="text-xs text-muted-foreground">Record a microphone clip. It is queued after the current track on regular days; Sunday’s Tagalog oldies stream stays uninterrupted, so mic clips are not played then.</p></div>
       <div className="flex flex-wrap gap-2">
-        {recordingKind !== 'dj-mic' ? <Button type="button" variant="secondary" disabled={!data?.djMicEnabled || busy || recordingKind !== null} onClick={() => void startDjRecording('dj-mic')}><Mic2 aria-hidden="true" /> Record DJ Mic</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop and broadcast</Button>}
+        {recordingKind !== 'dj-mic' ? <Button type="button" variant="secondary" disabled={!data?.djMicEnabled || busy || recordingKind !== null} onClick={() => void startDjRecording('dj-mic')}><Mic2 aria-hidden="true" /> Record DJ Mic</Button> : <Button type="button" variant="destructive" onClick={stopDjRecording}><Square aria-hidden="true" /> Stop recording</Button>}
         {!data?.djMicEnabled && <span className="self-center text-xs text-muted-foreground">Turn on DJ Mic above first.</span>}
       </div>
       {data?.djMic && <p className="truncate text-xs text-muted-foreground">Last clip: {data.djMic.name}</p>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">ON plays the station jingle after every 3 songs, then returns to music. OFF skips the break and keeps music continuous. Sunday Golden Sunday is unchanged. MP3 supported · max 4 MB.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, ON plays the station jingle after every 3 songs; OFF keeps music continuous. Jingles are suppressed all day Sunday. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -428,7 +418,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle only when Jingle is ON; skipped during Golden Sunday. MP3 supported · max 4 MB per file.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle only when Jingle is ON; commercials are suppressed all day Sunday. MP3 supported · max 4 MB per file.</p></div>
         <Switch id="commercial-enabled" checked={data?.commercialEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { commercialEnabled: checked })} /></div>
       {[0, 1, 2].map((slot) => {
@@ -445,6 +435,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Outside Golden Sunday, Jingle ON plays the jingle after every three songs and music resumes automatically; Jingle OFF skips the break for continuous music. Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, avoid repeats within the configured rotation history, max 2 plays per artist per hour.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, jingles, commercials, or news. Christmas tracks are excluded for now. On other days, Jingle ON plays after every three songs; Jingle OFF keeps music continuous. Rotation is Tagalog-only by default, shuffled, and avoids repeats within the configured history.</p>
   </div>
 }

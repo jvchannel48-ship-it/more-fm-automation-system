@@ -10,7 +10,8 @@
     "test:queue": "node --experimental-strip-types tests/song-request-queue.test.ts",
     "test:mor": "node --conditions=react-server --experimental-strip-types tests/mor-sync-parser.test.ts",
     "test:repeat": "node --experimental-strip-types tests/song-repeat.test.ts",
-    "test:seasonal": "node --experimental-strip-types tests/seasonal-schedule.test.ts"
+    "test:schedule": "node --experimental-strip-types tests/station-schedule.test.ts",
+    "test:settings-storage": "node --conditions=react-server --experimental-strip-types tests/settings-storage-fallback.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

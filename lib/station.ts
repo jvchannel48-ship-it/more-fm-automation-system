@@ -1,7 +1,7 @@
 import 'server-only'
 import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { isChristmasTitle, isContinuousChristmasPeriod, isChristmasSeason, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
@@ -61,13 +61,12 @@ interface StationState {
   history: HistoryEntry[]
   fillingUntil: number
   lastBreakSongCount: number
-  lastGoldenSundayBreakSongCount: number
   lastNewsDate: string
   dailyPlayedDate: string
   dailyPlayedTitles: DailyPlayedTitle[]
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastGoldenSundayBreakSongCount: 0, lastNewsDate: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastNewsDate: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
 
 interface SearchItem {
   id: string
@@ -151,7 +150,12 @@ const QUALITY_RULE =
 const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
-const TAGALOG_TITLE_RULE = /\b(?:maging\s+sino\s+ka\s+man|pag[\s-]?ibig|mahal|bakit|puso|sana|nang|wala|walang|hanggang|ikaw|aking|mga|ang|ng|sa|ako|siya|tayo|ito|dahil|paano|huwag|ko|mo|ka|ay|ba|sino|unang|huling|kasama|kita|pangarap|pag-asa|tadhana|sinta|ligaya|buhay|kahit|lahat|minsan|tanging|ngayon|basta|naman|saan|mundo|alaala|na|at|pag|tao|pasko|himig|maligayang)\b/i
+const TAGALOG_TITLE_RULE = /\b(?:anak|bayan|maging\s+sino\s+ka\s+man|pag[\s-]?ibig|mahal|bakit|puso|sana|nang|wala|walang|hanggang|ikaw|aking|mga|ang|ng|sa|ako|siya|tayo|ito|dahil|paano|huwag|ko|mo|ka|ay|ba|sino|unang|huling|kasama|kita|pangarap|pag-asa|tadhana|sinta|ligaya|buhay|kahit|lahat|minsan|tanging|ngayon|basta|naman|saan|mundo|alaala|na|pag|tao|pasko|himig|maligayang)\b/i
+
+function isSundayOldiesArtist(name: string) {
+  const normalizedName = normalizeMorMatchText(name)
+  return PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => normalizeMorMatchText(artist.name) === normalizedName)
+}
 
 const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
 function parseDuration(value: string): number {
@@ -249,7 +253,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (seconds < 90 || seconds > 540) return false
       const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
       const christmasTitle = isChristmasTitle(item.title)
-      if (isDisallowedSearchItem(item) || (program.christmasOnly ? !christmasTitle : christmasTitle) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
+      if (isDisallowedSearchItem(item) || christmasTitle || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
       return !blockedTitleKeys.has(repeatTitleKey(item.title, artist.name))
     })
     .map((item) => ({ artist, item })))
@@ -337,31 +341,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < 6) {
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
-    const continuousChristmas = isContinuousChristmasPeriod(breakAt)
-    if (!continuousChristmas && isGoldenSundayWindow(breakAt)) {
-      const localDay = new Date(breakAt + MANILA_OFFSET_MS)
-      localDay.setUTCHours(4, 0, 0, 0)
-      const sundayStart = localDay.getTime() - MANILA_OFFSET_MS
-      const sundaySongs = state.history.filter((entry) => entry.t >= sundayStart && entry.t < breakAt).length
-      if (sundaySongs > 0 && sundaySongs % 3 === 0 && state.lastGoldenSundayBreakSongCount !== state.songCount) {
-        state.lastGoldenSundayBreakSongCount = state.songCount
-        if (settings.goldenSunday) {
-          if (previousTrack) previousTrack.fadeOut = 0
-          const startAt = Math.max(breakAt, now)
-          state.tracks.push({
-            uid: `golden-sunday-${startAt}`,
-            src: settings.goldenSunday.url,
-            startAt,
-            duration: settings.goldenSunday.duration,
-            fadeIn: 0,
-            fadeOut: 0,
-            kind: 'golden-sunday',
-            title: settings.goldenSunday.name,
-          })
-          continue
-        }
-      }
-    } else if (!continuousChristmas && state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
+    const sunday = manilaTime(breakAt).day === 0
+    if (!sunday && state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
       if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
@@ -391,7 +372,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
-    if (!isContinuousChristmasPeriod(startAt) && !settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
+    if (!settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
       const newsDate = manilaDateKey(startAt)
       if (state.lastNewsDate !== newsDate) {
         state.lastNewsDate = newsDate
@@ -408,21 +389,14 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    const christmasSlot = isChristmasSlot(state.songCount, startAt)
-    const rotationProgram = christmasSlot
-      ? PROGRAMS.christmas
+    const rotationProgram = manilaTime(startAt).day === 0
+      ? PROGRAMS['sunday-oldies']
       : settings.tagalogOnlyEnabled
-      ? PROGRAMS['sunday-tagalog']
-      : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
-      : program.id === 'news' ? PROGRAMS['love-mix'] : program
-    const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-    let song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-    if (!song && christmasSlot && !isContinuousChristmasPeriod(startAt)) {
-      const regularProgram = settings.tagalogOnlyEnabled
         ? PROGRAMS['sunday-tagalog']
-        : settings.goodVibesEnabled ? PROGRAMS['good-vibes'] : program.id === 'news' ? PROGRAMS['love-mix'] : program
-      song = await findSong(regularProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-    }
+        : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
+        : program.id === 'news' ? PROGRAMS['love-mix'] : program
+    const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
+    const song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -450,7 +424,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
 async function loadState(now: number) {
   const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
   state.lastBreakSongCount = state.lastBreakSongCount ?? 0
-  state.lastGoldenSundayBreakSongCount = state.lastGoldenSundayBreakSongCount ?? 0
   state.lastNewsDate = state.lastNewsDate ?? ''
   state.dailyPlayedTitles = Array.isArray(state.dailyPlayedTitles) ? state.dailyPlayedTitles.filter((entry) => Boolean(entry && typeof entry.key === 'string' && typeof entry.title === 'string' && typeof entry.artist === 'string' && typeof entry.playedAt === 'number')) : []
   state.dailyPlayedDate = typeof state.dailyPlayedDate === 'string' ? state.dailyPlayedDate : ''
@@ -493,15 +466,19 @@ async function loadState(now: number) {
     const isChristmasTrack = isChristmasTitle(track.title ?? '')
     const isFutureTrack = track.startAt > now
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
-    const outOfSeasonChristmas = isMusicTrack && isChristmasTrack && !isChristmasSeason(now)
-    const nonChristmasDuringContinuousSeason = isFutureTrack && isContinuousChristmasPeriod(now) && (
-      (isMusicTrack && !isChristmasTrack) ||
-      ['jingle', 'commercial', 'news', 'golden-sunday'].includes(track.kind ?? '')
+    const removeChristmas = isMusicTrack && isChristmasTrack
+    const sunday = manilaTime(now).day === 0
+    const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
+    const validSundayOldies = isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
+    const removeSundayBreak = sunday && ['jingle', 'commercial', 'news', 'golden-sunday', 'dj-mic'].includes(track.kind ?? '')
+    const removeSundayMusic = sunday && isMusicTrack && (
+      manilaTime(track.startAt).day !== 0 || !validSundayOldies
     )
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest
-      && !outOfSeasonChristmas
-      && !nonChristmasDuringContinuousSeason
+      && !removeChristmas
+      && !removeSundayBreak
+      && !removeSundayMusic
       && (
         track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
       )
@@ -571,11 +548,13 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
           ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? '')).filter(Boolean),
         ])
       : new Set<string>()
-    const christmasSlot = isChristmasSlot(state.songCount, now)
-    const matchedSong = christmasSlot ? null : await findMorSong(metadata.title, metadata.artist, blockedTitleKeys, latestSettings.tagalogOnlyEnabled)
-    const song = christmasSlot
-      ? await findSong(PROGRAMS.christmas, state.songCount, state.history, now, latestSettings.shuffleEnabled, blockedTitleKeys)
-      : matchedSong ?? await findMorFallback(inProgram, state.songCount, state.history, now, latestSettings.shuffleEnabled, blockedTitleKeys)
+    const sunday = manilaTime(now).day === 0
+    const requireTagalog = latestSettings.tagalogOnlyEnabled || sunday
+    const morArtistIsAllowed = !sunday || isSundayOldiesArtist(metadata.artist)
+    const matchedSong = morArtistIsAllowed
+      ? await findMorSong(metadata.title, metadata.artist, blockedTitleKeys, requireTagalog)
+      : null
+    const song = matchedSong ?? await findMorFallback(inProgram, state.songCount, state.history, now, latestSettings.shuffleEnabled, blockedTitleKeys)
     if (!(await leaseGuard.isValid())) return latest
     const verifiedSettings = await getSettings()
     if (!verifiedSettings.morSyncEnabled || !verifiedSettings.autoDjEnabled) {
@@ -814,6 +793,10 @@ export async function queueDjMic(asset: { url: string; name: string; duration: n
   try {
   const now = Date.now()
   const { state } = await loadState(now)
+  if (manilaTime(now).day === 0) {
+    await writeJson(STATE_PATH, state)
+    return
+  }
   const current = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now).at(-1)
   state.tracks = current ? [current] : []
   const startAt = current ? trackEnd(current) : now

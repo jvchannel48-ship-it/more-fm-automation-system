@@ -1,19 +1,21 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
 import { getAdminStatus, refreshQueue } from '@/lib/station'
-import { getSettings, hasPersistentStorage, SETTINGS_PATH, writeJson } from '@/lib/storage'
+import { getSettings, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, writeJson } from '@/lib/storage'
 export const dynamic = 'force-dynamic'
 const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
 const jsonError = (message: string, status = 500) => NextResponse.json({ error: message }, { status, ...noStore })
 export async function GET() {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
-    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasPersistentStorage }, noStore)
+    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasSettingsPersistence }, noStore)
   } catch (error) {
     console.error('[morefm] admin settings GET failed', error)
-    return jsonError(hasPersistentStorage
-      ? 'Could not load admin settings: the configured POSTGRES_URL could not connect to Supabase PostgreSQL. Verify the URL, database password, network access, and applied migrations.'
-      : 'Could not load admin settings.')
+    return jsonError(hasSettingsPersistence && !hasPersistentStorage
+      ? 'Could not load admin settings from Supabase Storage. Check SUPABASE_URL, the server-only service-role key, and private bucket access.'
+      : hasPersistentStorage
+        ? 'Could not load admin settings: the configured POSTGRES_URL could not connect to Supabase PostgreSQL. Verify the URL, database password, network access, and applied migrations.'
+        : 'Could not load admin settings.')
   }
 }
 export async function PUT(request: NextRequest) {
@@ -76,14 +78,16 @@ export async function PUT(request: NextRequest) {
     }
     await writeJson(SETTINGS_PATH, next)
     if (next.morSyncEnabled !== current.morSyncEnabled || next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.goodVibesEnabled !== current.goodVibesEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled || next.noRepeatEnabled !== current.noRepeatEnabled || next.crossfaderEnabled !== current.crossfaderEnabled || next.crossfadeSeconds !== current.crossfadeSeconds) await refreshQueue()
-    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasPersistentStorage }, noStore)
+    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasSettingsPersistence }, noStore)
   } catch (error) {
     console.error('[morefm] admin settings PUT failed', error)
-    const message = error instanceof Error && error.message.includes('Supabase Postgres is not configured')
-      ? 'Cannot save admin settings: PostgreSQL is not configured. Add the Supabase database connection string as POSTGRES_URL in the deployment environment, then redeploy.'
-      : hasPersistentStorage
-        ? 'Could not update admin settings: POSTGRES_URL is present but Supabase PostgreSQL could not be reached. Verify the connection string and database migrations.'
-      : 'Could not update admin settings. Please retry.'
+    const message = error instanceof Error && error.message.includes('No persistent settings backend is configured')
+      ? 'Cannot save admin settings: configure POSTGRES_URL, or Supabase Storage with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then redeploy.'
+      : (error instanceof Error && error.message.includes('Supabase Storage')) || (hasSettingsPersistence && !hasPersistentStorage)
+        ? 'Cannot save admin settings: Supabase Storage could not save or prepare the private settings file. Check SUPABASE_URL, the service-role key, and bucket permissions.'
+        : hasPersistentStorage
+          ? 'Could not update admin settings: POSTGRES_URL is present but Supabase PostgreSQL could not be reached. Verify the connection string and database migrations.'
+          : 'Could not update admin settings. Please retry.'
     return jsonError(message)
   }
 }
@@ -91,7 +95,7 @@ export async function POST() {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     await refreshQueue()
-    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasPersistentStorage }, noStore)
+    return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasSettingsPersistence }, noStore)
   } catch (error) {
     console.error('[morefm] admin rotation refresh failed', error)
     return jsonError(hasPersistentStorage
