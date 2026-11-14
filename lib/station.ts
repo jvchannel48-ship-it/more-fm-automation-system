@@ -11,6 +11,10 @@ const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
 
+function playableSource(url: string) {
+  return url.startsWith('/api/audio?') ? url : `/api/audio?url=${encodeURIComponent(url)}`
+}
+
 interface HistoryEntry {
   id: string
   key: string
@@ -50,7 +54,7 @@ async function findSongRequest(request: { title: string; artist: string }, histo
   if (!candidate) return null
   const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 30_000)
   if (!download?.downloadUrl) return null
-  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: download.downloadUrl, duration: parseDuration(candidate.duration) }
+  return { id: candidate.id, key: songKey(candidate.title), artist: request.artist, title: `Song request: ${candidate.title}`, src: playableSource(download.downloadUrl), duration: parseDuration(candidate.duration) }
 }
 
 const AI_RULE =
@@ -169,7 +173,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
           key: songKey(item.title),
           artist: artist.name,
           title: item.title,
-          src: dl.downloadUrl,
+          src: playableSource(dl.downloadUrl),
           duration: parseDuration(item.duration),
         }
       }
@@ -342,7 +346,8 @@ export async function getNowPlaying(): Promise<NowResponse> {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
+  const tracks = state.tracks.map((track) => track.kind === 'music' && /^https?:\/\//.test(track.src) ? { ...track, src: playableSource(track.src) } : track)
+  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {
@@ -367,6 +372,17 @@ export async function refreshQueue() {
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
+}
+
+export async function recoverFailedTrack(uid: string) {
+  const now = Date.now()
+  const { state } = await loadState(now)
+  if (!state.tracks.some((track) => track.uid === uid)) return getNowPlaying()
+  // Drop the failed item and all stale preloaded items so fill() can create a fresh playable sequence now.
+  state.tracks = state.tracks.filter((track) => track.uid !== uid && track.startAt <= now)
+  state.fillingUntil = 0
+  await writeJson(STATE_PATH, state)
+  return getNowPlaying()
 }
 
 export async function queueDjMic(asset: { url: string; name: string; duration: number }) {

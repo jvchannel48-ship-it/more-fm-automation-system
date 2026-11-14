@@ -1,10 +1,26 @@
 import 'server-only'
 import { get, put } from '@vercel/blob'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import type { SongRequest, StationSettings } from './types'
 
 const blobToken = process.env.BLOB_READ_WRITE_TOKEN ?? process.env.VERCEL_BLOB_READ_WRITE_TOKEN
+const hasBlobCredentials = Boolean(blobToken || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID))
+const localStorageRoot = process.env.NODE_ENV === 'production' ? '/tmp/morefm-storage' : path.join(process.cwd(), '.morefm-storage')
+
+function localPath(pathname: string) {
+  const safe = pathname.replace(/[^a-zA-Z0-9._/-]/g, '_').replace(/^\/+/, '')
+  return path.join(localStorageRoot, safe)
+}
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
+  if (!hasBlobCredentials) {
+    try {
+      return JSON.parse(await readFile(localPath(pathname), 'utf8')) as T
+    } catch {
+      return fallback
+    }
+  }
   try {
     const result = await get(pathname, { access: 'private', useCache: false, ...(blobToken ? { token: blobToken } : {}) })
     if (!result || !result.stream) return fallback
@@ -16,6 +32,12 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
 }
 
 export async function writeJson(pathname: string, data: unknown) {
+  if (!hasBlobCredentials) {
+    const target = localPath(pathname)
+    await mkdir(path.dirname(target), { recursive: true })
+    await writeFile(target, JSON.stringify(data), 'utf8')
+    return
+  }
   await put(pathname, JSON.stringify(data), {
     access: 'private',
     allowOverwrite: true,

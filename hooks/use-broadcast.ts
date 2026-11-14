@@ -25,13 +25,18 @@ function trackGain(track: Track, now: number) {
   return Math.min(fadeIn, fadeOut)
 }
 
-export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
+export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
+  const failedUids = useRef(new Set<string>())
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false })
 
   useEffect(() => {
     if (data) offset.current = data.serverTime - Date.now()
+    const currentIds = new Set((data?.tracks ?? []).map((track) => track.uid))
+    failedUids.current.forEach((uid) => {
+      if (!currentIds.has(uid)) failedUids.current.delete(uid)
+    })
   }, [data])
 
   const unlock = useCallback(() => {
@@ -53,7 +58,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const nightVolumeGain = data?.nightVolumeActive ? 0.72 : 1
       const upcoming = tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
-      const wanted = [...active, ...upcoming].slice(0, slots.current.length)
+      const wanted = [...active, ...upcoming].filter((track) => !failedUids.current.has(track.uid)).slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
       for (const slot of slots.current) {
@@ -78,6 +83,17 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
         const isActive = active.includes(track)
         const el = slot.el
+
+        if (el.error || (isActive && el.ended && now < track.startAt + track.duration * 1000 - 1_000)) {
+          failedUids.current.add(track.uid)
+          el.pause()
+          el.removeAttribute('src')
+          el.load()
+          slot.uid = null
+          slot.synced = false
+          if (onStreamError) onStreamError(track.uid)
+          continue
+        }
 
         if (!playing || !isActive) {
           if (!el.paused) el.pause()
@@ -111,7 +127,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     tick()
     const id = window.setInterval(tick, 250)
     return () => window.clearInterval(id)
-  }, [data, playing, volume])
+  }, [data, playing, volume, onStreamError])
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return

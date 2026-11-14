@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,19 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
-  const { data, error } = useSWR('/api/now', fetcher, {
+  const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  const recoverStream = useCallback((uid: string) => {
+    void fetch('/api/now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    }).then(() => mutate()).catch(() => undefined)
+  }, [mutate])
+  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
   useEffect(() => {
     if (!playing || data?.offAir) return
     let id = localStorage.getItem('morefm-listener-id')
