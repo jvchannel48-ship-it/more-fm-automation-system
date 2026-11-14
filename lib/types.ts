@@ -26,6 +26,7 @@ export interface AudioAsset {
 export interface StationSettings {
   broadcastEnabled: boolean
   boardOperatorEnabled: boolean
+  noRepeatEnabled: boolean
   autoDjEnabled: boolean
   morSyncEnabled: boolean
   shuffleEnabled: boolean
@@ -153,4 +154,6 @@ export interface AdminStatus extends StationSettings {
   morSyncStatus: MorSyncStatus
   morCheckedAt: number | null
   listenerGeo: ListenerGeoSummary
+  dailyPlayedTitles: Array<{ title: string; artist: string; playedAt: number }>
+  dailyPlayedDate: string
 }

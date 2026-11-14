@@ -315,6 +315,7 @@ function isLegacyShowtimeAsset(asset: { url?: unknown; name?: unknown }) {
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   boardOperatorEnabled: false,
+  noRepeatEnabled: true,
   autoDjEnabled: true,
   morSyncEnabled: false,
   shuffleEnabled: true,
@@ -357,6 +358,7 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
+    noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
     shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
