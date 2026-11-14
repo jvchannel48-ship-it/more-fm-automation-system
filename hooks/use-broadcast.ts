@@ -47,14 +47,7 @@ function playErrorMessage(error: unknown) {
   const name = error instanceof DOMException ? error.name : ''
   if (name === 'NotAllowedError') return 'Your browser blocked audio playback. Click Play once to allow the station audio.'
   if (name === 'NotSupportedError') return 'This browser could not decode the station audio. Try another browser or device.'
-  return 'Reconnecting to station audio automatically…'
-}
-
-function mediaErrorMessage(code: number) {
-  if (code === 2) return 'The station audio connection failed. Retrying automatically…'
-  if (code === 3) return 'The station audio could not be decoded. Retrying automatically…'
-  if (code === 4) return 'The station audio source is unavailable. Refreshing automatically…'
-  return 'The station audio stopped unexpectedly. Reconnecting automatically…'
+  return 'Audio playback could not start. Click Play to try again.'
 }
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
@@ -63,7 +56,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false, offAir: false })
   const [playbackIssue, setPlaybackIssue] = useState<string | null>(null)
-  const noTrackSince = useRef<number | null>(null)
 
   useEffect(() => {
     if (!data) return
@@ -190,7 +182,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.activeWaitSince = null
         }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
+        const outputGain = clamp01(trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'smooth') * volume * masterGain * nightVolumeGain * replayGain * duckGain)
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
@@ -201,12 +193,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       }
 
       const onAir = active.length > 0
-      if (data && playing && !onAir && !scheduleOffAir) {
-        noTrackSince.current ??= now
-        if (now - noTrackSince.current >= 25_000) setPlaybackIssue('Reconnecting to station audio automatically…')
-      } else {
-        noTrackSince.current = null
-      }
       setState((prev) => {
         const next = { onAir, buffering: playing && (buffering || (!onAir && !scheduleOffAir)), offAir: scheduleOffAir }
         return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.offAir === next.offAir ? prev : next

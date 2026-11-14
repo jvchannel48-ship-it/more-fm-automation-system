@@ -4,9 +4,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// YouTube returns short-lived media URLs on googlevideo.com. No third-party
-// converter/download API is accepted by this proxy.
-const ALLOWED_HOST = /(^|\.)googlevideo\.com$/i
+// Allow the short-lived media hosts returned by the configured song search provider.
+const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com)$/i
 
 export async function GET(request: Request) {
   const rawUrl = new URL(request.url).searchParams.get('url')

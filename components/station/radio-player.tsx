@@ -31,7 +31,6 @@ function StationVerifiedBadge() {
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [nowPlayingIssue, setNowPlayingIssue] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
@@ -55,18 +54,6 @@ export function RadioPlayer() {
     if (!playbackIssue) return
     void mutate()
   }, [playbackIssue, mutate])
-  useEffect(() => {
-    if (!playing || data) {
-      setNowPlayingIssue('')
-      return
-    }
-    const timeout = window.setTimeout(() => setNowPlayingIssue('Reconnecting to the station automatically…'), 25_000)
-    return () => window.clearTimeout(timeout)
-  }, [playing, data])
-  useEffect(() => {
-    if (!nowPlayingIssue) return
-    void mutate()
-  }, [nowPlayingIssue, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir && !playbackIssue
 
@@ -76,7 +63,6 @@ export function RadioPlayer() {
       return
     }
     unlock()
-    setNowPlayingIssue('')
     setPlaying(true)
   }
 
@@ -161,7 +147,7 @@ export function RadioPlayer() {
               {activeTrack?.title ?? 'Searching for the next song…'}
             </p>
             <p className="mt-0.5 truncate text-sm text-muted-foreground">
-              {activeTrack?.artist ?? 'RJ FM AutoDJ'}
+              {activeTrack?.artist ?? '—'}
             </p>
           </div>
         )}
@@ -171,7 +157,6 @@ export function RadioPlayer() {
           </p>
         )}
         {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
-        {nowPlayingIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{nowPlayingIssue}</p>}
       </div>
 
       <div className="flex w-full max-w-xs items-center gap-3">

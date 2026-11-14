@@ -6,7 +6,7 @@ import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
-import { resolveYouTubeAudio, searchYouTube } from './youtube'
+const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
@@ -102,10 +102,10 @@ function isDisallowedSearchItem(item: SearchItem) {
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set(), requireTagalog = false) {
   if (isChristmasTitle(title) || (requireTagalog && !TAGALOG_TITLE_RULE.test(title))) return null
   if (blockedTitleKeys.has(repeatTitleKey(title, artist))) return null
-  const items = await searchYouTube(`${title} ${artist}`)
+  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${title} ${artist}`)}`, 8_000)
   const expectedTitle = normalizeMorMatchText(title)
   const expectedArtist = normalizeMorMatchText(artist)
-  const candidates = items.filter((item) => {
+  const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
     if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || !isAllowedTrack(item, artist) || isChristmasTitle(item.title) || NON_LATIN.test(item.title)) return false
     const cleanedTitle = item.title.replace(/^[A-Z]{1,4}\d{1,3}\s+/, '').replace(/\.(?:mp3|m4a|aac|wav)$/i, '').replace(/\s+(?:mp3|m4a|aac|wav)$/i, '')
@@ -118,14 +118,14 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
   }).slice(0, 6)
 
   const downloads = await Promise.all(candidates.map(async (item) => {
-    const download = await resolveYouTubeAudio(item.url)
+    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
     if (!download?.downloadUrl) return null
     return {
       id: item.id,
       key: songKey(title),
       artist,
       title: item.title,
-      src: download.downloadUrl,
+      src: playableSource(download.downloadUrl),
       sourceUrl: item.url,
       sourceChannel: item.channel,
       sourceRefreshedAt: Date.now(),
@@ -204,6 +204,20 @@ function shuffle<T>(list: T[]): T[] {
   return copy
 }
 
+async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' })
+      if (res.ok) return (await res.json()) as T
+      if (attempt > 0 || (res.status !== 429 && res.status < 500)) return null
+    } catch {
+      if (attempt > 0) return null
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return null
+}
+
 function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number, shuffleEnabled: boolean) {
   const unique = [...new Map(pool.map((a) => [a.name, a])).values()]
   const lastArtist = history.at(-1)?.artist
@@ -228,8 +242,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
   const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
     const variant = (shuffleEnabled ? variants[Math.floor(Math.random() * variants.length)] : variants[0]) ?? ''
-    const items = await searchYouTube(`${artist.name} ${variant}`.trim())
-    return { artist, items }
+    const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`, 8_000)
+    return { artist, items: data?.items ?? [] }
   }))
 
   const candidates = searchResults.flatMap(({ artist, items }) => items
@@ -245,14 +259,14 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   if (shuffleEnabled) shuffle(candidates)
 
   const downloadResults = await Promise.all(candidates.slice(0, 8).map(async ({ artist, item }) => {
-    const download = await resolveYouTubeAudio(item.url)
+    const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
     if (!download?.downloadUrl) return null
     return {
       id: item.id,
       key: songKey(item.title),
       artist: artist.name,
       title: item.title,
-      src: download.downloadUrl,
+      src: playableSource(download.downloadUrl),
       sourceUrl: item.url,
       sourceChannel: item.channel,
       sourceRefreshedAt: Date.now(),
@@ -272,11 +286,11 @@ async function refreshUpcomingSongSources(state: StationState, now: number) {
   if (due.length === 0) return false
   const refreshed = await Promise.all(due.map(async (track) => ({
     track,
-    download: await resolveYouTubeAudio(track.sourceUrl!),
+    download: await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(track.sourceUrl!)}&type=mp3`, 8_000),
   })))
   for (const { track, download } of refreshed) {
     track.sourceRefreshedAt = now
-    if (download?.downloadUrl) track.src = download.downloadUrl
+    if (download?.downloadUrl) track.src = playableSource(download.downloadUrl)
   }
   return true
 }
