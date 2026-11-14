@@ -15,8 +15,8 @@ const QUEUE_LEASE_MS = 100_000
 const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
 const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
-const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
-const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
+const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 3
+const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 2
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 // Coalesce simultaneous listener polls that land in the same server runtime.
@@ -124,7 +124,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
       id: item.id,
       key: songKey(title),
       artist,
-      title: item.title,
+      title: displayTitle(item.title, artist),
       src: playableSource(download.downloadUrl),
       sourceUrl: item.url,
       sourceChannel: item.channel,
@@ -174,6 +174,20 @@ function normalize(text: string) {
     .replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+function displayTitle(title: string, artist: string) {
+  let clean = title
+    .replace(/^[A-Z]{1,4}\d{1,3}\s+/, '')
+    .replace(/\.(?:mp3|m4a|aac|wav)$/i, '')
+    .replace(/\s*[\[(][^\])]*(?:official|audio|lyrics?|music\s+video|video)[^\])]*[\])]/gi, '')
+    .replace(/\s+(?:official\s+)?(?:music\s+)?video\b.*$/i, '')
+    .replace(/\s+(?:official\s+)?(?:(?:with\s+)?lyrics?|audio)\b.*$/i, '')
+    .trim()
+  const artistText = artist.trim()
+  const prefix = new RegExp(`^${artistText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[-–—|:]\\s*`, 'i')
+  clean = clean.replace(prefix, '').trim()
+  return clean || title.trim()
 }
 
 function songKey(title: string) {
@@ -265,7 +279,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       id: item.id,
       key: songKey(item.title),
       artist: artist.name,
-      title: item.title,
+      title: displayTitle(item.title, artist.name),
       src: playableSource(download.downloadUrl),
       sourceUrl: item.url,
       sourceChannel: item.channel,
@@ -439,6 +453,23 @@ async function loadState(now: number) {
   state.lastNewsDate = state.lastNewsDate ?? ''
   state.dailyPlayedTitles = Array.isArray(state.dailyPlayedTitles) ? state.dailyPlayedTitles.filter((entry) => Boolean(entry && typeof entry.key === 'string' && typeof entry.title === 'string' && typeof entry.artist === 'string' && typeof entry.playedAt === 'number')) : []
   state.dailyPlayedDate = typeof state.dailyPlayedDate === 'string' ? state.dailyPlayedDate : ''
+  let metadataChanged = false
+  for (const track of state.tracks) {
+    if (!track.artist) {
+      const historyArtist = state.history.find((entry) => entry.t === track.startAt)?.artist
+      if (historyArtist) {
+        track.artist = historyArtist
+        metadataChanged = true
+      }
+    }
+    if (track.artist && (track.kind === 'music' || track.kind === 'mor-sync') && track.title) {
+      const cleanedTitle = displayTitle(track.title, track.artist)
+      if (cleanedTitle !== track.title) {
+        track.title = cleanedTitle
+        metadataChanged = true
+      }
+    }
+  }
   let dailyChanged = false
   const currentDay = manilaDateKey(now)
   const rolledLog = rollDailyPlayedLog(state.dailyPlayedDate, currentDay, state.dailyPlayedTitles)
@@ -522,7 +553,7 @@ async function loadState(now: number) {
     return false
   })
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
-  return { state, changed: dailyChanged || state.tracks.length !== before || state.tracks.length !== beforeQueueDeduplication }
+  return { state, changed: dailyChanged || metadataChanged || state.tracks.length !== before || state.tracks.length !== beforeQueueDeduplication }
 }
 
 export async function runMorSyncTick(): Promise<MorSyncRecord> {

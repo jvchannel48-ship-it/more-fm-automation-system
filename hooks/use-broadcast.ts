@@ -139,7 +139,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
         const expected = (now - track.startAt) / 1000
         if (el.error || (isActive && el.ended && now < track.startAt + track.duration * 1000 - 1_000)) {
-          if (slot.reloadAttempts < 1 && slot.src) {
+          if (slot.reloadAttempts < 3 && slot.src) {
             slot.reloadAttempts += 1
             slot.synced = false
             slot.lastPlayAttemptAt = now
