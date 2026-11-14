@@ -230,8 +230,8 @@ export function AdminPanel() {
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle</Label><p className="text-xs text-muted-foreground">ON randomizes eligible artists and tracks; OFF follows source search order.</p></div>
-          <Switch id="shuffle-enabled" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle: OFF</Label><p className="text-xs text-muted-foreground">Fixed OFF so the eligible catalog follows source order and the no-repeat ledger can work through every song.</p></div>
+          <Switch id="shuffle-enabled" checked={false} disabled /></div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
           <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
       </div>

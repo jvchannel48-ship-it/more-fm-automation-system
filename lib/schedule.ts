@@ -390,10 +390,7 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
   if (day === 0 && hour >= 4 && hour < 6) return PROGRAMS['sunday-english-oldies']
   if (day === 0) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
-  const inDiscoWindow = discoStartHour < discoEndHour
-    ? hour >= discoStartHour && hour < discoEndHour
-    : hour >= discoStartHour || hour < discoEndHour
-  if (inDiscoWindow) return PROGRAMS.disco
+  // Disco programming is intentionally disabled; use the regular love mix.
   if (hour >= 22) return PROGRAMS['night-love']
   if (hour >= 21) return PROGRAMS['english-love']
   return PROGRAMS['love-mix']

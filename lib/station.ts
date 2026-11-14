@@ -6,6 +6,7 @@ import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { BRIGADA_NAGA_STATION_NAME, BRIGADA_NAGA_STREAM_URL } from './brigada'
+import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -93,7 +94,7 @@ function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
 
 function isDisallowedSearchItem(item: SearchItem) {
   const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
-  return liveFlag || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
+  return liveFlag || hasBlacklistedTitle(item.title) || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
 }
 
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set(), requireTagalog = false) {
@@ -107,7 +108,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
   const expectedArtist = normalizeMorMatchText(artist)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || isChristmasTitle(item.title) || NON_LATIN.test(item.title)) return false
+    if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || !isAllowedTrack(item, artist) || isChristmasTitle(item.title) || NON_LATIN.test(item.title)) return false
     const cleanedTitle = item.title.replace(/^[A-Z]{1,4}\d{1,3}\s+/, '').replace(/\.(?:mp3|m4a|aac|wav)$/i, '').replace(/\s+(?:mp3|m4a|aac|wav)$/i, '')
     const parts = cleanedTitle.split(/\s+(?:[-–—|]|::)\s+/).map((part) => part.trim())
     const titleMatches = parts.some((part) => normalizeMorMatchText(part) === expectedTitle) || normalizeMorMatchText(cleanedTitle) === expectedTitle
@@ -127,6 +128,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
       title: item.title,
       src: download.downloadUrl,
       sourceUrl: item.url,
+      sourceChannel: item.channel,
       sourceRefreshedAt: Date.now(),
       duration: parseDuration(item.duration),
     }
@@ -188,7 +190,7 @@ function songKey(title: string) {
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
 function isAllowed(title: string, artist: Artist, requireTagalog = false, credits = '') {
   if (NON_LATIN.test(title)) return false
-  if (REJECTED_TITLE_RULE.test(title) || AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
+  if (hasBlacklistedTitle(title) || REJECTED_TITLE_RULE.test(title) || AI_RULE.test(title) || ROCK_RULE.test(title) || HIGH_ENERGY_DANCE_RULE.test(title)) return false
   if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
   if (requireTagalog && !TAGALOG_TITLE_RULE.test(title)) return false
   return ` ${normalize(`${title} ${credits}`)} `.includes(` ${normalize(artist.match)} `)
@@ -254,7 +256,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (seconds < 90 || seconds > 540) return false
       const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
       const christmasTitle = isChristmasTitle(item.title)
-      if (isDisallowedSearchItem(item) || christmasTitle || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
+      if (isDisallowedSearchItem(item) || christmasTitle || !isAllowedTrack(item, artist.name) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
       return !blockedTitleKeys.has(repeatTitleKey(item.title, artist.name))
     })
     .map((item) => ({ artist, item })))
@@ -273,6 +275,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       title: item.title,
       src: download.downloadUrl,
       sourceUrl: item.url,
+      sourceChannel: item.channel,
       sourceRefreshedAt: Date.now(),
       duration: parseDuration(item.duration),
     }
@@ -432,6 +435,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
+      sourceChannel: song.sourceChannel,
       sourceRefreshedAt: song.sourceRefreshedAt,
       kind: 'music',
       title: song.title,
@@ -498,6 +502,7 @@ async function loadState(now: number) {
     const removeChristmas = isMusicTrack && isChristmasTrack
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
+    const removeFilteredTrack = isMusicTrack && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
     const trackManila = manilaTime(track.startAt)
     const validSundayEnglishOldies = trackManila.hour >= 4 && trackManila.hour < 6
     const validSundayOldies = isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
@@ -510,6 +515,7 @@ async function loadState(now: number) {
     )
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest
+      && !removeFilteredTrack
       && !removeChristmas
       && !removeSundayBreak
       && !removeSundayMusic
@@ -621,6 +627,7 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
         fadeIn: verifiedSettings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
         fadeOut: verifiedSettings.crossfaderEnabled ? verifiedSettings.crossfadeSeconds : 0,
         sourceUrl: song.sourceUrl,
+        sourceChannel: song.sourceChannel,
         sourceRefreshedAt: song.sourceRefreshedAt,
         kind: 'mor-sync',
         title: matchedSong ? metadata.title : song.title,

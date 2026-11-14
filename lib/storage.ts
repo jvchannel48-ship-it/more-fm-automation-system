@@ -309,7 +309,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   noRepeatEnabled: true,
   autoDjEnabled: true,
   morSyncEnabled: false,
-  shuffleEnabled: true,
+  shuffleEnabled: false,
   goodVibesEnabled: false,
   rotationPoolSize: 100,
   listenerLimit: 0,
@@ -360,7 +360,7 @@ export async function getSettings(): Promise<StationSettings> {
       ...saved,
       tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
       noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
-      shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+      shuffleEnabled: false,
     }
     try {
       await writeJson(SETTINGS_PATH, migrated)
@@ -377,7 +377,7 @@ export async function getSettings(): Promise<StationSettings> {
     noRepeatEnabled: true,
     autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
-    shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
+    shuffleEnabled: false,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(300, Math.round(saved.rotationPoolSize))) : 100,
     // Listener limits are temporarily disabled; keep the persisted field for backwards compatibility.
