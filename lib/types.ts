@@ -115,8 +115,15 @@ export interface ListenerGeoLocation {
   listeners: number
 }
 
+export interface ListenerGeoRollup {
+  label: string
+  listeners: number
+}
+
 export interface ListenerGeoSummary {
   locations: ListenerGeoLocation[]
+  countries: ListenerGeoRollup[]
+  regions: ListenerGeoRollup[]
   locatedListeners: number
   unlocatedListeners: number
 }

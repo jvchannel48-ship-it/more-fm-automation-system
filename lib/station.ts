@@ -18,6 +18,7 @@ const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 2
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
+const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 // Coalesce simultaneous listener polls that land in the same server runtime.
 let activeQueueFill: Promise<void> | null = null
 
@@ -79,7 +80,7 @@ function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
   const titleText = typeof title === 'string' ? title : ''
   const metadata = [title, ...values].filter((value): value is string => typeof value === 'string').join(' ')
   const liveTitleTag = /(?:\(\s*live\s*\)|\[\s*live\s*\]|\blive\s*$)/i.test(titleText)
-  const rejectedMetadata = /\blive\s+(?:concert|performance|recording|version|session|show|set|stream|acoustic|cover|at|in|from|on|video|audio|blog)\b|\bconcert\s+(?:live|recording|version|video|audio|footage|performance)\b|\b(?:performed|performing)\s+live\b|\blivestream\b|\bvlog\b|\bwish\s*107(?:[.]?5)?\b|\bwishclusive\b|\bwish[\s-]*bus\b/i.test(metadata)
+  const rejectedMetadata = SHOWTIME_METADATA_RULE.test(metadata) || /\blive\s+(?:concert|performance|recording|version|session|show|set|stream|acoustic|cover|at|in|from|on|video|audio|blog)\b|\bconcert\s+(?:live|recording|version|video|audio|footage|performance)\b|\b(?:performed|performing)\s+live\b|\blivestream\b|\bvlog\b|\bwish\s*107(?:[.]?5)?\b|\bwishclusive\b|\bwish[\s-]*bus\b/i.test(metadata)
   return liveTitleTag || rejectedMetadata || AI_RULE.test(metadata)
 }
 

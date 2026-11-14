@@ -227,7 +227,7 @@ export async function getStoredListenerCount() {
 
 export async function getStoredListenerGeo(): Promise<ListenerGeoSummary> {
   const pool = getPool()
-  if (!pool) return { locations: [], locatedListeners: 0, unlocatedListeners: 0 }
+  if (!pool) return { locations: [], countries: [], regions: [], locatedListeners: 0, unlocatedListeners: 0 }
   await ensureStateTable()
   await pool.query("DELETE FROM public.morefm_listeners WHERE last_seen_at < now() - interval '60 seconds'")
   const result = await pool.query<{
@@ -251,7 +251,18 @@ export async function getStoredListenerGeo(): Promise<ListenerGeoSummary> {
   const locations = groups.filter((group) => Boolean(group.countryCode || group.region || group.city))
   const locatedListeners = locations.reduce((total, group) => total + group.listeners, 0)
   const totalListeners = groups.reduce((total, group) => total + group.listeners, 0)
-  return { locations, locatedListeners, unlocatedListeners: Math.max(0, totalListeners - locatedListeners) }
+  const rollup = (values: Array<{ label: string | null; listeners: number }>) => {
+    const totals = new Map<string, number>()
+    for (const value of values) if (value.label) totals.set(value.label, (totals.get(value.label) ?? 0) + value.listeners)
+    return [...totals.entries()].map(([label, listeners]) => ({ label, listeners })).sort((a, b) => b.listeners - a.listeners || a.label.localeCompare(b.label)).slice(0, 8)
+  }
+  return {
+    locations: locations.slice(0, 25),
+    countries: rollup(groups.map((group) => ({ label: group.countryCode, listeners: group.listeners }))),
+    regions: rollup(groups.map((group) => ({ label: group.region, listeners: group.listeners }))),
+    locatedListeners,
+    unlocatedListeners: Math.max(0, totalListeners - locatedListeners),
+  }
 }
 
 async function getListenerCountFromState() {
@@ -295,6 +306,12 @@ export const EMPTY_MOR_SYNC_RECORD: MorSyncRecord = {
   queuedTitle: null,
   updatedAt: null,
 }
+
+function isLegacyShowtimeAsset(asset: { url?: unknown; name?: unknown }) {
+  const value = `${typeof asset.url === 'string' ? asset.url : ''} ${typeof asset.name === 'string' ? asset.name : ''}`.toLowerCase()
+  return value.includes('my-only-radio-for-life') || value.includes('myonlyradioforlife') || /it['’]?s[\s_-]*show[\s_-]*time/.test(value)
+}
+
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   autoDjEnabled: true,
@@ -327,7 +344,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   replayGainTargetLufs: -14,
   jingleEnabled: true,
   commercialEnabled: false,
-  jingle: { url: '/my-only-radio-for-life.mp3', name: 'MyOnlyRadioforLife-usesuno.com.mp3', duration: 11.833 },
+  jingle: null,
   commercials: [null, null, null],
   goldenSunday: null,
   news: null,
@@ -366,9 +383,9 @@ export async function getSettings(): Promise<StationSettings> {
     crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' ? Math.max(0, Math.min(30, saved.crossfadeSeconds)) : 8,
     replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
     replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
-    jingleEnabled: saved.jingle && typeof saved.jingle.url === 'string' && typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : true,
+    jingleEnabled: saved.jingle && typeof saved.jingle.url === 'string' && !isLegacyShowtimeAsset(saved.jingle) && typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
-    jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : DEFAULT_SETTINGS.jingle,
+    jingle: saved.jingle && typeof saved.jingle.url === 'string' && !isLegacyShowtimeAsset(saved.jingle) ? saved.jingle : null,
     commercials: Array.from({ length: 3 }, (_, i) => {
       const asset = saved.commercials?.[i]
       return asset && typeof asset.url === 'string' ? asset : null
