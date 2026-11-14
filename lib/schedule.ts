@@ -387,11 +387,12 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
   const { hour, minute, day } = manilaTime(ms)
   if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
   if (day === 0 && hour >= 6 && hour < 7) return PROGRAMS['brigada-news']
-  if (hour >= 17 && hour < 18) return PROGRAMS['brigada-news']
+  if (day !== 0 && hour >= 17 && hour < 21) return PROGRAMS['brigada-news']
   if (day === 0 && hour >= 4 && hour < 6) return PROGRAMS['sunday-english-oldies']
   if (day === 0) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
   // Disco programming is intentionally disabled; use the regular love mix.
+  if (day !== 0 && hour >= 22) return PROGRAMS['brigada-news']
   if (hour >= 22) return PROGRAMS['night-love']
   if (hour >= 21) return PROGRAMS['english-love']
   return PROGRAMS['love-mix']

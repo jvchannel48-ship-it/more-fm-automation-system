@@ -402,9 +402,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       }
     }
     if (program.id === 'brigada-news') {
-      const endAt = manilaTime(startAt).hour === 17
-        ? manilaHourBoundary(startAt, 18)
-        : manilaHourBoundary(startAt, 7)
+      const hour = manilaTime(startAt).hour
+      const endHour = hour === 6 ? 7 : hour >= 17 && hour < 21 ? 21 : 24
+      const endAt = manilaHourBoundary(startAt, endHour)
       state.tracks.push({
         uid: `brigada-news-${startAt}`,
         src: BRIGADA_NAGA_STREAM_URL,
