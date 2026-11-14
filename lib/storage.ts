@@ -318,7 +318,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   signOffHour: 1,
   signOnHour: 4,
   discoStartHour: 16,
-  discoEndHour: 18,
+  discoEndHour: 19,
   christmasEnabled: false,
   autoVoiceEnabled: false,
   autoVoiceAnnouncement: null,
@@ -388,9 +388,9 @@ export async function getSettings(): Promise<StationSettings> {
     // Sunday remains continuous through isOffAir(), which explicitly skips Sunday.
     signOffHour: 1,
     signOnHour: 4,
-    // Weekday disco is fixed from 4:00 PM through 6:00 PM.
+    // Weekday disco is fixed from 4:00 PM through 6:59 PM; evening blocks switch at 7, 9, 10, and midnight.
     discoStartHour: 16,
-    discoEndHour: 18,
+    discoEndHour: 19,
     christmasEnabled: false,
     autoVoiceEnabled: false,
     autoVoiceAnnouncement: saved.autoVoiceAnnouncement && typeof saved.autoVoiceAnnouncement.url === 'string' ? saved.autoVoiceAnnouncement : null,

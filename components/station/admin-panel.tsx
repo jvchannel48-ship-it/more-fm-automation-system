@@ -74,7 +74,7 @@ export function AdminPanel() {
   const [signOffHour, setSignOffHour] = useState('1')
   const [signOnHour, setSignOnHour] = useState('4')
   const [discoStartHour, setDiscoStartHour] = useState('16')
-  const [discoEndHour, setDiscoEndHour] = useState('18')
+  const [discoEndHour, setDiscoEndHour] = useState('19')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [rotationPoolSize, setRotationPoolSize] = useState('100')
@@ -314,7 +314,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Afternoon classics schedule</Label><p className="text-xs text-muted-foreground">Choose when mellow classic pop, soft disco, and soul hits play, Manila time.</p></div>
+      <div><Label>Weekday afternoon and evening schedule</Label><p className="text-xs text-muted-foreground">Disco runs through 6:59 PM, then RJ FM switches at 7:00 PM, 9:00 PM, 10:00 PM, and midnight, Manila time.</p></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Disco start
           <select value={discoStartHour} onChange={(event) => setDiscoStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>

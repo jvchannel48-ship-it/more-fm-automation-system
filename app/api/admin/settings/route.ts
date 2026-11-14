@@ -33,7 +33,7 @@ export async function PUT(request: NextRequest) {
     const signOffHour = 1
     const signOnHour = 4
     const discoStartHour = 16
-    const discoEndHour = 18
+    const discoEndHour = 19
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const bounded = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
