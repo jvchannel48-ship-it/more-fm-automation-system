@@ -337,7 +337,11 @@ export const DEFAULT_SETTINGS: StationSettings = {
   replayGainTargetLufs: -14,
   jingleEnabled: true,
   commercialEnabled: false,
-  jingle: null,
+  jingle: {
+    url: '/rj-fm-jingle.mp3',
+    name: 'RjFm-usesuno.com.mp3',
+    duration: 8.04,
+  },
   commercials: [null, null, null],
   goldenSunday: null,
   news: null,
@@ -398,9 +402,10 @@ export async function getSettings(): Promise<StationSettings> {
     crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' ? Math.max(0, Math.min(30, saved.crossfadeSeconds)) : 8,
     replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
     replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
-    jingleEnabled: saved.jingle && typeof saved.jingle.url === 'string' && !isLegacyShowtimeAsset(saved.jingle) && typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : false,
+    // The RJ FM jingle is automatic on regular days; Sunday suppression is enforced by the queue.
+    jingleEnabled: true,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
-    jingle: saved.jingle && typeof saved.jingle.url === 'string' && !isLegacyShowtimeAsset(saved.jingle) ? saved.jingle : null,
+    jingle: DEFAULT_SETTINGS.jingle,
     commercials: Array.from({ length: 3 }, (_, i) => {
       const asset = saved.commercials?.[i]
       return asset && typeof asset.url === 'string' ? asset : null

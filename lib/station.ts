@@ -342,7 +342,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const previousTrack = state.tracks.at(-1)
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
     const sunday = manilaTime(breakAt).day === 0
-    if (!sunday && state.songCount > 0 && state.songCount % 3 === 0 && state.lastBreakSongCount !== state.songCount) {
+    if (!sunday && state.songCount > 0 && state.songCount % 4 === 0 && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' }> = []
       if (settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })

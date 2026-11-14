@@ -406,8 +406,8 @@ export function AdminPanel() {
       {data?.djMic && <p className="truncate text-xs text-muted-foreground">Last clip: {data.djMic.name}</p>}
     </div>
 
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, ON plays the station jingle after every 3 songs; OFF keeps music continuous. Jingles are suppressed all day Sunday. MP3 supported · max 4 MB.</p></div>
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, the station jingle plays automatically after every 4 songs, then the next music track starts. Jingles are suppressed all day Sunday. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -435,6 +435,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, jingles, commercials, or news. Christmas tracks are excluded for now. On other days, Jingle ON plays after every three songs; Jingle OFF keeps music continuous. Rotation is Tagalog-only by default, shuffled, and avoids repeats within the configured history.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, jingles, commercials, or news. Christmas tracks are excluded for now. On other days, the RJ FM jingle plays after every four songs before the next music track. Rotation is Tagalog-only by default, shuffled, and avoids repeats within the configured history.</p>
   </div>
 }
