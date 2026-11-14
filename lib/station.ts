@@ -6,6 +6,7 @@ import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
+import { searchYouTube, type YouTubeSearchResult } from './youtube-search'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
@@ -15,8 +16,8 @@ const QUEUE_LEASE_MS = 100_000
 const SOURCE_REFRESH_WINDOW_MS = 110_000
 const SOURCE_REFRESH_RETRY_MS = 45_000
 const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
-const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 3
-const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 2
+const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 30
+const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 30
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 // Coalesce simultaneous listener polls that land in the same server runtime.
@@ -94,6 +95,10 @@ function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
   return liveTitleTag || rejectedMetadata || AI_RULE.test(metadata)
 }
 
+function asSearchItems(items: YouTubeSearchResult[]): SearchItem[] {
+  return items.map((item) => ({ ...item }))
+}
+
 function isDisallowedSearchItem(item: SearchItem) {
   const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
   return liveFlag || hasBlacklistedTitle(item.title) || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
@@ -102,10 +107,10 @@ function isDisallowedSearchItem(item: SearchItem) {
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set(), requireTagalog = false) {
   if (isChristmasTitle(title) || (requireTagalog && !TAGALOG_TITLE_RULE.test(title))) return null
   if (blockedTitleKeys.has(repeatTitleKey(title, artist))) return null
-  const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${title} ${artist}`)}`, 8_000)
+  const items = asSearchItems(await searchYouTube(`${title} ${artist} official audio`, 12))
   const expectedTitle = normalizeMorMatchText(title)
   const expectedArtist = normalizeMorMatchText(artist)
-  const candidates = (data?.items ?? []).filter((item) => {
+  const candidates = items.filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
     if (seconds < 90 || seconds > 540 || isDisallowedSearchItem(item) || !isAllowedTrack(item, artist) || isChristmasTitle(item.title) || NON_LATIN.test(item.title)) return false
     const cleanedTitle = item.title.replace(/^[A-Z]{1,4}\d{1,3}\s+/, '').replace(/\.(?:mp3|m4a|aac|wav)$/i, '').replace(/\s+(?:mp3|m4a|aac|wav)$/i, '')
@@ -256,8 +261,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
   const searchResults = await Promise.all(candidatesArtists.slice(0, 8).map(async (artist) => {
     const variant = (shuffleEnabled ? variants[Math.floor(Math.random() * variants.length)] : variants[0]) ?? ''
-    const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`, 8_000)
-    return { artist, items: data?.items ?? [] }
+    const items = asSearchItems(await searchYouTube(`${artist.name} ${variant} official audio`, 12))
+    return { artist, items }
   }))
 
   const candidates = searchResults.flatMap(({ artist, items }) => items

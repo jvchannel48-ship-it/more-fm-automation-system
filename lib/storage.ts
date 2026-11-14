@@ -373,7 +373,7 @@ export async function getSettings(): Promise<StationSettings> {
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
     // Keep song rotation from repeating titles across the active daily history.
     noRepeatEnabled: true,
-    autoDjEnabled: typeof saved.autoDjEnabled === 'boolean' ? saved.autoDjEnabled : true,
+    autoDjEnabled: true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
     shuffleEnabled: false,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,

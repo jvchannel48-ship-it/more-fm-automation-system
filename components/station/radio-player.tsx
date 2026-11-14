@@ -144,7 +144,7 @@ export function RadioPlayer() {
           <div className="mt-3 w-full max-w-md rounded-2xl border border-primary/25 bg-background/45 px-5 py-4 text-left shadow-inner" aria-live="polite">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Now playing</p>
             <p className="mt-1 min-w-0 max-w-full break-words text-lg font-semibold leading-snug text-foreground">
-              {activeTrack?.title ?? 'Searching for the next song…'}
+              {activeTrack?.title ?? 'On air'}
             </p>
             <p className="mt-0.5 min-w-0 max-w-full break-words text-sm text-muted-foreground">
               {activeTrack?.artist ?? '—'}
