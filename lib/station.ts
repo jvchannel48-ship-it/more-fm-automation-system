@@ -286,7 +286,13 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (seconds < 90 || seconds > 540) return false
       const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
       const christmasTitle = isChristmasTitle(item.title)
-      if (isDisallowedSearchItem(item) || christmasTitle || !isAllowedTrack(item, artist.name) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
+      if (isDisallowedSearchItem(item) || christmasTitle) return false
+      const strictMatch = isAllowedTrack(item, artist.name) && isAllowed(item.title, artist, program.tagalogOnly, credits)
+      const providerHasNoChannelMetadata = !item.channel && !item.author && !item.uploader && !item.source
+      // Some free YouTube result mirrors omit channel metadata. Keep the strict
+      // official-artist gate first, but allow a clean 90–540 second result from
+      // that provider so AutoDJ never falls silent when metadata is incomplete.
+      if (!strictMatch && !providerHasNoChannelMetadata) return false
       return !blockedTitleKeys.has(repeatTitleKey(item.title, artist.name))
     })
     .map((item) => ({ artist, item })))
