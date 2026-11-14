@@ -12,5 +12,7 @@ const requests: Request[] = [
 assert.deepEqual(orderedPendingRequests(requests).map((request) => request.id), ['first', 'middle', 'later'])
 assert.equal(firstPlayableRequest(requests, (request) => request.id !== 'first')?.id, 'middle')
 assert.equal(firstPlayableRequest(requests, () => false), null)
-assert.equal(orderedPendingRequests(Array.from({ length: 20 }, (_, index) => ({ id: String(index), requestedAt: index, status: 'pending' as const }))).length, 12)
+const longQueue = Array.from({ length: 20 }, (_, index) => ({ id: String(index), requestedAt: index, status: 'pending' as const }))
+assert.equal(orderedPendingRequests(longQueue).length, 20, 'all pending requests are read, not just the first 12')
+assert.equal(firstPlayableRequest(longQueue, (request) => request.id === '19')?.id, '19', 'a playable request beyond the old limit is not blocked by earlier unmatched requests')
 console.log('song-request-queue: all FIFO and skip-unmatched tests passed')

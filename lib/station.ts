@@ -4,6 +4,7 @@ import { getListenerCount } from './listeners'
 import { CHRISTMAS_ARTISTS, isChristmasSlot, isGoldenSundayWindow, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, manilaMonthKey, MANILA_OFFSET_MS, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { orderedPendingRequests } from './song-request-queue'
+import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -106,7 +107,7 @@ async function findSongRequest(request: { title: string; artist: string }, histo
     const seconds = parseDuration(item.duration ?? '')
     const normalizedTitle = normalize(item.title)
     const titleMatches = normalizedTitle.includes(requestedTitle) || requestedWords.every((word) => normalizedTitle.includes(word))
-    return seconds >= 90 && seconds <= 540 && titleMatches && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !blockedTitleKeys.has(repeatTitleKey(item.title))
+    return seconds >= 90 && seconds <= 540 && titleMatches && !isDisallowedSearchItem(item) && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title) && !ROCK_RULE.test(item.title) && !HIGH_ENERGY_DANCE_RULE.test(item.title) && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title) && !blockedTitleKeys.has(repeatTitleKey(item.title, request.artist))
   }).slice(0, 8)
   const downloads = await Promise.all(candidates.map(async (candidate) => {
     const download = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(candidate.url)}&type=mp3`, 12_000)
@@ -126,6 +127,7 @@ async function findPendingSongRequest(history: HistoryEntry[], blockedTitleKeys:
 }
 
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set()) {
+  if (blockedTitleKeys.has(repeatTitleKey(title, artist))) return null
   const data = await fetchJson<{ items?: SearchItem[] }>(
     `${API_BASE}?search=${encodeURIComponent(`${title} ${artist}`)}`,
     8_000,
@@ -141,7 +143,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
     const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
     const artistInTitle = parts.some((part) => normalizeMorMatchText(part) === expectedArtist)
     const artistInCredits = ` ${normalizeMorMatchText(credits)} `.includes(` ${expectedArtist} `)
-    return titleMatches && (artistInTitle || artistInCredits) && !blockedTitleKeys.has(repeatTitleKey(item.title))
+    return titleMatches && (artistInTitle || artistInCredits) && !blockedTitleKeys.has(repeatTitleKey(item.title, artist))
   }).slice(0, 6)
 
   const downloads = await Promise.all(candidates.map(async (item) => {
@@ -208,13 +210,6 @@ function songKey(title: string) {
     .join(' ')
 }
 
-function repeatTitleKey(title: string) {
-  return normalize(title.replace(/^song request\s*:\s*/i, '').replace(/\(.*?\)|\[.*?\]/g, ' '))
-    .replace(/\b(official|music|video|lyric|lyrics|audio|remastered|remaster|hd|hq|4k|with|mv|live|radio edit|edit|version|cover)\b/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .join(' ')
-}
 
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
 function isAllowed(title: string, artist: Artist, requireTagalog = false, credits = '') {
@@ -288,7 +283,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const credits = [item.author, item.channel, item.uploader, item.source].filter(Boolean).join(' ')
       if (isDisallowedSearchItem(item) || !isAllowed(item.title, artist, program.tagalogOnly, credits)) return false
       if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
-      return !blockedTitleKeys.has(repeatTitleKey(item.title))
+      return !blockedTitleKeys.has(repeatTitleKey(item.title, artist.name))
     })
     .map((item) => ({ artist, item })))
   if (shuffleEnabled) shuffle(candidates)
@@ -366,7 +361,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         ...state.dailyPlayedTitles.map((entry) => entry.key),
         ...state.tracks
           .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
-          .map((track) => repeatTitleKey(track.title ?? ''))
+          .map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''))
           .filter(Boolean),
       ])
     : new Set<string>()
@@ -496,7 +491,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       title: song.title,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, title: song.title, t: songStart })
-    if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(song.title))
+    if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     state.seasonalSongCount++
@@ -526,22 +521,39 @@ async function loadState(now: number) {
   }
   let dailyChanged = false
   const currentDay = manilaDateKey(now)
-  if (state.dailyPlayedDate !== currentDay) {
-    state.dailyPlayedDate = currentDay
-    state.dailyPlayedTitles = []
-    dailyChanged = true
-  }
+  const rolledLog = rollDailyPlayedLog(state.dailyPlayedDate, currentDay, state.dailyPlayedTitles)
+  state.dailyPlayedDate = rolledLog.date
+  state.dailyPlayedTitles = rolledLog.entries.map((entry) => ({ ...entry, key: repeatTitleKey(entry.title, entry.artist) }))
+  dailyChanged ||= state.dailyPlayedTitles.some((entry, index) => entry.key !== rolledLog.entries[index]?.key)
+  dailyChanged ||= rolledLog.changed
   const dailyKeys = new Set(state.dailyPlayedTitles.map((entry) => entry.key))
   for (const track of state.tracks) {
-    if (trackEnd(track) > now || (track.kind !== 'music' && track.kind !== 'mor-sync') || !track.title || manilaDateKey(track.startAt) !== currentDay) continue
-    const key = repeatTitleKey(track.title)
+    if (!track.title) continue
+    if (!isCompletedDailyMusicTrack({
+      kind: track.kind,
+      title: track.title,
+      endAt: trackEnd(track),
+      trackDay: manilaDateKey(track.startAt),
+      currentDay,
+      now,
+    })) continue
+    const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? 'Unknown artist'
+    const key = repeatTitleKey(track.title, artist)
     if (!key || dailyKeys.has(key)) continue
-    dailyKeys.add(key)
-    state.dailyPlayedTitles.push({ title: track.title.replace(/^song request\s*:\s*/i, ''), artist: state.history.find((entry) => entry.t === track.startAt)?.artist ?? 'Unknown artist', playedAt: trackEnd(track), key })
-    dailyChanged = true
+    const completed = appendCompletedSong(state.dailyPlayedTitles, {
+      title: track.title.replace(/^song request\s*:\s*/i, ''),
+      artist,
+      playedAt: trackEnd(track),
+      key,
+    })
+    if (completed !== state.dailyPlayedTitles) {
+      state.dailyPlayedTitles = completed
+      dailyKeys.add(key)
+      dailyChanged = true
+    }
   }
   const before = state.tracks.length
-  state.tracks = state.tracks.filter((track) => trackEnd(track) >= now - 1000 && (
+  state.tracks = state.tracks.filter((track) => isInPlaybackQueue(trackEnd(track), now) && (
     track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
   ))
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
@@ -606,7 +618,7 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
     const blockedTitleKeys = latestSettings.noRepeatEnabled
       ? new Set([
           ...state.dailyPlayedTitles.map((entry) => entry.key),
-          ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '')).filter(Boolean),
+          ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? '')).filter(Boolean),
         ])
       : new Set<string>()
     const matchedSong = await findMorSong(metadata.title, metadata.artist, blockedTitleKeys)

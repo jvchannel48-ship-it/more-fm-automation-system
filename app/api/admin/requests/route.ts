@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
 import { getSongRequests, updateSongRequest } from '@/lib/storage'
+export const dynamic = 'force-dynamic'
 
 const jsonError = (error: string, status = 500) => NextResponse.json({ error }, { status })
 
@@ -8,7 +9,7 @@ export async function GET() {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const requests = await getSongRequests()
-    return NextResponse.json({ requests: requests.sort((a, b) => b.requestedAt - a.requestedAt) })
+    return NextResponse.json({ requests: requests.sort((a, b) => b.requestedAt - a.requestedAt) }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('[morefm] admin song request list failed', error)
     return jsonError('Could not load song requests.')
