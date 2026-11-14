@@ -11,6 +11,7 @@ export interface Track {
   fadeOut: number
   sourceUrl?: string
   sourceChannel?: string
+  sourcePlaylist?: string
   sourceRefreshedAt?: number
   kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic' | 'brigada-news'
   title?: string

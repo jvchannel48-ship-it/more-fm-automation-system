@@ -6,8 +6,9 @@ import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
-import { searchYouTube, type YouTubeSearchResult } from './youtube-search'
+import { getRjFmPlaylistTracks, searchYouTube, type YouTubeSearchResult } from './youtube-search'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
+const RJ_FM_PLAYLIST_ID = 'PLd469-e1TkbM'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
@@ -384,6 +385,36 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
   return null
 }
 
+function playlistArtist(title: string, channel?: string) {
+  const firstPart = title.split(/\s+[-–—|:]\s+/)[0]?.trim()
+  return firstPart && firstPart.length <= 80 ? firstPart : channel?.trim() || 'RJ FM Playlist'
+}
+
+async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>) {
+  const playlist = await getRjFmPlaylistTracks()
+  if (playlist.length === 0) return null
+  for (let offset = 0; offset < playlist.length; offset++) {
+    const item = playlist[(songCount + offset) % playlist.length]
+    const artist = playlistArtist(item.title, item.channel)
+    if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist))) continue
+    const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 12_000)
+    if (!download?.downloadUrl) continue
+    return {
+      id: item.id,
+      key: songKey(item.title),
+      artist,
+      title: item.title,
+      src: playableSource(download.downloadUrl),
+      sourceUrl: item.url,
+      sourceChannel: item.channel,
+      sourcePlaylist: RJ_FM_PLAYLIST_ID,
+      sourceRefreshedAt: Date.now(),
+      duration: item.duration,
+    }
+  }
+  return null
+}
+
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled = true, blockedTitleKeys: Set<string> = new Set()) {
   const language = languageForSlot(program, songCount)
   const candidatesArtists = eligibleArtists(program.pools[language], history, now, shuffleEnabled)
@@ -589,7 +620,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-    const song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+    const song = await findPlaylistSong(state.songCount, blockedTitleKeys)
+      ?? await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
       ?? await findEmergencySong(state.songCount, blockedTitleKeys)
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
@@ -604,6 +636,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
       sourceChannel: song.sourceChannel,
+      sourcePlaylist: song.sourcePlaylist,
       sourceRefreshedAt: song.sourceRefreshedAt,
       kind: 'music',
       title: song.title,
@@ -693,7 +726,7 @@ async function loadState(now: number) {
     const removeBrigada = track.kind === 'brigada-news'
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
-    const removeFilteredTrack = isMusicTrack && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
+    const removeFilteredTrack = isMusicTrack && !track.sourcePlaylist && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
     const trackManila = manilaTime(track.startAt)
     const sundayProgram = trackManila.day === 0
       ? programAt(track.startAt)
@@ -706,7 +739,7 @@ async function loadState(now: number) {
       ['jingle', 'commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
       || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
     )
-    const removeSundayMusic = sunday && isMusicTrack && (
+    const removeSundayMusic = sunday && isMusicTrack && !track.sourcePlaylist && (
       manilaTime(track.startAt).day !== 0 || (!validSundayOldies && !validSundayEnglishOldies && !validSundayTagalogLove && !validSundayEnglishLove)
     )
     return isInPlaybackQueue(trackEnd(track), now)
