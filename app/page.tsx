@@ -1,5 +1,5 @@
 import { FeedbackForm } from '@/components/station/feedback-form'
-import { RadioPlayer } from '@/components/station/radio-player'
+import { RjfmStreamPlayer } from '@/components/station/rjfm-stream-player'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function Home() {
@@ -25,13 +25,12 @@ export default function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-8">
-        <h1 className="sr-only">RJ FM livestream</h1>
-        <RadioPlayer />
+        <RjfmStreamPlayer />
       </main>
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-success"><span className="size-1.5 rounded-full bg-success shadow-[0_0_12px_var(--success)]" /> On air from Naga</div>
-        <p className="text-[10px] font-medium tracking-wide text-muted-foreground">ABS-CBN Complex · Naga City</p>
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-success"><span className="size-1.5 rounded-full bg-success shadow-[0_0_12px_var(--success)]" /> RJFM public stream</div>
+        <p className="text-[10px] font-medium tracking-wide text-muted-foreground">100.3 FM · Makati, Metro Manila</p>
       </footer>
     </div>
   )
