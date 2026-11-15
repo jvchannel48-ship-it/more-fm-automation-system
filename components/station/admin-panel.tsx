@@ -263,8 +263,8 @@ export function AdminPanel() {
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
           <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
       </div>
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300/30 bg-emerald-300/[0.07] p-3">
-        <div><Label htmlFor="no-repeat-enabled">{data?.noRepeatEnabled ? 'No Repeat: ON' : 'No Repeat: OFF'}</Label><p className="text-xs text-muted-foreground">Blocks normalized song titles across artists and common version labels for the Manila day. It resets tomorrow; provider metadata can still vary for unusual alternate recordings.</p></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300/30 bg-emerald-300/[0.07] p-3">
+        <div><Label htmlFor="no-repeat-enabled">{data?.noRepeatEnabled ? 'No Repeat: ON' : 'No Repeat: OFF'}</Label><p className="text-xs text-muted-foreground">Blocks normalized song titles across artists and common version labels across the retained recent rotation history, so songs do not immediately repeat after a day change.</p></div>
         <Switch id="no-repeat-enabled" aria-label="No Repeat on or off" checked={data?.noRepeatEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { noRepeatEnabled: checked })} />
       </div>
       <div className="rounded-lg border border-emerald-300/20 bg-background/45 p-3">

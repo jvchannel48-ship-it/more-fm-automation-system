@@ -218,7 +218,7 @@ export async function queueSongRequest(requestId: string) {
     const blocked = settings.noRepeatEnabled
       ? new Set([
           ...state.dailyPlayedTitles.map((entry) => entry.key),
-          ...state.history.filter((entry) => manilaDateKey(entry.t) === manilaDateKey(now)).map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist)).filter(Boolean),
+          ...state.history.map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist)).filter(Boolean),
           ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', track.artist ?? '')).filter(Boolean),
         ])
       : new Set<string>()
@@ -591,7 +591,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     ? new Set([
         ...state.dailyPlayedTitles.map((entry) => entry.key),
         ...state.history
-          .filter((entry) => manilaDateKey(entry.t) === manilaDateKey(now))
           .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
           .filter(Boolean),
         ...state.tracks
