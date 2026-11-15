@@ -20,6 +20,7 @@
 - [x] Admin playlist search supports one-step Auto add (search + best-match add) so title/artist requests do not require manual re-search.
 - [x] Pending song requests expose Auto add: reads title + artist, searches provider, and adds the best match to RJ PLAYED.
 - [x] Daily no-repeat ledger remains the gate so the same song is not rotated again for the rest of the day once played.
+- [x] AutoDJ searches classic Tagalog/English love songs (60s–90s focus), blocks rock and dance, auto-adds resolved tracks to RJ PLAYED, and auto-removes them from the active playlist after they finish playing.
 
 ## RJ FM Makati relay
 - [ ] Admin can turn the live 100.3 RJFM Makati relay ON or OFF without exposing or importing its playlist.
