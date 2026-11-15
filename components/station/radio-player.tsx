@@ -10,7 +10,7 @@ import type { NowResponse } from '@/lib/types'
 
 const fetcher = async (url: string) => {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 18_000)
+  const timeout = window.setTimeout(() => controller.abort(), 10_000)
   try {
     const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
     if (!response.ok) throw new Error('Station unavailable')
@@ -42,11 +42,9 @@ export function RadioPlayer() {
   const [listenerIssue, setListenerIssue] = useState<string | null>(null)
   const listenerId = useRef<string | null>(null)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
-    refreshInterval: playing ? 2000 : 4000,
+    refreshInterval: 3000,
     revalidateOnFocus: true,
     keepPreviousData: true,
-    errorRetryInterval: 2000,
-    errorRetryCount: 8,
   })
   const recoverStream = useCallback((uid: string) => {
     void fetch('/api/now', {
@@ -56,17 +54,6 @@ export function RadioPlayer() {
     }).then(() => mutate()).catch(() => undefined)
   }, [mutate])
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
-  // Empty queue while user is playing → force an emergency OPM/love track on air.
-  useEffect(() => {
-    if (!playing || data?.offAir) return
-    if (data?.tracks && data.tracks.length > 0) return
-    const timer = window.setTimeout(() => {
-      void fetch('/api/bootstrap-queue', { method: 'POST', cache: 'no-store' })
-        .then(() => mutate())
-        .catch(() => undefined)
-    }, 2500)
-    return () => window.clearTimeout(timer)
-  }, [playing, data?.offAir, data?.tracks, mutate])
   useEffect(() => {
     if (!playing) return
     const getListenerId = () => {
@@ -104,24 +91,17 @@ export function RadioPlayer() {
   }, [playing])
   useEffect(() => {
     if (playbackIssue) {
+      // Keep the user-requested Play session alive during transient CDN or
+      // decoder hiccups; the broadcast hook retries and SWR refreshes the URL.
       void mutate()
       return
     }
     if (error && !data) setPlaying(false)
   }, [playbackIssue, error, data, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
-  const hasTracks = Boolean(data?.tracks && data.tracks.length > 0)
-  const live = playing && !buffering && !offAir && !playbackIssue && hasTracks
+  const live = playing && !buffering && !offAir && !playbackIssue
   const canPause = playing && !playbackIssue && !(error && !data)
-  const statusLabel = offAir
-    ? 'Off Air'
-    : live
-      ? 'Live'
-      : playing
-        ? (playbackIssue ? 'Retrying' : hasTracks ? 'Buffering' : 'Loading songs')
-        : (error && !data)
-          ? 'Connecting'
-          : 'Standby'
+  const statusLabel = offAir ? 'Off Air' : live ? 'Live' : playing || (error && !data) ? 'Connecting' : 'Standby'
 
   const togglePlay = async () => {
     if (canPause) {
