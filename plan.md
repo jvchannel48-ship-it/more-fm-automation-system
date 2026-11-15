@@ -9,7 +9,8 @@ For the follow-up, keep the uploaded RJ FM logo and RJ FM public identity, displ
 - Keep pending requests durable so AutoDJ can retry them on later queue fills; associate queued tracks with request IDs and remove requests only after the track finishes.
 - Reuse the current no-repeat ledger and queued-title deduplication so a requested title cannot create a duplicate rotation entry.
 - Add a bottom-position request button and modal form with title/artist fields, submit progress, success/waiting/error states, and accessible status messaging.
-- Strengthen the browser audio recovery loop by retrying stalled active sources automatically, refreshing the source through the existing `/api/now` recovery path, and preloading a larger look-ahead window for smoother transitions.
+- Strengthen the browser audio recovery loop by retrying stalled active sources automatically, refreshing the source through the existing `/api/now` recovery path, and preloading audio slots before Play so the current track can buffer in advance.
+- Use the persisted crossfader choice and prepare the incoming track muted across the look-ahead window, so the outgoing song fades down while the next fades up without a midpoint loudness dip.
 - Keep public route metadata synchronized and validate with the existing tests, TypeScript/build checks, and focused queue tests.
 
 ## Project structure

@@ -24,7 +24,7 @@ interface Slot {
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const curve = (n: number) => Math.sin((clamp01(n) * Math.PI) / 2)
 
-function crossfadeGain(progress: number, curveName: string, fadeIn: boolean) {
+export function crossfadeGain(progress: number, curveName: string, fadeIn: boolean) {
   const p = clamp01(progress)
   if (curveName === 'full-cut') return fadeIn ? (p >= 1 ? 1 : 0) : (p >= 1 ? 0 : 1)
   if (curveName === 'fast-cut') return fadeIn ? (p >= 0.2 ? 1 : p * 5) : (p >= 0.8 ? 0 : 1)
@@ -72,41 +72,64 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     })
   }, [data])
 
-  const unlock = useCallback(() => {
-    setPlaybackIssue(null)
+  const ensureSlots = useCallback(() => {
     if (slots.current.length > 0) return
-    try {
-      audioContext.current = new AudioContext()
-      void audioContext.current.resume()
-    } catch {
-      audioContext.current = null
-    }
     slots.current = Array.from({ length: 2 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
-      el.src = SILENT_WAV
-      el.play().catch(() => undefined)
+      el.volume = 0
       el.onended = () => {
         const slot = slots.current.find((candidate) => candidate.el === el)
         if (slot) slot.ended = true
       }
-      let bassFilter: BiquadFilterNode | null = null
-      if (audioContext.current) {
-        try {
-          const source = audioContext.current.createMediaElementSource(el)
-          bassFilter = audioContext.current.createBiquadFilter()
-          bassFilter.type = 'lowshelf'
-          bassFilter.frequency.value = 180
-          bassFilter.gain.value = 12
-          source.connect(bassFilter).connect(audioContext.current.destination)
-        } catch {
-          bassFilter = null
-        }
-      }
-      return { el, bassFilter, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
+      return { el, bassFilter: null, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
     })
   }, [])
+
+  const unlock = useCallback(() => {
+    setPlaybackIssue(null)
+    ensureSlots()
+    try {
+      const context = audioContext.current ?? new AudioContext()
+      audioContext.current = context
+      for (const slot of slots.current) {
+        if (slot.bassFilter) continue
+        try {
+          const source = context.createMediaElementSource(slot.el)
+          const bassFilter = context.createBiquadFilter()
+          bassFilter.type = 'lowshelf'
+          bassFilter.frequency.value = 180
+          bassFilter.gain.value = data?.audioConfig.bassGainDb ?? 12
+          source.connect(bassFilter).connect(context.destination)
+          slot.bassFilter = bassFilter
+        } catch {
+          slot.bassFilter = null
+        }
+      }
+      if (context.state === 'suspended') void context.resume().catch(() => undefined)
+    } catch {
+      audioContext.current = null
+    }
+    const now = Date.now() + offset.current
+    for (const slot of slots.current) {
+      const track = data?.tracks.find((candidate) => candidate.uid === slot.uid)
+      if (track && now >= track.startAt && now < track.startAt + track.duration * 1000 && slot.el.readyState >= 1) {
+        const expected = Math.max(0, (now - track.startAt) / 1000)
+        if (!slot.el.duration || expected < slot.el.duration - 1) {
+          slot.el.currentTime = expected
+          slot.synced = true
+        }
+      }
+      slot.el.volume = 0
+      if (!slot.src) slot.el.src = SILENT_WAV
+      void slot.el.play().catch(() => undefined)
+    }
+  }, [data, ensureSlots])
+
+  useEffect(() => {
+    ensureSlots()
+  }, [ensureSlots])
 
   useEffect(() => {
     const tick = () => {
@@ -195,7 +218,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         const isPreloading = !isActive && upcoming.includes(track)
         const el = slot.el
 
-        const canWarmup = isPreloading && track.startAt - now <= 4_000
+        const canWarmup = isPreloading
         if (!playing || (!isActive && !canWarmup)) {
           slot.activeWaitSince = null
           if (!el.paused) el.pause()
@@ -269,7 +292,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.activeWaitSince = null
         }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        const crossfadeGainValue = trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'smooth')
+        const crossfadeGainValue = trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power')
         const outputGain = clamp01(volume * stationGain * replayGain * duckGain * (isActive ? crossfadeGainValue : 0))
         if (slot.bassFilter) slot.bassFilter.gain.value = config?.bassGainDb ?? 12
         el.volume = outputGain
@@ -290,7 +313,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     }
 
     tick()
-    const id = window.setInterval(tick, 250)
+    const id = window.setInterval(tick, 100)
     return () => window.clearInterval(id)
   }, [data, playing, volume, onStreamError])
 

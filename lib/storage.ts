@@ -387,6 +387,9 @@ function isLegacyShowtimeAsset(asset: { url?: unknown; name?: unknown }) {
   return value.includes('my-only-radio-for-life') || value.includes('myonlyradioforlife') || /it['’]?s[\s_-]*show[\s_-]*time/.test(value)
 }
 
+const CROSSFADER_CURVES: readonly CrossfaderCurve[] = ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut']
+const isCrossfaderCurve = (value: unknown): value is CrossfaderCurve => CROSSFADER_CURVES.includes(value as CrossfaderCurve)
+
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   boardOperatorEnabled: false,
@@ -415,7 +418,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   nightVolumePercent: 70,
   bassGainDb: 12,
   crossfaderEnabled: true,
-  crossfaderCurve: 'smooth',
+  crossfaderCurve: 'constant-power',
   crossfadeSeconds: 8,
   replayGainEnabled: false,
   replayGainTargetLufs: -14,
@@ -434,20 +437,34 @@ export const DEFAULT_SETTINGS: StationSettings = {
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
-  const migrations = await readJson<{ tagalogLoveRotation?: number }>(SETTINGS_MIGRATIONS_PATH, {})
-  if (hasSettingsPersistence && migrations.tagalogLoveRotation !== 2) {
+  const migrations = await readJson<{ tagalogLoveRotation?: number; crossfaderCurve?: number }>(SETTINGS_MIGRATIONS_PATH, {})
+  const needsTagalogMigration = migrations.tagalogLoveRotation !== 2
+  const needsCrossfaderMigration = migrations.crossfaderCurve !== 1
+  if (hasSettingsPersistence && (needsTagalogMigration || needsCrossfaderMigration)) {
     const migrated = {
       ...saved,
-      tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
-      noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
-      shuffleEnabled: false,
+      ...(needsTagalogMigration ? {
+        tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
+        noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
+        shuffleEnabled: false,
+      } : {}),
+      ...(needsCrossfaderMigration ? {
+        crossfaderCurve: isCrossfaderCurve(saved.crossfaderCurve) && saved.crossfaderCurve !== 'smooth'
+          ? saved.crossfaderCurve
+          : 'constant-power',
+      } : {}),
+    }
+    const nextMigrations = {
+      ...migrations,
+      ...(needsTagalogMigration ? { tagalogLoveRotation: 2 } : {}),
+      ...(needsCrossfaderMigration ? { crossfaderCurve: 1 } : {}),
     }
     try {
       await writeJson(SETTINGS_PATH, migrated)
-      await writeJson(SETTINGS_MIGRATIONS_PATH, { ...migrations, tagalogLoveRotation: 2 })
+      await writeJson(SETTINGS_MIGRATIONS_PATH, nextMigrations)
       Object.assign(saved, migrated)
     } catch (error) {
-      console.error('[morefm] could not apply the Tagalog love rotation settings migration', error)
+      console.error('[morefm] could not apply station settings migrations', error)
     }
   }
   return {
@@ -484,8 +501,12 @@ export async function getSettings(): Promise<StationSettings> {
     nightVolumePercent: 70,
     bassGainDb: 12,
     crossfaderEnabled: typeof saved.crossfaderEnabled === 'boolean' ? saved.crossfaderEnabled : true,
-    crossfaderCurve: 'smooth',
-    crossfadeSeconds: 8,
+    crossfaderCurve: needsCrossfaderMigration && saved.crossfaderCurve === 'smooth'
+      ? DEFAULT_SETTINGS.crossfaderCurve
+      : isCrossfaderCurve(saved.crossfaderCurve) ? saved.crossfaderCurve : DEFAULT_SETTINGS.crossfaderCurve,
+    crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' && Number.isFinite(saved.crossfadeSeconds)
+      ? Math.max(0, Math.min(30, saved.crossfadeSeconds))
+      : DEFAULT_SETTINGS.crossfadeSeconds,
     replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
     replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
     // All station jingles are temporarily disabled; the queue also removes any stale queued jingle tracks.

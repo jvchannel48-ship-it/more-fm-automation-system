@@ -14,11 +14,16 @@
 - [x] Failed tracks trigger server-side recovery and the player continues with the next queued track rather than stopping the station.
 - [x] Existing storage-saving behavior remains intact: the app stores identifiers and request state, not permanent downloaded song copies.
 
+## Immediate play and balanced transitions
+- [x] Pre-create and preload current/upcoming audio before Play; clicking Play starts the prepared source directly when it is ready.
+- [x] Warm the incoming track muted throughout the look-ahead window and use a persisted constant-power crossfade so the old track fades down as the next fades up without a midpoint volume dip.
+- [x] If the API or source is unavailable, keep startup recovery explicit and retryable instead of reporting a false Live state indefinitely.
+
 ## RJ FM branding and Render storage recovery
 - [x] Use the exact user-uploaded RJ FM logo and replace the remaining user-facing MOR station labels with RJ FM; retain the “ABS-CBN Complex · Naga City” location and keep the internal reference-stream sync working.
 - [x] Detect an unwritable Render data directory before claiming filesystem persistence; fall back safely when `/var/data` is inaccessible and keep admin settings from reporting false persistence.
 
 ## Validation and delivery
 - [x] Keep `public/manus-routes.json` synchronized with the page routes.
-- [x] Run the existing queue/repeat/filter/schedule tests plus TypeScript/build checks.
+- [x] Run the crossfade, settings/disk, queue/repeat/filter/schedule tests plus TypeScript/build checks.
 - [x] Commit and push the completed change to the imported repository's `main` branch.

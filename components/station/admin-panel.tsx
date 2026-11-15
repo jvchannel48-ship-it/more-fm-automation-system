@@ -349,7 +349,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Advanced audio controls</Label><p className="text-xs text-muted-foreground">Master volume stays normal outside the night schedule. Night volume applies only during the configured night hours.</p></div>
+      <div><Label>Advanced audio controls</Label><p className="text-xs text-muted-foreground">Master volume stays normal outside the night schedule. The next song is preloaded muted; Constant Power is the default so the old song fades down as the new one rises without a midpoint volume dip.</p></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Master volume (%)<Input type="number" min={0} max={100} step={1} value={masterVolume} onChange={(event) => setMasterVolume(event.target.value)} disabled={!data || busy} /></label>
         <label className="flex flex-col gap-1 text-xs font-medium">Night volume (%)<Input type="number" min={0} max={100} step={1} value={nightVolumePercent} onChange={(event) => setNightVolumePercent(event.target.value)} disabled={!data || busy} /></label>

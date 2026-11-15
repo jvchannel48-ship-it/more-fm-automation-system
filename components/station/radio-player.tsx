@@ -8,11 +8,17 @@ import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
 
-const fetcher = (url: string) =>
-  fetch(url, { cache: 'no-store' }).then((r) => {
-    if (!r.ok) throw new Error('Station unavailable')
-    return r.json() as Promise<NowResponse>
-  })
+const fetcher = async (url: string) => {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 20_000)
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
+    if (!response.ok) throw new Error('Station unavailable')
+    return await response.json() as NowResponse
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
 
 function StationVerifiedBadge() {
   return (
@@ -52,6 +58,7 @@ export function RadioPlayer() {
   }, [playbackIssue, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir && !playbackIssue
+  const statusLabel = offAir ? 'Off Air' : live ? 'Live' : playing || (error && !data) ? 'Connecting' : 'Standby'
 
   const togglePlay = async () => {
     if (playing) {
@@ -78,10 +85,10 @@ export function RadioPlayer() {
         }`}
       >
         <span
-          className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`}
+          className={`size-1.5 rounded-full ${live ? 'animate-pulse bg-live' : 'bg-muted-foreground'}`}
           aria-hidden="true"
         />
-        {offAir ? 'Off Air' : 'Live'}
+        {statusLabel}
       </span>
 
       <div className="relative flex size-64 items-center justify-center sm:size-72">
