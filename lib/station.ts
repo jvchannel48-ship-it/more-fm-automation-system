@@ -423,7 +423,7 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
     : await getPlaylistTracks(playlistUrl)
   if (playlist.length === 0) return null
   const weeklyOffset = weeklyPlaylistOffset(startAt, playlist.length)
-  for (let offset = 0; offset < Math.min(8, playlist.length); offset++) {
+  for (let offset = 0; offset < Math.min(1, playlist.length); offset++) {
     const item = playlist[(weeklyOffset + songCount + offset) % playlist.length]
     const artist = playlistArtist(item.title, item.channel)
     if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist))) continue
