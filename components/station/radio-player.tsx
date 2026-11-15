@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, MapPin, Moon, Pause, Play, Radio, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,8 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
+  const [listenerIssue, setListenerIssue] = useState<string | null>(null)
+  const listenerId = useRef<string | null>(null)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: 3000,
     revalidateOnFocus: true,
@@ -52,6 +54,41 @@ export function RadioPlayer() {
     }).then(() => mutate()).catch(() => undefined)
   }, [mutate])
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
+  useEffect(() => {
+    if (!playing) return
+    const getListenerId = () => {
+      if (listenerId.current) return listenerId.current
+      const storageKey = 'rj-fm-listener-id'
+      const saved = window.localStorage.getItem(storageKey)
+      const id = saved || `listener-${window.crypto.randomUUID()}`
+      window.localStorage.setItem(storageKey, id)
+      listenerId.current = id
+      return id
+    }
+    const heartbeat = async (active: boolean) => {
+      try {
+        const response = await fetch('/api/listeners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: getListenerId(), active }),
+          cache: 'no-store',
+        })
+        const result = await response.json().catch(() => ({})) as { accepted?: boolean; message?: string }
+        if (active && response.ok && result.accepted === false) {
+          setListenerIssue(result.message ?? 'This station is currently full. Please try again later.')
+          setPlaying(false)
+        }
+      } catch {
+        // A temporary heartbeat failure should not interrupt an already playing listener.
+      }
+    }
+    void heartbeat(true)
+    const interval = window.setInterval(() => void heartbeat(true), 30_000)
+    return () => {
+      window.clearInterval(interval)
+      void heartbeat(false)
+    }
+  }, [playing])
   useEffect(() => {
     if (playbackIssue) {
       // Keep the user-requested Play session alive during transient CDN or
@@ -71,6 +108,7 @@ export function RadioPlayer() {
       setPlaying(false)
       return
     }
+    setListenerIssue(null)
     unlock()
     setPlaying(true)
   }
@@ -154,6 +192,7 @@ export function RadioPlayer() {
             Could not connect to the station. Retrying...
           </p>
         )}
+        {listenerIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert">{listenerIssue}</p>}
         {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
       </div>
 

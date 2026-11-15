@@ -30,10 +30,10 @@ export async function PUT(request: NextRequest) {
     }
     const current = await getSettings()
     const hour = (value: unknown, fallback: number) => typeof value === 'number' && value >= 0 && value <= 23 ? value : fallback
-    const signOffHour: number = 1
-    const signOnHour: number = 4
-    const discoStartHour: number = 16
-    const discoEndHour: number = 19
+    const signOffHour = hour(body.signOffHour, current.signOffHour)
+    const signOnHour = hour(body.signOnHour, current.signOnHour)
+    const discoStartHour = hour(body.discoStartHour, current.discoStartHour)
+    const discoEndHour = hour(body.discoEndHour, current.discoEndHour)
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const bounded = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest) {
       shuffleEnabled: false,
       goodVibesEnabled: typeof body.goodVibesEnabled === 'boolean' ? body.goodVibesEnabled : current.goodVibesEnabled,
       rotationPoolSize: typeof body.rotationPoolSize === 'number' ? body.rotationPoolSize : current.rotationPoolSize,
-      listenerLimit: 0,
+      listenerLimit: typeof body.listenerLimit === 'number' ? body.listenerLimit : current.listenerLimit,
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
       transmitterWatts, signOffHour, signOnHour, discoStartHour, discoEndHour,
       masterVolume, nightVolumePercent, bassGainDb,

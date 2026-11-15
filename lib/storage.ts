@@ -399,7 +399,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   shuffleEnabled: false,
   goodVibesEnabled: false,
   rotationPoolSize: 100,
-  listenerLimit: 0,
+  listenerLimit: 2,
   tagalogOnlyEnabled: true,
   transmitterWatts: 100000,
   signOffHour: 1,
@@ -437,10 +437,11 @@ export const DEFAULT_SETTINGS: StationSettings = {
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
-  const migrations = await readJson<{ tagalogLoveRotation?: number; crossfaderCurve?: number }>(SETTINGS_MIGRATIONS_PATH, {})
+  const migrations = await readJson<{ tagalogLoveRotation?: number; crossfaderCurve?: number; listenerLimit?: number }>(SETTINGS_MIGRATIONS_PATH, {})
   const needsTagalogMigration = migrations.tagalogLoveRotation !== 2
   const needsCrossfaderMigration = migrations.crossfaderCurve !== 1
-  if (hasSettingsPersistence && (needsTagalogMigration || needsCrossfaderMigration)) {
+  const needsListenerLimitMigration = migrations.listenerLimit !== 1
+  if (hasSettingsPersistence && (needsTagalogMigration || needsCrossfaderMigration || needsListenerLimitMigration)) {
     const migrated = {
       ...saved,
       ...(needsTagalogMigration ? {
@@ -453,11 +454,15 @@ export async function getSettings(): Promise<StationSettings> {
           ? saved.crossfaderCurve
           : 'constant-power',
       } : {}),
+      ...(needsListenerLimitMigration ? {
+        listenerLimit: typeof saved.listenerLimit === 'number' && saved.listenerLimit > 0 ? saved.listenerLimit : DEFAULT_SETTINGS.listenerLimit,
+      } : {}),
     }
     const nextMigrations = {
       ...migrations,
       ...(needsTagalogMigration ? { tagalogLoveRotation: 2 } : {}),
       ...(needsCrossfaderMigration ? { crossfaderCurve: 1 } : {}),
+      ...(needsListenerLimitMigration ? { listenerLimit: 1 } : {}),
     }
     try {
       await writeJson(SETTINGS_PATH, migrated)
@@ -477,17 +482,13 @@ export async function getSettings(): Promise<StationSettings> {
     shuffleEnabled: false,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(300, Math.round(saved.rotationPoolSize))) : 100,
-    // Listener limits are temporarily disabled; keep the persisted field for backwards compatibility.
-    listenerLimit: 0,
+    listenerLimit: typeof saved.listenerLimit === 'number' ? Math.max(0, Math.min(1000, Math.round(saved.listenerLimit))) : DEFAULT_SETTINGS.listenerLimit,
     tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
     transmitterWatts: [0, 5000, 20000, 100000].includes(saved.transmitterWatts as number) ? saved.transmitterWatts as StationSettings['transmitterWatts'] : 100000,
-    // Fixed station schedule: 1:00 AM sign-off and 4:00 AM sign-on Monday–Saturday.
-    // Sunday remains continuous through isOffAir(), which explicitly skips Sunday.
-    signOffHour: 1,
-    signOnHour: 4,
-    // Weekday disco is fixed from 4:00 PM through 6:59 PM; evening blocks switch at 7, 9, 10, and midnight.
-    discoStartHour: 16,
-    discoEndHour: 19,
+    signOffHour: typeof saved.signOffHour === 'number' && saved.signOffHour >= 0 && saved.signOffHour <= 23 ? Math.round(saved.signOffHour) : DEFAULT_SETTINGS.signOffHour,
+    signOnHour: typeof saved.signOnHour === 'number' && saved.signOnHour >= 0 && saved.signOnHour <= 23 ? Math.round(saved.signOnHour) : DEFAULT_SETTINGS.signOnHour,
+    discoStartHour: typeof saved.discoStartHour === 'number' && saved.discoStartHour >= 0 && saved.discoStartHour <= 23 ? Math.round(saved.discoStartHour) : DEFAULT_SETTINGS.discoStartHour,
+    discoEndHour: typeof saved.discoEndHour === 'number' && saved.discoEndHour >= 0 && saved.discoEndHour <= 23 ? Math.round(saved.discoEndHour) : DEFAULT_SETTINGS.discoEndHour,
     christmasEnabled: false,
     autoVoiceEnabled: false,
     autoVoiceAnnouncement: saved.autoVoiceAnnouncement && typeof saved.autoVoiceAnnouncement.url === 'string' ? saved.autoVoiceAnnouncement : null,
@@ -509,10 +510,9 @@ export async function getSettings(): Promise<StationSettings> {
       : DEFAULT_SETTINGS.crossfadeSeconds,
     replayGainEnabled: typeof saved.replayGainEnabled === 'boolean' ? saved.replayGainEnabled : false,
     replayGainTargetLufs: typeof saved.replayGainTargetLufs === 'number' ? Math.max(-24, Math.min(-5, saved.replayGainTargetLufs)) : -14,
-    // All station jingles are temporarily disabled; the queue also removes any stale queued jingle tracks.
-    jingleEnabled: false,
+    jingleEnabled: saved.jingle ? (typeof saved.jingleEnabled === 'boolean' ? saved.jingleEnabled : true) : true,
     commercialEnabled: typeof saved.commercialEnabled === 'boolean' ? saved.commercialEnabled : false,
-    jingle: null,
+    jingle: saved.jingle && typeof saved.jingle.url === 'string' ? saved.jingle : DEFAULT_SETTINGS.jingle,
     commercials: Array.from({ length: 3 }, (_, i) => {
       const asset = saved.commercials?.[i]
       return asset && typeof asset.url === 'string' ? asset : null

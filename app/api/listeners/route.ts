@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       accepted: result.accepted,
       listenersNow: result.listenersNow,
       listenerLimit: settings.listenerLimit,
-      message: result.accepted ? undefined : 'THIS STATION IS LIMITED LISTENER. Please try again later.',
+      message: result.accepted ? undefined : 'THIS STATION HAS REACHED ITS LISTENER LIMIT. Sorry, please try again later.',
     }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('[morefm] listener heartbeat failed', error)

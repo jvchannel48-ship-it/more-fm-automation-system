@@ -32,6 +32,7 @@ function hourLabel(hour: number) {
 }
 
 type UsageResponse = { usage: { provider: string; databaseBytes: number; stationAudioBytes: number; stationAudioFiles: number; measuredAt: number } | null; unavailable?: boolean; error?: string }
+type AdminRequest = { id: string; title: string; artist: string; requestedAt: number; status: 'pending' | 'played' | 'skipped' }
 async function usageFetcher(url: string): Promise<UsageResponse> {
   const response = await fetch(url, { cache: 'no-store' })
   const result = await response.json().catch(() => null) as (UsageResponse & { error?: string }) | null
@@ -67,6 +68,7 @@ function audioDuration(file: File) {
 
 export function AdminPanel() {
   const { data, error: loadError, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 20000, revalidateOnFocus: true, dedupingInterval: 10000 })
+  const { data: requestData, mutate: mutateRequests } = useSWR<{ requests: AdminRequest[] }>('/api/admin/requests', fetcher, { refreshInterval: 10000, revalidateOnFocus: true })
   const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 300000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -78,13 +80,14 @@ export function AdminPanel() {
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [rotationPoolSize, setRotationPoolSize] = useState('100')
-  const [listenerLimit, setListenerLimit] = useState('0')
+  const [listenerLimit, setListenerLimit] = useState('2')
   const [masterVolume, setMasterVolume] = useState('100')
   const [nightVolumePercent, setNightVolumePercent] = useState('72')
   const [bassGainDb, setBassGainDb] = useState('0')
   const [crossfadeSeconds, setCrossfadeSeconds] = useState('8')
   const [replayGainTargetLufs, setReplayGainTargetLufs] = useState('-14')
   const [recordingKind, setRecordingKind] = useState<'dj-mic' | null>(null)
+  const [requestBusy, setRequestBusy] = useState<string | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
 
@@ -125,6 +128,21 @@ export function AdminPanel() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not update settings.')
     } finally { setBusy(false) }
+  }
+
+  const updateRequest = async (id: string, status: 'played' | 'skipped' | 'pending') => {
+    setRequestBusy(id)
+    setError('')
+    try {
+      const response = await fetch('/api/admin/requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) })
+      const result = await response.json().catch(() => ({})) as { error?: string }
+      if (!response.ok) throw new Error(result.error ?? 'Could not update song request.')
+      await mutateRequests()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not update song request.')
+    } finally {
+      setRequestBusy(null)
+    }
   }
 
   const upload = async (kind: 'jingle' | 'commercial' | 'golden-sunday' | 'dj-mic', file: File | undefined, slot = 0) => {
@@ -190,6 +208,10 @@ export function AdminPanel() {
     {data?.queuePersistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Shared queue history is not persistent. Configure PostgreSQL, private Supabase Storage, or the Render persistent disk so the no-repeat ledger survives restarts and clear-cache redeploys.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
+    <section className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-center justify-between gap-3"><div><Label>Song requests</Label><p className="text-xs text-muted-foreground">Admin-only list. Hindi ito ipinapakita sa public player.</p></div><Button type="button" variant="ghost" size="sm" onClick={() => void mutateRequests()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh</Button></div>
+      {(requestData?.requests ?? []).length > 0 ? <div className="max-h-72 space-y-2 overflow-y-auto">{requestData?.requests.map((request) => <div key={request.id} className="rounded-lg border border-border/70 bg-background/45 p-2.5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{request.title}</p><p className="truncate text-xs text-muted-foreground">{request.artist} · {new Date(request.requestedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p></div><span className="shrink-0 text-[10px] font-semibold uppercase text-primary">{request.status}</span></div>{request.status === 'pending' && <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'played')}>Played</Button><Button type="button" size="sm" variant="ghost" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'skipped')}>Skip</Button></div>}</div>)}</div> : <p className="text-xs text-muted-foreground">No song requests yet.</p>}
+    </section>
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
@@ -197,8 +219,8 @@ export function AdminPanel() {
         onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
     </div>
 
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="autodj-enabled">AutoDJ</Label><p className="text-xs text-muted-foreground">Leave ON when no host is available or you are busy. AutoDJ avoids repeats within the configured 50–300-song rotation history. OFF stops it from choosing new songs after anything already queued.</p></div>
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label htmlFor="autodj-enabled">Automatic song rotation</Label><p className="text-xs text-muted-foreground">Leave ON for automatic searching, no-repeat rotation, and the next song after each break. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
     </div>
@@ -413,7 +435,7 @@ export function AdminPanel() {
     </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">On regular days, the station jingle plays automatically after every 4 songs, then the next music track starts. Sunday uses the golden jingle after every 5 songs from 6:00 AM; songs stay continuous from midnight until morning. MP3 supported · max 4 MB.</p></div>
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">The station jingle plays automatically after every 3 songs, then the next music track starts. Sunday may also use the golden jingle after every 5 songs from 6:00 AM. MP3 supported · max 4 MB.</p></div>
         <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
       <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
@@ -441,6 +463,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, commercials, or news. From 6:00 AM, the Sunday golden jingle plays after every five songs; from 12:00 AM until morning, songs remain continuous. On other days, the RJ FM jingle plays after every four songs before the next music track.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, commercials, or news. The regular jingle plays after every three songs before the next music track; from 6:00 AM, the Sunday golden jingle may also play after every five songs.</p>
   </div>
 }

@@ -650,7 +650,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const sunday = breakTime.day === 0
     const continuingChristmasBurst = state.christmasSongsRemaining > 0 && christmasModeForManilaTime(breakAt) !== 'off'
     const sundayGoldenBreak = !continuingChristmasBurst && sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
-    const regularBreak = !continuingChristmasBurst && !sunday && state.songCount > 0 && state.songCount % 4 === 0
+    const regularBreak = !continuingChristmasBurst && state.songCount > 0 && state.songCount % 3 === 0
     if ((sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' | 'golden-sunday' }> = []
@@ -874,7 +874,6 @@ async function loadState(now: number) {
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
     const removeChristmas = isMusicTrack && isChristmasTrack && track.sourcePlaylist !== CHRISTMAS_PLAYLIST_URL
     const removeBrigada = track.kind === 'brigada-news'
-    const removeDisabledJingle = track.kind === 'jingle' || track.kind === 'golden-sunday'
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const removeFilteredTrack = isMusicTrack && !track.sourcePlaylist && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
@@ -887,7 +886,7 @@ async function loadState(now: number) {
     const validSundayTagalogLove = sundayProgram?.id === 'sunday-tagalog' && sundayProgram.pools.tagalog.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
     const validSundayEnglishLove = sundayProgram?.id === 'english-love' && sundayProgram.pools.english.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
     const removeSundayBreak = sunday && (
-      ['jingle', 'commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
+      ['commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
       || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
     )
     const removeSundayMusic = sunday && isMusicTrack && !track.sourcePlaylist && (
@@ -898,7 +897,6 @@ async function loadState(now: number) {
       && !removeFilteredTrack
       && !removeChristmas
       && !removeBrigada
-      && !removeDisabledJingle
       && !removeSundayBreak
       && !removeSundayMusic
       && (

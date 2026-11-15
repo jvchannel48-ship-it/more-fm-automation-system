@@ -1,4 +1,5 @@
 import { FeedbackForm } from '@/components/station/feedback-form'
+import { AdminMenu } from '@/components/station/admin-menu'
 import { PlaylistMenu } from '@/components/station/playlist-menu'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -22,6 +23,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <PlaylistMenu />
           <FeedbackForm />
+          <AdminMenu />
           <ThemeToggle />
         </div>
       </header>
