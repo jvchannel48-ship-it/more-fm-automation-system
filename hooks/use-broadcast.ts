@@ -72,9 +72,6 @@ function playErrorMessage(error: unknown) {
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
-  // Render can briefly return an empty/stale queue while swapping instances.
-  // Keep the last known on-air track available until its scheduled end so the
-  // browser audio element is not stopped during that deploy window.
   const knownTracks = useRef(new Map<string, Track>())
   const audioContext = useRef<AudioContext | null>(null)
   const failedUids = useRef(new Set<string>())
@@ -207,8 +204,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       if (forcedNextUid.current && tracks.some((track) => track.uid === forcedNextUid.current && now >= track.startAt)) forcedNextUid.current = null
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
-      // These are station-wide absolute targets: 80% daytime and 70% at
-      // night, rather than multiplying 70% by the daytime master setting.
       const stationGain = (data?.nightVolumeActive ? (config?.nightVolumePercent ?? 70) : (config?.masterVolume ?? 80)) / 100
       const replayGain = config?.replayGainEnabled ? Math.pow(10, ((config.replayGainTargetLufs ?? -14) + 14) / 20) : 1
       const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now <= PRELOAD_AHEAD_MS)
@@ -297,22 +292,24 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
             }
           }
         }
-        const minimumReadyState = 2
+        // Start as soon as we have metadata (readyState >= 1). Waiting for 2+
+        // left listeners stuck on Connecting when CDNs were slow but playable.
+        const minimumReadyState = 1
         if (isActive && el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
-          if (now - slot.activeWaitSince >= 8_000) {
-            if (slot.reloadAttempts < 3 && slot.src) {
+          if (now - slot.activeWaitSince >= 4_000) {
+            if (slot.reloadAttempts < 4 && slot.src) {
               slot.reloadAttempts += 1
               slot.synced = false
               slot.lastPlayAttemptAt = now
               slot.activeWaitSince = now
               el.pause()
-              el.src = slot.src
+              el.src = `${slot.src}${slot.src.includes('?') ? '&' : '?'}r=${slot.reloadAttempts}`
               el.load()
-              setPlaybackIssue('The stream is taking too long to load. Retrying automatically…')
+              setPlaybackIssue('Loading audio… retrying this song')
             } else {
-              setPlaybackIssue('This song could not load. AutoDJ is moving to the next track…')
+              setPlaybackIssue('This song could not load. Skipping to the next track…')
               failedUids.current.add(track.uid)
               el.pause()
               el.removeAttribute('src')
