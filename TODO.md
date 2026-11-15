@@ -15,8 +15,11 @@
 - [x] Existing storage-saving behavior remains intact: the app stores identifiers and request state, not permanent downloaded song copies.
 
 ## Admin songs playlist
-- [ ] Admin can search YouTube without an API key, review updated results, and add selected songs to the RJ TOP SONGS or RJ PLAYED playlist.
-- [ ] Admin can view the saved songs playlist and remove entries without deleting audio files or interrupting the currently playing song.
+- [x] Admin can search YouTube without an API key, review updated results, and add selected songs to the RJ TOP SONGS or RJ PLAYED playlist.
+- [x] Admin can view the saved songs playlist and remove entries without deleting audio files or interrupting the currently playing song.
+- [x] Admin playlist search supports one-step Auto add (search + best-match add) so title/artist requests do not require manual re-search.
+- [x] Pending song requests expose Auto add: reads title + artist, searches provider, and adds the best match to RJ PLAYED.
+- [x] Daily no-repeat ledger remains the gate so the same song is not rotated again for the rest of the day once played.
 
 ## RJ FM Makati relay
 - [ ] Admin can turn the live 100.3 RJFM Makati relay ON or OFF without exposing or importing its playlist.
