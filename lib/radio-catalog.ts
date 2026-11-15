@@ -49,6 +49,47 @@ export async function getRadioCatalogSongs(): Promise<RadioCatalogSong[] | null>
   return catalogLoad
 }
 
+export async function upsertRadioCatalogSong(input: {
+  title: string
+  artist: string
+  youtubeId: string
+  durationSeconds: number
+  playlistGroup: RadioCatalogSong['playlist_group']
+  category?: string
+  picture?: string | null
+}) {
+  const pool = getPostgresPool()
+  if (!pool) throw new Error('PostgreSQL is required to update the songs playlist.')
+  await ensureDatabaseTables()
+  const durationSeconds = Math.max(60, Math.min(540, Math.round(input.durationSeconds)))
+  const result = await pool.query<RadioCatalogSong>(`
+    INSERT INTO public.songs (title, artist, youtube_id, category, language, decade, picture, duration_seconds, playlist_group, sort_order, is_active)
+    VALUES ($1, $2, $3, $4, NULL, NULL, $5, $6, $7, COALESCE((SELECT max(sort_order) + 1 FROM public.songs WHERE playlist_group = $7), 0), true)
+    ON CONFLICT (youtube_id) DO UPDATE SET
+      title = EXCLUDED.title,
+      artist = EXCLUDED.artist,
+      picture = EXCLUDED.picture,
+      duration_seconds = EXCLUDED.duration_seconds,
+      playlist_group = EXCLUDED.playlist_group,
+      is_active = true
+    RETURNING title, artist, youtube_id, category, language, decade, picture, duration_seconds, playlist_group, sort_order
+  `, [input.title.slice(0, 200), input.artist.slice(0, 120), input.youtubeId, input.category ?? 'english', input.picture ?? null, durationSeconds, input.playlistGroup])
+  catalogCache = null
+  return result.rows[0]
+}
+
+export async function deactivateRadioCatalogSong(youtubeId: string) {
+  const pool = getPostgresPool()
+  if (!pool) throw new Error('PostgreSQL is required to update the songs playlist.')
+  await ensureDatabaseTables()
+  const result = await pool.query<{ youtube_id: string }>(
+    'UPDATE public.songs SET is_active = false, updated_at = now() WHERE youtube_id = $1 RETURNING youtube_id',
+    [youtubeId],
+  )
+  catalogCache = null
+  return Boolean(result.rowCount)
+}
+
 export async function incrementTopPlayed(input: { youtubeId?: string; title: string; artist: string }) {
   const youtubeId = input.youtubeId?.trim()
   const pool = getPostgresPool()

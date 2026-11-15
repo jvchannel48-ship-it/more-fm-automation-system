@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
+import { SongsPlaylistManager } from './songs-playlist-manager'
 
 // Keep the admin rotation-history control aligned with the server's 50–300 song range.
 const fetcher = async (url: string) => {
@@ -217,6 +218,7 @@ export function AdminPanel() {
       <div className="flex items-center justify-between gap-3"><div><Label>Song requests</Label><p className="text-xs text-muted-foreground">Admin-only list. Hindi ito ipinapakita sa public player.</p></div><Button type="button" variant="ghost" size="sm" onClick={() => void mutateRequests()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh</Button></div>
       {(requestData?.requests ?? []).length > 0 ? <div className="max-h-72 space-y-2 overflow-y-auto">{requestData?.requests.map((request) => <div key={request.id} className="rounded-lg border border-border/70 bg-background/45 p-2.5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{request.title}</p><p className="truncate text-xs text-muted-foreground">{request.name || 'Listener'} · {request.artist} · {new Date(request.requestedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p></div><span className="shrink-0 text-[10px] font-semibold uppercase text-primary">{request.status}</span></div>{request.status === 'pending' && <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'played')}>Played</Button><Button type="button" size="sm" variant="ghost" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'skipped')}>Skip</Button></div>}</div>)}</div> : <p className="text-xs text-muted-foreground">No song requests yet.</p>}
     </section>
+    <SongsPlaylistManager />
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>

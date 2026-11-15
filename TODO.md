@@ -14,6 +14,10 @@
 - [x] Failed tracks trigger server-side recovery and the player continues with the next queued track rather than stopping the station.
 - [x] Existing storage-saving behavior remains intact: the app stores identifiers and request state, not permanent downloaded song copies.
 
+## Admin songs playlist
+- [ ] Admin can search YouTube without an API key, review updated results, and add selected songs to the RJ TOP SONGS or RJ PLAYED playlist.
+- [ ] Admin can view the saved songs playlist and remove entries without deleting audio files or interrupting the currently playing song.
+
 ## Immediate play and balanced transitions
 - [x] Pre-create and preload current/upcoming audio before Play; clicking Play starts the prepared source directly when it is ready.
 - [x] Warm the incoming track muted throughout the look-ahead window and use a persisted constant-power crossfade so the old track fades down as the next fades up without a midpoint volume dip.
