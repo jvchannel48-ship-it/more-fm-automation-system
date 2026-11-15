@@ -6,12 +6,14 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only-not-a-real-key'
 
 const objects = new Map<string, string>()
 let bucketExists = false
+let failStorage = false
 const originalFetch = globalThis.fetch
 const realDateNow = Date.now
 let timeOffset = 0
 Date.now = () => realDateNow() + timeOffset
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  if (failStorage) throw new Error('Simulated temporary Supabase Storage outage')
   const url = new URL(input.toString())
   const method = init?.method ?? 'GET'
   if (url.pathname === '/storage/v1/bucket/more-fm-settings' && method === 'GET') {
@@ -69,7 +71,15 @@ async function main() {
     const restoredState = await readJson<{ dailyPlayedDate?: string; dailyPlayedTitles?: Array<{ key: string }> }>(STATE_PATH, {})
     assert.equal(restoredState.dailyPlayedDate, '2026-11-14', 'queue state survives a process restart through private storage')
     assert.equal(restoredState.dailyPlayedTitles?.[0]?.key, 'because you loved me', 'daily no-repeat ledger survives redeploy')
-    console.log('settings-storage-fallback: durable private JSON fallback without PostgreSQL passed')
+
+    timeOffset += 3_000
+    failStorage = true
+    await writeJson(STATE_PATH, { tracks: [], songCount: 4 })
+    const localState = await readJson<{ songCount?: number }>(STATE_PATH, {})
+    assert.equal(localState.songCount, 4, 'station state remains readable from memory during a Storage outage without a disk')
+    const fallbackSettings = await readJson<{ fallback?: boolean }>('station/settings.json', { fallback: true })
+    assert.equal(fallbackSettings.fallback, true, 'missing remote settings degrade to defaults instead of failing the station API')
+    console.log('settings-storage-fallback: durable storage and outage fallback passed')
   } finally {
     globalThis.fetch = originalFetch
     Date.now = realDateNow

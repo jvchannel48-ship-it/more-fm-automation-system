@@ -658,7 +658,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
       sourceChannel: song.sourceChannel,
-      sourcePlaylist: song.sourcePlaylist,
+      sourcePlaylist: 'sourcePlaylist' in song && typeof song.sourcePlaylist === 'string' ? song.sourcePlaylist : undefined,
       sourceRefreshedAt: song.sourceRefreshedAt,
       kind: 'music',
       title: song.title,

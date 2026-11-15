@@ -121,8 +121,9 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
       } catch (error) {
         // Render's persistent disk is the local recovery path when Supabase
         // Storage is temporarily unavailable or its bucket is misconfigured.
-        if (!filesystemDataDir) throw error
-        console.warn('[morefm] Supabase JSON read failed; using Render disk fallback', pathname)
+        // If no disk is attached, continue with process-local station state so
+        // the public now-playing endpoint can still recover instead of 500ing.
+        console.warn('[morefm] Supabase JSON read failed; using local fallback', pathname)
       }
     }
     const filesystemValue = await readFilesystemJson<T>(pathname)
@@ -156,8 +157,10 @@ export async function writeJson(pathname: string, data: unknown) {
         return
       } catch (error) {
         // Continue to the Render disk fallback below when available.
-        if (!filesystemDataDir) throw error
-        console.warn('[morefm] Supabase JSON write failed; using Render disk fallback', pathname)
+        // Station queue state can also use the existing process-local fallback
+        // on single-instance hosts without a persistent disk.
+        if (!filesystemDataDir && pathname !== STATION_STATE_PATH) throw error
+        console.warn('[morefm] Supabase JSON write failed; using local fallback', pathname)
       }
     }
     if (await writeFilesystemJson(pathname, serialized)) return
