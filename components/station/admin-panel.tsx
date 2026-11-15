@@ -39,6 +39,13 @@ async function usageFetcher(url: string): Promise<UsageResponse> {
   if (!response.ok) throw new Error(result?.error ?? 'Could not load storage usage.')
   return result ?? { usage: null, unavailable: true }
 }
+async function requestsFetcher(url: string): Promise<{ requests: AdminRequest[] }> {
+  const response = await fetch(url, { cache: 'no-store' })
+  const result = await response.json().catch(() => null) as ({ requests: AdminRequest[]; error?: string }) | null
+  if (!response.ok) throw new Error(result?.error ?? 'Could not load song requests.')
+  if (!result || !Array.isArray(result.requests)) throw new Error('The server returned an invalid song requests response.')
+  return { requests: result.requests }
+}
 function formatBytes(value: number) {
   if (value < 1024) return `${value} B`
   const units = ['KB', 'MB', 'GB', 'TB']
@@ -68,7 +75,7 @@ function audioDuration(file: File) {
 
 export function AdminPanel() {
   const { data, error: loadError, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 20000, revalidateOnFocus: true, dedupingInterval: 10000 })
-  const { data: requestData, mutate: mutateRequests } = useSWR<{ requests: AdminRequest[] }>('/api/admin/requests', fetcher, { refreshInterval: 10000, revalidateOnFocus: true })
+  const { data: requestData, mutate: mutateRequests } = useSWR<{ requests: AdminRequest[] }>('/api/admin/requests', requestsFetcher, { refreshInterval: 10000, revalidateOnFocus: true })
   const { data: usageData, error: usageError, mutate: mutateUsage } = useSWR('/api/admin/usage', usageFetcher, { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 300000 })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -110,7 +117,7 @@ export function AdminPanel() {
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     if (data?.persistenceConfigured === false) {
-      setError('Cannot save admin settings: configure POSTGRES_URL or Supabase Storage credentials (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY), then redeploy.')
+      setError('Cannot save admin settings: configure POSTGRES_URL, private Supabase Storage (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY), or a writable Render disk at /var/data with MORE_FM_DATA_DIR=/var/data/more-fm, then redeploy. See docs/deployment-env.md.')
       setMessage('')
       return
     }
