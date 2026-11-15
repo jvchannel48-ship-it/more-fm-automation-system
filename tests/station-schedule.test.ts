@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, nextSundayPlaylistBoundary, PROGRAMS, programAt, sundayPlaylistAt } from '../lib/schedule.ts'
+import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, sundayPlaylistAt } from '../lib/schedule.ts'
 
 function manilaTimeAt(year: number, month: number, day: number, hour = 12, minute = 0) {
   return Date.UTC(year, month - 1, day, hour, minute) - MANILA_OFFSET_MS
@@ -24,6 +24,8 @@ assert.equal(programAt(manilaTimeAt(2026, 11, 15, 17, 1)).id, 'sunday-oldies', '
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 17, 2)).id, 'sunday-tagalog', 'Sunday 5:02 PM starts Tagalog love songs')
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 20, 59)).id, 'sunday-tagalog', 'Sunday 8:59 PM remains Tagalog love songs')
 assert.equal(programAt(manilaTimeAt(2026, 11, 15, 21)).id, 'english-love', 'Sunday 9 PM starts English evening love songs')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 22)).id, 'night-love', 'Sunday 10 PM starts the mixed-language night-love program')
+assert.equal(programAt(manilaTimeAt(2026, 11, 15, 23, 59)).id, 'night-love', 'Sunday late night stays on the night-love program')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 16, 59)).id, 'love-mix', 'Saturday 4:59 PM remains regular programming')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 17)).id, 'love-mix', 'Saturday 5 PM remains on RJ FM music')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 17, 59)).id, 'love-mix', 'Saturday 5:59 PM remains on RJ FM music')
@@ -52,6 +54,10 @@ assert.equal(programAt(manilaTimeAt(2026, 11, 14, 22)).id, 'night-love', 'weekda
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 23, 59)).id, 'night-love', 'weekday 11:59 PM remains on RJ FM music')
 assert.equal(programAt(manilaTimeAt(2026, 11, 14, 0)).id, 'love-mix', 'weekday midnight switches to continuous RJ FM music')
 assert.ok(PROGRAMS['night-love'].pools.english.some((artist) => artist.name === 'Heart'), 'night love includes Heart')
+assert.ok(PROGRAMS['night-love'].pools.tagalog.some((artist) => artist.name === 'Sarah Geronimo'), 'night love includes Sarah Geronimo')
+assert.deepEqual([0, 1, 2, 3].map((count) => languageForSlot(PROGRAMS['night-love'], count)), ['english', 'english', 'tagalog', 'tagalog'], 'night love alternates two English and two Tagalog songs')
+assert.equal(rotationProgramFor(PROGRAMS['night-love'], 1, true, false).id, 'night-love', 'night love overrides the daytime Tagalog-only setting')
+assert.equal(rotationProgramFor(PROGRAMS['love-mix'], 1, true, false).id, 'sunday-tagalog', 'daytime Tagalog-only preference remains in effect')
 
 for (const date of [14, 16, 17, 18, 19, 20]) {
   assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 1)), true, `weekday ${date} signs off at 1 AM`)

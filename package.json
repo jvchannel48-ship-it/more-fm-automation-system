@@ -12,6 +12,7 @@
     "test:repeat": "node --experimental-strip-types tests/song-repeat.test.ts",
     "test:track-filter": "node --experimental-strip-types tests/track-filter.test.ts",
     "test:schedule": "node --experimental-strip-types tests/station-schedule.test.ts",
+    "test:breaks": "node --experimental-strip-types tests/break-rotation.test.ts",
     "test:seasonal": "node --experimental-strip-types tests/seasonal-rotation.test.ts",
     "test:settings-storage": "node --conditions=react-server --experimental-strip-types tests/settings-storage-fallback.test.ts",
     "test:render-disk": "node --conditions=react-server --experimental-strip-types tests/render-disk-permissions.test.ts",

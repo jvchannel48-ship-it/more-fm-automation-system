@@ -1,11 +1,12 @@
 import 'server-only'
 import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
+import { selectSingleBreakAudio } from './break-rotation'
 import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
 import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
@@ -652,29 +653,28 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const regularBreak = !continuingChristmasBurst && state.songCount > 0 && state.songCount % 3 === 0
     if ((sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
-      const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' | 'golden-sunday' }> = []
-      if (sundayGoldenBreak && settings.goldenSunday) spots.push({ asset: settings.goldenSunday, kind: 'golden-sunday' })
-      if (regularBreak && settings.jingleEnabled && settings.jingle) spots.push({ asset: settings.jingle, kind: 'jingle' })
-      if (regularBreak && settings.jingleEnabled && settings.commercialEnabled) {
-        for (const asset of settings.commercials) if (asset) spots.push({ asset, kind: 'commercial' })
-      }
-      if (spots.length > 0) {
+      const spot = selectSingleBreakAudio({
+        sundayGoldenBreak,
+        regularBreak,
+        jingleEnabled: settings.jingleEnabled,
+        goldenSunday: settings.goldenSunday,
+        jingle: settings.jingle,
+      })
+      if (spot) {
         const previous = state.tracks.at(-1)
         if (previous) previous.fadeOut = 0
-        for (const { asset, kind } of spots) {
-          const startAt = nextStart(state, now)
-          if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
-          state.tracks.push({
-            uid: `${kind}-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
-            src: asset.url,
-            startAt,
-            duration: asset.duration,
-            fadeIn: 0,
-            fadeOut: 0,
-            kind,
-            title: asset.name,
-          })
-        }
+        const startAt = nextStart(state, now)
+        if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
+        state.tracks.push({
+          uid: `${spot.kind}-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
+          src: spot.asset.url,
+          startAt,
+          duration: spot.asset.duration,
+          fadeIn: 0,
+          fadeOut: 0,
+          kind: spot.kind,
+          title: spot.asset.name,
+        })
         continue
       }
     }
@@ -698,12 +698,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    const rotationProgram = manilaTime(startAt).day === 0
-      ? program
-      : settings.tagalogOnlyEnabled
-        ? PROGRAMS['sunday-tagalog']
-        : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
-        : program.id === 'news' ? PROGRAMS['love-mix'] : program
+    const rotationProgram = rotationProgramFor(program, manilaTime(startAt).day, settings.tagalogOnlyEnabled, settings.goodVibesEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const seasonalState = {
       regularTracksSinceChristmas: state.christmasRegularTrackCount,
@@ -712,6 +707,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const seasonalPlan = planChristmasTrack(startAt, seasonalState)
     let song: ResolvedSong | null = null
     let isChristmasSong = false
+    if (rotationProgram.id === 'night-love' && state.songCount % 8 === 2) {
+      song = await findMorSong('Dahil Minahal Mo Ako', 'Sarah Geronimo', blockedTitleKeys, true)
+    }
     if (seasonalPlan.playChristmas) {
       const christmasSelection = await findChristmasPlaylistSong(state.christmasPlaylistCursor, blockedTitleKeys)
       state.christmasPlaylistCursor = christmasSelection.nextCursor
@@ -724,17 +722,19 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (!song) {
       // Once audio is already on air, resolve the next track from the fast
       // OPM fallback first. Playlist refreshes must never create an audio gap.
-      if (state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)) {
+      if (rotationProgram.id !== 'night-love' && state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)) {
         song = await findEmergencySong(state.songCount, blockedTitleKeys)
       }
       if (!song) {
-        playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
-          ? await getRjFmPlaylistTracks()
-          : await getPlaylistTracks(playlistUrl)
+        playlistTracks = rotationProgram.id === 'night-love'
+          ? []
+          : playlistUrl === RJ_FM_PLAYLIST_URL
+            ? await getRjFmPlaylistTracks()
+            : await getPlaylistTracks(playlistUrl)
         song = playlistTracks.length > 0
           ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
           : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-        if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+        if (!song && rotationProgram.id !== 'night-love') song = await findEmergencySong(state.songCount, blockedTitleKeys)
       }
     }
     if (!song) break
@@ -743,13 +743,15 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (isChristmasSong && christmasModeForManilaTime(songStart) === 'off') {
       isChristmasSong = false
       playlistUrl = playlistUrlForStart(songStart)
-      playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
-        ? await getRjFmPlaylistTracks()
-        : await getPlaylistTracks(playlistUrl)
+      playlistTracks = rotationProgram.id === 'night-love'
+        ? []
+        : playlistUrl === RJ_FM_PLAYLIST_URL
+          ? await getRjFmPlaylistTracks()
+          : await getPlaylistTracks(playlistUrl)
       song = playlistTracks.length > 0
         ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
         : await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
-      if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+      if (!song && rotationProgram.id !== 'night-love') song = await findEmergencySong(state.songCount, blockedTitleKeys)
       if (!song) break
       songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     }

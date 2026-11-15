@@ -325,7 +325,10 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   'night-love': {
     id: 'night-love',
     pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+    variants: {
+      english: ['soft love ballad', 'slow romantic ballad', 'classic love song'],
+      tagalog: ['Tagalog love ballad', 'OPM slow love song', 'romantic OPM ballad'],
+    },
   },
   'love-mix': {
     id: 'love-mix',
@@ -407,6 +410,7 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
     if (minutes >= 4 * 60 && minutes < 9 * 60 + 1) return PROGRAMS['sunday-english-oldies']
     if (minutes < 17 * 60 + 2) return PROGRAMS['sunday-oldies']
     if (hour < 21) return PROGRAMS['sunday-tagalog']
+    if (hour >= 22) return PROGRAMS['night-love']
     return PROGRAMS['english-love']
   }
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
@@ -414,6 +418,13 @@ export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = 
   if (hour >= 22) return PROGRAMS['night-love']
   if (hour >= 21) return PROGRAMS['english-love']
   return PROGRAMS['love-mix']
+}
+
+export function rotationProgramFor(program: Program, day: number, tagalogOnlyEnabled: boolean, goodVibesEnabled: boolean): Program {
+  if (program.id === 'night-love' || day === 0) return program
+  if (tagalogOnlyEnabled) return PROGRAMS['sunday-tagalog']
+  if (goodVibesEnabled) return PROGRAMS['good-vibes']
+  return program.id === 'news' ? PROGRAMS['love-mix'] : program
 }
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
