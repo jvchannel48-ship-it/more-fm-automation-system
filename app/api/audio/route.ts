@@ -4,8 +4,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// Allow the short-lived media hosts returned by the configured song search provider.
-const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com)$/i
+// Allow media hosts from song download providers. Keep broad so a strong
+// listener connection is not blocked by a rotating CDN hostname.
+const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com|googleusercontent\.com|cdn\.|cloudfront\.net|akamaized\.net|fastly|b-cdn\.net)$/i
 
 export async function GET(request: Request) {
   const rawUrl = new URL(request.url).searchParams.get('url')
