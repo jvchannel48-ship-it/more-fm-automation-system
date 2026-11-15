@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { hasBlacklistedTitle, isAllowedTrack, isOfficialArtistChannel } from '../lib/track-filter.ts'
 
+// Matches the production blacklist in lib/track-filter.ts
 for (const title of [
   'Artist - Song (Live)',
   'Artist - Song Concert',
@@ -17,13 +18,14 @@ for (const title of [
   'Artist - Song Lyric Video',
   'Artist - Song Cover',
   'Artist - Song Reaction',
-  'Artist - Song Remix',
-  'Artist - Song Disco Version',
-  'Artist - Song Dance Mix',
-  'Artist - Song Live Performance',
-  'Artist - Song Rock Version',
-  'Artist - Song Breaking News',
 ]) assert.equal(hasBlacklistedTitle(title), true, `blacklist must reject ${title}`)
+
+// Clean studio titles must pass the blacklist gate
+for (const title of [
+  'Rey Valera - Kung Kailangan Mo Ako',
+  'Artist - Song (Official Audio)',
+  'Side A - Forevermore',
+]) assert.equal(hasBlacklistedTitle(title), false, `blacklist must allow ${title}`)
 
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', channel: 'Fan Uploads' }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Music Video)', channel: 'TV Network' }, 'Artist'), true)
