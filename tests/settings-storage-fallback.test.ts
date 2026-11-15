@@ -51,6 +51,11 @@ async function main() {
     assert.equal(initial.jingleEnabled, false, 'regular jingles are temporarily disabled')
     assert.equal(initial.jingle, null, 'regular jingle asset is disabled')
     assert.equal(initial.goldenSunday, null, 'Golden Sunday jingle asset is disabled')
+    assert.equal(initial.crossfaderEnabled, true, 'crossfader remains enabled')
+    assert.equal(initial.crossfadeSeconds, 8, 'crossfade remains 8 seconds')
+    assert.equal(initial.masterVolume, 80, 'daytime volume target remains 80%')
+    assert.equal(initial.nightVolumePercent, 70, 'night volume target remains 70%')
+    assert.equal(initial.bassGainDb, 12, 'full bass gain remains enabled')
     assert.ok(objects.has('app-state/station/settings.json'), 'settings JSON is stored in the private bucket')
     assert.ok(objects.has('app-state/station/settings-migrations-v1.json'), 'migration marker is stored durably')
 

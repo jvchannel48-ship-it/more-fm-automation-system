@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-// Keep one network audio request active. Preloading several multi-megabyte
-// songs makes mobile browsers stay buffering and starves the current track.
-const PRELOAD_AHEAD_MS = 0
+// Keep only the current and immediately upcoming songs active. Two slots are
+// required for a real overlap: one fades down while the next fades up.
+const PRELOAD_AHEAD_MS = 10_000
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
   el: HTMLAudioElement
+  bassFilter: BiquadFilterNode | null
   uid: string | null
   src: string | null
   synced: boolean
@@ -55,6 +56,7 @@ function playErrorMessage(error: unknown) {
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
+  const audioContext = useRef<AudioContext | null>(null)
   const failedUids = useRef(new Set<string>())
   const forcedNextUid = useRef<string | null>(null)
   const offset = useRef(0)
@@ -73,7 +75,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 1 }, () => {
+    try {
+      audioContext.current = new AudioContext()
+      void audioContext.current.resume()
+    } catch {
+      audioContext.current = null
+    }
+    slots.current = Array.from({ length: 2 }, () => {
       const el = new Audio()
       el.controls = false
       el.preload = 'auto'
@@ -83,7 +91,20 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         const slot = slots.current.find((candidate) => candidate.el === el)
         if (slot) slot.ended = true
       }
-      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
+      let bassFilter: BiquadFilterNode | null = null
+      if (audioContext.current) {
+        try {
+          const source = audioContext.current.createMediaElementSource(el)
+          bassFilter = audioContext.current.createBiquadFilter()
+          bassFilter.type = 'lowshelf'
+          bassFilter.frequency.value = 180
+          bassFilter.gain.value = 12
+          source.connect(bassFilter).connect(audioContext.current.destination)
+        } catch {
+          bassFilter = null
+        }
+      }
+      return { el, bassFilter, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
     })
   }, [])
 
@@ -93,7 +114,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const tracks = data?.tracks ?? []
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
-      const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt - Math.max(0, t.fadeIn) * 1000 && now < t.startAt + t.duration * 1000)
+      const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
+      const forcedNext = forcedNextUid.current ? tracks.find((track) => track.uid === forcedNextUid.current) : undefined
+      const active = scheduleOffAir
+        ? []
+        : [...scheduledActive, ...(forcedNext ? [forcedNext] : [])].filter((track, index, all) => all.findIndex((candidate) => candidate.uid === track.uid) === index)
       for (const slot of slots.current) {
         if (!slot.ended || !slot.uid) continue
         const finished = tracks.find((track) => track.uid === slot.uid)
@@ -121,17 +146,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
       }
       if (forcedNextUid.current && tracks.some((track) => track.uid === forcedNextUid.current && now >= track.startAt)) forcedNextUid.current = null
-      // During a crossfade window two tracks can overlap. Prefer the newest
-      // track and never download/play both at once; reliable playback is more
-      // important than a transition effect on constrained devices.
-      const activeCandidates = scheduleOffAir ? [] : tracks.filter((track) => scheduledActive.includes(track) || track.uid === forcedNextUid.current)
-      const active = activeCandidates.length > 0 ? [activeCandidates.at(-1)!] : []
       const voiceActive = active.some((t) => t.kind === 'dj-mic')
       const config = data?.audioConfig
-      const nightVolumeGain = data?.nightVolumeActive ? (config?.nightVolumePercent ?? 72) / 100 : 1
-      const masterGain = (config?.masterVolume ?? 100) / 100
+      // These are station-wide absolute targets: 80% daytime and 70% at
+      // night, rather than multiplying 70% by the daytime master setting.
+      const stationGain = (data?.nightVolumeActive ? (config?.nightVolumePercent ?? 70) : (config?.masterVolume ?? 80)) / 100
       const replayGain = config?.replayGainEnabled ? Math.pow(10, ((config.replayGainTargetLufs ?? -14) + 14) / 20) : 1
-      const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
+      const upcoming = scheduleOffAir ? [] : tracks.filter((t) => t.startAt > now && t.startAt - now <= PRELOAD_AHEAD_MS)
       const wanted = [...active, ...upcoming].filter((track) => !failedUids.current.has(track.uid)).slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
@@ -171,9 +192,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.el.load()
         }
         const isActive = active.includes(track)
+        const isPreloading = !isActive && upcoming.includes(track)
         const el = slot.el
 
-        if (!playing || !isActive) {
+        const canWarmup = isPreloading && track.startAt - now <= 4_000
+        if (!playing || (!isActive && !canWarmup)) {
           slot.activeWaitSince = null
           if (!el.paused) el.pause()
           continue
@@ -204,7 +227,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           onStreamError?.(track.uid)
           continue
         }
-        if (el.readyState >= 1) {
+        if (el.readyState >= 1 && isActive) {
           if (track.kind === 'brigada-news') {
             slot.synced = true
           } else {
@@ -216,7 +239,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           }
         }
         const minimumReadyState = 2
-        if (el.readyState < minimumReadyState && !el.ended) {
+        if (isActive && el.readyState < minimumReadyState && !el.ended) {
           buffering = true
           slot.activeWaitSince ??= now
           if (now - slot.activeWaitSince >= 8_000) {
@@ -246,7 +269,9 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.activeWaitSince = null
         }
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
-        const outputGain = clamp01(volume * masterGain * nightVolumeGain * replayGain * duckGain)
+        const crossfadeGainValue = trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'smooth')
+        const outputGain = clamp01(volume * stationGain * replayGain * duckGain * (isActive ? crossfadeGainValue : 0))
+        if (slot.bassFilter) slot.bassFilter.gain.value = config?.bassGainDb ?? 12
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
@@ -272,9 +297,9 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'MOR 93.5 Naga',
-      artist: 'MOR 93.5 NAGA LIVESTREAM ONLY',
-      album: 'MOR 93.5 Naga Livestream',
+      title: 'RJ FM',
+      artist: 'STARTCOPE BETA TEAM',
+      album: 'RJ FM Livestream',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })
   }, [playing])
@@ -284,8 +309,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       for (const slot of slots.current) {
         slot.el.pause()
         slot.el.removeAttribute('src')
+        slot.bassFilter?.disconnect()
       }
       slots.current = []
+      void audioContext.current?.close().catch(() => undefined)
+      audioContext.current = null
     },
     [],
   )

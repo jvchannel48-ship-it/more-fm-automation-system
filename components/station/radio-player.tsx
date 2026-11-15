@@ -31,7 +31,7 @@ function StationVerifiedBadge() {
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.9)
+  const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: 8000,
