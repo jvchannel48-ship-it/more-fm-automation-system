@@ -140,8 +140,11 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     const tick = () => {
       const now = Date.now() + offset.current
       const serverTracks = data?.tracks ?? []
+      const makatiRelayActive = serverTracks.some((track) => track.kind === 'rj-makati')
       const tracks = data?.offAir
         ? []
+        : makatiRelayActive
+          ? serverTracks
         : [
             ...serverTracks,
             ...[...knownTracks.current.values()].filter((track) =>
