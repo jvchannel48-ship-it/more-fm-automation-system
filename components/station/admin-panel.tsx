@@ -228,6 +228,11 @@ export function AdminPanel() {
       <p className="text-[11px] text-muted-foreground">Runs from the server cron while the admin is logged out and your computer is off. Deployment must have CRON_SECRET and a minute-level scheduler configured.</p>
     </div>
 
+    <div className="rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
+      <Label>Christmas playlist rotation</Label>
+      <p className="mt-1 text-xs text-muted-foreground">Mor 101.9 Christmas playlist: one song after every 20 regular songs in September–October; three consecutive songs after every 20 regular songs in November–December. Rotation turns off at January 1, Manila time. The 20-song interval is the default cadence because no interval was specified.</p>
+    </div>
+
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">

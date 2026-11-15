@@ -6,7 +6,9 @@ import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
-import { GOLDEN_SUNDAY_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, SUNDAY_AFTERNOON_PLAYLIST_URL, searchYouTube, type YouTubeSearchResult } from './youtube-search'
+import { GOLDEN_SUNDAY_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, SUNDAY_AFTERNOON_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
+import christmasCatalog from './christmas-playlist-catalog.json'
+import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
@@ -21,6 +23,7 @@ const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 6
 const FILL_BATCH_SIZE = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
+const CHRISTMAS_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLM6vJVhDAA3Q&si=SSN9aJjNp6Q96YSW&drli=1'
 const EMERGENCY_OPM_ROTATION = [
   ['Rey Valera', 'Kung Kailangan Mo Ako'],
   ['Basil Valdez', 'Ngayon at Kailanman'],
@@ -87,6 +90,9 @@ interface StationState {
   tracks: Track[]
   songCount: number
   history: HistoryEntry[]
+  christmasRegularTrackCount: number
+  christmasSongsRemaining: number
+  christmasPlaylistCursor: number
   fillingUntil: number
   lastBreakSongCount: number
   lastNewsDate: string
@@ -94,7 +100,7 @@ interface StationState {
   dailyPlayedTitles: DailyPlayedTitle[]
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, lastBreakSongCount: 0, lastNewsDate: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], christmasRegularTrackCount: 0, christmasSongsRemaining: 0, christmasPlaylistCursor: 0, fillingUntil: 0, lastBreakSongCount: 0, lastNewsDate: '', dailyPlayedDate: '', dailyPlayedTitles: [] }
 
 interface SearchItem {
   id: string
@@ -108,6 +114,19 @@ interface SearchItem {
   description?: string
   live?: unknown
   isLive?: unknown
+}
+
+interface ResolvedSong {
+  id: string
+  key: string
+  artist: string
+  title: string
+  src: string
+  sourceUrl: string
+  sourceChannel?: string
+  sourcePlaylist?: string
+  sourceRefreshedAt?: number
+  duration: number
 }
 
 function hasRejectedRecordingLabel(title: unknown, ...values: unknown[]) {
@@ -417,6 +436,40 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
   return null
 }
 
+async function findChristmasPlaylistSong(cursor: number, blockedTitleKeys: Set<string>) {
+  const tracks = christmasCatalog.tracks
+  if (tracks.length === 0) return { song: null, nextCursor: 0 }
+  const start = ((Math.floor(cursor) % tracks.length) + tracks.length) % tracks.length
+  let nextCursor = start
+
+  for (let attempt = 0; attempt < Math.min(8, tracks.length); attempt++) {
+    const index = (start + attempt) % tracks.length
+    const track = tracks[index]
+    nextCursor = (index + 1) % tracks.length
+    if (blockedTitleKeys.has(repeatTitleKey(track.title, track.artist))) continue
+
+    const sourceUrl = `https://www.youtube.com/watch?v=${track.videoId}`
+    const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(sourceUrl)}&type=mp3`, 8_000)
+    if (!download?.downloadUrl) continue
+    return {
+      song: {
+        id: track.videoId,
+        key: songKey(track.title),
+        artist: track.artist,
+        title: track.title,
+        src: playableSource(download.downloadUrl),
+        sourceUrl,
+        sourceChannel: christmasCatalog.playlistOwner,
+        sourcePlaylist: CHRISTMAS_PLAYLIST_URL,
+        sourceRefreshedAt: Date.now(),
+        duration: track.duration,
+      },
+      nextCursor,
+    }
+  }
+  return { song: null, nextCursor }
+}
+
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled = true, blockedTitleKeys: Set<string> = new Set()) {
   const language = languageForSlot(program, songCount)
   const candidatesArtists = eligibleArtists(program.pools[language], history, now, shuffleEnabled)
@@ -541,7 +594,11 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < FILL_BATCH_SIZE) {
-    const pendingRequest = hasQueuePersistence
+    const nextSlotSeasonalPlan = planChristmasTrack(nextStart(state, now), {
+      regularTracksSinceChristmas: state.christmasRegularTrackCount,
+      christmasTracksRemaining: state.christmasSongsRemaining,
+    })
+    const pendingRequest = !nextSlotSeasonalPlan.playChristmas && hasQueuePersistence
       ? (await getSongRequests()).find((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
       : undefined
     if (pendingRequest) {
@@ -567,6 +624,14 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         state.history = state.history.slice(-settings.rotationPoolSize)
         if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(requestedSong.title, pendingRequest.artist))
         state.songCount++
+        const requestSeasonalPlan = planChristmasTrack(requestedStart, {
+          regularTracksSinceChristmas: state.christmasRegularTrackCount,
+          christmasTracksRemaining: state.christmasSongsRemaining,
+        })
+        state.christmasRegularTrackCount = requestSeasonalPlan.mode === 'off'
+          ? 0
+          : requestSeasonalPlan.playChristmas ? 1 : requestSeasonalPlan.nextState.regularTracksSinceChristmas
+        state.christmasSongsRemaining = 0
         continue
       }
     }
@@ -574,8 +639,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const breakAt = previousTrack ? trackEnd(previousTrack) : now
     const breakTime = manilaTime(breakAt)
     const sunday = breakTime.day === 0
-    const sundayGoldenBreak = sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
-    const regularBreak = !sunday && state.songCount > 0 && state.songCount % 4 === 0
+    const continuingChristmasBurst = state.christmasSongsRemaining > 0 && christmasModeForManilaTime(breakAt) !== 'off'
+    const sundayGoldenBreak = !continuingChristmasBurst && sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
+    const regularBreak = !continuingChristmasBurst && !sunday && state.songCount > 0 && state.songCount % 4 === 0
     if ((sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spots: Array<{ asset: NonNullable<typeof settings.jingle>; kind: 'jingle' | 'commercial' | 'golden-sunday' }> = []
@@ -607,7 +673,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
-    if (!settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
+    if (state.christmasSongsRemaining === 0 && !settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
       const newsDate = manilaDateKey(startAt)
       if (state.lastNewsDate !== newsDate) {
         state.lastNewsDate = newsDate
@@ -631,18 +697,49 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
-    const playlistUrl = playlistUrlForStart(startAt)
-    const playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
-      ? await getRjFmPlaylistTracks()
-      : await getPlaylistTracks(playlistUrl)
-    const song = playlistTracks.length > 0
-      ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
-      : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-      ?? await findEmergencySong(state.songCount, blockedTitleKeys)
+    const seasonalState = {
+      regularTracksSinceChristmas: state.christmasRegularTrackCount,
+      christmasTracksRemaining: state.christmasSongsRemaining,
+    }
+    const seasonalPlan = planChristmasTrack(startAt, seasonalState)
+    let song: ResolvedSong | null = null
+    let isChristmasSong = false
+    if (seasonalPlan.playChristmas) {
+      const christmasSelection = await findChristmasPlaylistSong(state.christmasPlaylistCursor, blockedTitleKeys)
+      state.christmasPlaylistCursor = christmasSelection.nextCursor
+      song = christmasSelection.song
+      isChristmasSong = Boolean(song)
+    }
+
+    let playlistUrl = playlistUrlForStart(startAt)
+    let playlistTracks: PlaylistTrackResult[] = []
+    if (!song) {
+      playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
+        ? await getRjFmPlaylistTracks()
+        : await getPlaylistTracks(playlistUrl)
+      song = playlistTracks.length > 0
+        ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
+        : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+      if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+    }
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
-    const songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    const sundayPlaylistBoundary = nextSundayPlaylistBoundary(songStart) ?? Number.POSITIVE_INFINITY
+    let songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    if (isChristmasSong && christmasModeForManilaTime(songStart) === 'off') {
+      isChristmasSong = false
+      playlistUrl = playlistUrlForStart(songStart)
+      playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
+        ? await getRjFmPlaylistTracks()
+        : await getPlaylistTracks(playlistUrl)
+      song = playlistTracks.length > 0
+        ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
+        : await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
+      if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+      if (!song) break
+      songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    }
+    const finalSeasonalPlan = planChristmasTrack(songStart, seasonalState)
+    const sundayPlaylistBoundary = isChristmasSong ? Number.POSITIVE_INFINITY : nextSundayPlaylistBoundary(songStart) ?? Number.POSITIVE_INFINITY
     const playlistBoundary = sundayPlaylistBoundary
     // A slow lookup can cross a Sunday playlist boundary. Do not let a track
     // selected from the previous window continue into the next playlist.
@@ -668,6 +765,20 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
+    if (isChristmasSong && finalSeasonalPlan.playChristmas) {
+      state.christmasRegularTrackCount = finalSeasonalPlan.nextState.regularTracksSinceChristmas
+      state.christmasSongsRemaining = finalSeasonalPlan.nextState.christmasTracksRemaining
+    } else if (finalSeasonalPlan.mode === 'off') {
+      state.christmasRegularTrackCount = 0
+      state.christmasSongsRemaining = 0
+    } else if (finalSeasonalPlan.playChristmas) {
+      // If the holiday stream could not be resolved, keep playing regular songs and retry later.
+      state.christmasRegularTrackCount = 1
+      state.christmasSongsRemaining = 0
+    } else {
+      state.christmasRegularTrackCount = finalSeasonalPlan.nextState.regularTracksSinceChristmas
+      state.christmasSongsRemaining = 0
+    }
     // One song per station poll keeps the now-playing endpoint responsive.
     break
   }
@@ -677,6 +788,9 @@ async function loadState(now: number) {
   const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
   state.lastBreakSongCount = state.lastBreakSongCount ?? 0
   state.lastNewsDate = state.lastNewsDate ?? ''
+  state.christmasRegularTrackCount = Number.isFinite(state.christmasRegularTrackCount) ? Math.max(0, Math.floor(state.christmasRegularTrackCount)) : 0
+  state.christmasSongsRemaining = Number.isFinite(state.christmasSongsRemaining) ? Math.max(0, Math.floor(state.christmasSongsRemaining)) : 0
+  state.christmasPlaylistCursor = Number.isFinite(state.christmasPlaylistCursor) ? Math.max(0, Math.floor(state.christmasPlaylistCursor)) : 0
   state.dailyPlayedTitles = Array.isArray(state.dailyPlayedTitles) ? state.dailyPlayedTitles.filter((entry) => Boolean(entry && typeof entry.key === 'string' && typeof entry.title === 'string' && typeof entry.artist === 'string' && typeof entry.playedAt === 'number')) : []
   state.dailyPlayedDate = typeof state.dailyPlayedDate === 'string' ? state.dailyPlayedDate : ''
   let metadataChanged = false
@@ -707,7 +821,7 @@ async function loadState(now: number) {
   for (const track of state.tracks) {
     if (!track.title) continue
     const endAt = nextSundayPlaylistBoundary(track.startAt)
-    if (endAt) {
+    if (endAt && track.sourcePlaylist !== CHRISTMAS_PLAYLIST_URL) {
       if (trackEnd(track) > endAt) track.duration = Math.max(1, (endAt - track.startAt) / 1000)
     }
     if (!isCompletedDailyMusicTrack({
@@ -743,7 +857,7 @@ async function loadState(now: number) {
     const isChristmasTrack = isChristmasTitle(track.title ?? '')
     const isFutureTrack = track.startAt > now
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
-    const removeChristmas = isMusicTrack && isChristmasTrack
+    const removeChristmas = isMusicTrack && isChristmasTrack && track.sourcePlaylist !== CHRISTMAS_PLAYLIST_URL
     const removeBrigada = track.kind === 'brigada-news'
     const removeDisabledJingle = track.kind === 'jingle' || track.kind === 'golden-sunday'
     const sunday = manilaTime(now).day === 0
