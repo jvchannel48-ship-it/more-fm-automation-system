@@ -53,15 +53,20 @@ export function RadioPlayer() {
   }, [mutate])
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
   useEffect(() => {
-    if (!playbackIssue) return
-    void mutate()
-  }, [playbackIssue, mutate])
+    if (playbackIssue) {
+      void mutate()
+      setPlaying(false)
+      return
+    }
+    if (error && !data) setPlaying(false)
+  }, [playbackIssue, error, data, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
   const live = playing && !buffering && !offAir && !playbackIssue
+  const canPause = playing && !playbackIssue && !(error && !data)
   const statusLabel = offAir ? 'Off Air' : live ? 'Live' : playing || (error && !data) ? 'Connecting' : 'Standby'
 
   const togglePlay = async () => {
-    if (playing) {
+    if (canPause) {
       setPlaying(false)
       return
     }
@@ -108,14 +113,14 @@ export function RadioPlayer() {
           size="icon"
           onClick={() => void togglePlay()}
           disabled={offAir}
-          aria-label={playing ? 'Pause RJ FM' : 'Play RJ FM'}
+          aria-label={canPause ? 'Pause RJ FM' : 'Play RJ FM'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
             <Moon aria-hidden="true" />
-          ) : playing && buffering ? (
+          ) : canPause && buffering ? (
             <Loader2 className="animate-spin" aria-hidden="true" />
-          ) : playing ? (
+          ) : canPause ? (
             <Pause aria-hidden="true" />
           ) : (
             <Play className="translate-x-0.5" aria-hidden="true" />
