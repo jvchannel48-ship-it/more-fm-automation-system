@@ -745,6 +745,7 @@ async function loadState(now: number) {
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
     const removeChristmas = isMusicTrack && isChristmasTrack
     const removeBrigada = track.kind === 'brigada-news'
+    const removeDisabledJingle = track.kind === 'jingle' || track.kind === 'golden-sunday'
     const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const removeFilteredTrack = isMusicTrack && !track.sourcePlaylist && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
@@ -768,6 +769,7 @@ async function loadState(now: number) {
       && !removeFilteredTrack
       && !removeChristmas
       && !removeBrigada
+      && !removeDisabledJingle
       && !removeSundayBreak
       && !removeSundayMusic
       && (

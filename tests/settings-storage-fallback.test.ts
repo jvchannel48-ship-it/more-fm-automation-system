@@ -48,6 +48,9 @@ async function main() {
     assert.equal(initial.tagalogOnlyEnabled, true)
     assert.equal(initial.noRepeatEnabled, true)
     assert.equal(initial.shuffleEnabled, false, 'shuffle is permanently disabled for sequential rotation')
+    assert.equal(initial.jingleEnabled, false, 'regular jingles are temporarily disabled')
+    assert.equal(initial.jingle, null, 'regular jingle asset is disabled')
+    assert.equal(initial.goldenSunday, null, 'Golden Sunday jingle asset is disabled')
     assert.ok(objects.has('app-state/station/settings.json'), 'settings JSON is stored in the private bucket')
     assert.ok(objects.has('app-state/station/settings-migrations-v1.json'), 'migration marker is stored durably')
 
