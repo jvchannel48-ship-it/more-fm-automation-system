@@ -23,7 +23,7 @@ const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 30
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 30
 const FILL_BATCH_SIZE = 2
-const RJ_MAKATI_STREAM_URL = 'https://stream.zeno.fm/as29d8g0g4duv'
+const RJ_MAKATI_STREAM_URL = '/api/rj-makati-stream'
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 const CHRISTMAS_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLM6vJVhDAA3Q&si=SSN9aJjNp6Q96YSW&drli=1'
