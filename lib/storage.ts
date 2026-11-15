@@ -112,10 +112,17 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     if (hasSupabaseStorageConfig()) {
       const cached = settingsObjectCache.get(pathname)
       if (isPersistentSettingsPath(pathname) && cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
-      const remote = await readSupabaseJson(`app-state/${pathname}`)
-      if (remote !== null) {
-        if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
-        return remote as T
+      try {
+        const remote = await readSupabaseJson(`app-state/${pathname}`)
+        if (remote !== null) {
+          if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value: remote, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+          return remote as T
+        }
+      } catch (error) {
+        // Render's persistent disk is the local recovery path when Supabase
+        // Storage is temporarily unavailable or its bucket is misconfigured.
+        if (!filesystemDataDir) throw error
+        console.warn('[morefm] Supabase JSON read failed; using Render disk fallback', pathname)
       }
     }
     const filesystemValue = await readFilesystemJson<T>(pathname)
@@ -143,9 +150,15 @@ export async function writeJson(pathname: string, data: unknown) {
   if (!pool) {
     if (hasSupabaseStorageConfig()) {
       const value = JSON.parse(serialized)
-      await writeSupabaseJson(`app-state/${pathname}`, value)
-      if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
-      return
+      try {
+        await writeSupabaseJson(`app-state/${pathname}`, value)
+        if (isPersistentSettingsPath(pathname)) settingsObjectCache.set(pathname, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS })
+        return
+      } catch (error) {
+        // Continue to the Render disk fallback below when available.
+        if (!filesystemDataDir) throw error
+        console.warn('[morefm] Supabase JSON write failed; using Render disk fallback', pathname)
+      }
     }
     if (await writeFilesystemJson(pathname, serialized)) return
     if (pathname === STATION_STATE_PATH) {
