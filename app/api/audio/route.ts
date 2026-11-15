@@ -48,16 +48,19 @@ export async function GET(request: Request) {
     }
 
     const headers = new Headers({
-      'Cache-Control': 'public, max-age=3600, immutable',
-      'Content-Type': contentType,
+      // Force streamable inline audio — upstream often sends Content-Disposition: attachment.
+      'Cache-Control': 'public, max-age=300',
+      'Content-Type': contentType.includes('audio') ? contentType : 'audio/mpeg',
       'Accept-Ranges': upstream.headers.get('accept-ranges') ?? 'bytes',
       'Content-Disposition': 'inline',
+      'Access-Control-Allow-Origin': '*',
       'Vary': 'Range',
     })
     for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
       const value = upstream.headers.get(name)
       if (value) headers.set(name, value)
     }
+    headers.set('Content-Disposition', 'inline')
     return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers })
   } catch (error) {
     console.error('[morefm] audio proxy failed', target.hostname, error)
