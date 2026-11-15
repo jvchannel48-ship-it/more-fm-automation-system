@@ -24,6 +24,11 @@ export interface PlaylistTrackResult {
   live?: boolean
 }
 
+export interface PlaylistFetchOptions {
+  refreshNow?: boolean
+  waitForRefresh?: boolean
+}
+
 const STATIC_PLAYLIST: PlaylistTrackResult[] = (playlistCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>).map((track) => ({
   ...track,
   durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
@@ -65,18 +70,18 @@ export async function getRjFmPlaylistTracks(): Promise<PlaylistTrackResult[]> {
   return getPlaylistTracks(RJ_FM_PLAYLIST_URL, STATIC_PLAYLIST)
 }
 
-export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = []): Promise<PlaylistTrackResult[]> {
+export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = [], options: PlaylistFetchOptions = {}): Promise<PlaylistTrackResult[]> {
   const now = Date.now()
   const cache = playlistCaches.get(playlistUrl) ?? { tracks: fallback, lastCheckedAt: 0, refresh: null }
   if (!playlistCaches.has(playlistUrl)) playlistCaches.set(playlistUrl, cache)
-  if (!cache.refresh && now - cache.lastCheckedAt >= PLAYLIST_REFRESH_MS) {
+  if (!cache.refresh && (options.refreshNow || now - cache.lastCheckedAt >= PLAYLIST_REFRESH_MS)) {
     cache.lastCheckedAt = now
     cache.refresh = refreshPlaylist(playlistUrl, cache).finally(() => { cache.refresh = null })
   }
   // Static RJ FM has a fallback catalog. A new Sunday playlist has no safe
   // fallback, so wait for its first refresh instead of selecting the wrong
   // playlist during a cold start.
-  if (cache.tracks.length === 0 && cache.refresh) await cache.refresh
+  if ((cache.tracks.length === 0 || options.waitForRefresh) && cache.refresh) await cache.refresh
   return cache.tracks
 }
 

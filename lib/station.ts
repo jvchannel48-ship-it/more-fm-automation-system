@@ -24,6 +24,15 @@ const FILL_BATCH_SIZE = 1
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 const CHRISTMAS_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLM6vJVhDAA3Q&si=SSN9aJjNp6Q96YSW&drli=1'
+const CHRISTMAS_CATALOG_FALLBACK: PlaylistTrackResult[] = christmasCatalog.tracks.map((track) => ({
+  id: track.videoId,
+  title: track.title,
+  url: `https://www.youtube.com/watch?v=${track.videoId}`,
+  duration: track.duration,
+  durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
+  channel: track.artist,
+}))
+const CHRISTMAS_CATALOG_ARTISTS = new Map(christmasCatalog.tracks.map((track) => [track.videoId, track.artist]))
 const EMERGENCY_OPM_ROTATION = [
   ['Rey Valera', 'Kung Kailangan Mo Ako'],
   ['Basil Valdez', 'Ngayon at Kailanman'],
@@ -437,7 +446,7 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
 }
 
 async function findChristmasPlaylistSong(cursor: number, blockedTitleKeys: Set<string>) {
-  const tracks = christmasCatalog.tracks
+  const tracks = await getPlaylistTracks(CHRISTMAS_PLAYLIST_URL, CHRISTMAS_CATALOG_FALLBACK, { refreshNow: true, waitForRefresh: true })
   if (tracks.length === 0) return { song: null, nextCursor: 0 }
   const start = ((Math.floor(cursor) % tracks.length) + tracks.length) % tracks.length
   let nextCursor = start
@@ -446,20 +455,22 @@ async function findChristmasPlaylistSong(cursor: number, blockedTitleKeys: Set<s
     const index = (start + attempt) % tracks.length
     const track = tracks[index]
     nextCursor = (index + 1) % tracks.length
-    if (blockedTitleKeys.has(repeatTitleKey(track.title, track.artist))) continue
+    if (track.live) continue
+    const artist = CHRISTMAS_CATALOG_ARTISTS.get(track.id) ?? playlistArtist(track.title, track.channel)
+    if (blockedTitleKeys.has(repeatTitleKey(track.title, artist))) continue
 
-    const sourceUrl = `https://www.youtube.com/watch?v=${track.videoId}`
+    const sourceUrl = track.url
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(sourceUrl)}&type=mp3`, 8_000)
     if (!download?.downloadUrl) continue
     return {
       song: {
-        id: track.videoId,
+        id: track.id,
         key: songKey(track.title),
-        artist: track.artist,
+        artist,
         title: track.title,
         src: playableSource(download.downloadUrl),
         sourceUrl,
-        sourceChannel: christmasCatalog.playlistOwner,
+        sourceChannel: track.channel ?? artist,
         sourcePlaylist: CHRISTMAS_PLAYLIST_URL,
         sourceRefreshedAt: Date.now(),
         duration: track.duration,

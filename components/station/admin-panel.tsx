@@ -230,7 +230,7 @@ export function AdminPanel() {
 
     <div className="rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
       <Label>Christmas playlist rotation</Label>
-      <p className="mt-1 text-xs text-muted-foreground">Mor 101.9 Christmas playlist: one song after every 20 regular songs in September–October; three consecutive songs after every 20 regular songs in November–December. Rotation turns off at January 1, Manila time. The 20-song interval is the default cadence because no interval was specified.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Automatically checks the latest Mor 101.9 YouTube Music playlist whenever a Christmas song is due, so new playlist additions need no app update or redeploy. September–October: one song after every 20 regular songs. November–December: three consecutive songs after every 20 regular songs. Rotation turns off January 1, Manila time. The 20-song interval is the default cadence because no interval was specified; the saved catalog is used if YouTube is temporarily unavailable.</p>
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
