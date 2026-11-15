@@ -56,6 +56,10 @@ function playErrorMessage(error: unknown) {
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, onStreamError?: (uid: string) => void) {
   const slots = useRef<Slot[]>([])
+  // Render can briefly return an empty/stale queue while swapping instances.
+  // Keep the last known on-air track available until its scheduled end so the
+  // browser audio element is not stopped during that deploy window.
+  const knownTracks = useRef(new Map<string, Track>())
   const audioContext = useRef<AudioContext | null>(null)
   const failedUids = useRef(new Set<string>())
   const forcedNextUid = useRef<string | null>(null)
@@ -66,6 +70,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!data) return
     offset.current = data.serverTime - Date.now()
+    for (const track of data.tracks) knownTracks.current.set(track.uid, track)
     const currentIds = new Set(data.tracks.map((track) => track.uid))
     failedUids.current.forEach((uid) => {
       if (!currentIds.has(uid)) failedUids.current.delete(uid)
@@ -134,7 +139,17 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     const tick = () => {
       const now = Date.now() + offset.current
-      const tracks = data?.tracks ?? []
+      const serverTracks = data?.tracks ?? []
+      const tracks = data?.offAir
+        ? []
+        : [
+            ...serverTracks,
+            ...[...knownTracks.current.values()].filter((track) =>
+              !serverTracks.some((candidate) => candidate.uid === track.uid)
+              && track.startAt <= now
+              && now < track.startAt + track.duration * 1000,
+            ),
+          ]
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
       const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)

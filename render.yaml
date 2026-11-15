@@ -4,6 +4,7 @@ services:
     runtime: node
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
     startCommand: pnpm start
+    healthCheckPath: /api/now
     envVars:
       - key: NODE_VERSION
         value: "22"

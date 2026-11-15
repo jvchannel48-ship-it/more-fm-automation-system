@@ -210,7 +210,7 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
 
 export async function queueSongRequest(requestId: string) {
   const lease = await acquireStationLease(QUEUE_LOCK_PATH, QUEUE_LEASE_MS)
-  if (!lease) return { queued: false, reason: 'The AutoDJ queue is busy. Your request is saved and will retry automatically.' }
+  if (!lease) return { queued: false, reason: 'Your request was saved and will be added when the station queue is ready.' }
   try {
     const request = (await getSongRequests()).find((item) => item.id === requestId && item.status === 'pending')
     if (!request) return { queued: false, reason: 'Request not found.' }
@@ -255,7 +255,7 @@ export async function queueSongRequest(requestId: string) {
 export async function submitSongRequest(title: string, artist: string, name = 'Listener') {
   const request = await addSongRequest(title, artist, name)
   const result = await queueSongRequest(request.id)
-  return { request, ...result }
+  return { accepted: true, request, ...result }
 }
 
 async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean, blockedTitleKeys: Set<string>) {

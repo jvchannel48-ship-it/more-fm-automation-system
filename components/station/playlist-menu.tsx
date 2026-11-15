@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 type RequestResponse = {
+  accepted?: boolean
   queued?: boolean
   reason?: string
   error?: string
@@ -52,6 +53,8 @@ export function PlaylistMenu() {
 
       if (result.queued) {
         setMessage('Your song request submitted. It will play after the current song queue.')
+      } else if (result.accepted) {
+        setMessage(result.reason ?? 'Your song request was saved. It will be added to the station queue automatically.')
       } else {
         setMessage(result.reason ?? 'Your song request submitted. Please wait for play.')
       }
