@@ -2,7 +2,7 @@
 
 `POSTGRES_URL` is the recommended production backend for the whole station. The application also accepts `POSTGRES_URL_NON_POOLING`, `DATABASE_URL`, or `SUPABASE_DB_URL`. PostgreSQL stores admin settings, the shared playback queue, listener counts, leases, and related state. Use a Supabase PostgreSQL connection URI—not the project URL or an API key—and apply the SQL migrations under `supabase/migrations/`.
 
-For Vercel, add `POSTGRES_URL` to each required environment (Production, Preview, and/or Development) and redeploy. Copy the URI from the Supabase project's Database connection-string screen; keep its password private, never commit it or paste it into chat, and never expose it through a `NEXT_PUBLIC_*` variable. If using a pooler, select a Supabase mode supported by the deployed Node `pg` client.
+For Render, add `POSTGRES_URL` to each required environment (Production, Preview, and/or Development) and redeploy. Copy the URI from the Supabase project's Database connection-string screen; keep its password private, never commit it or paste it into chat, and never expose it through a `NEXT_PUBLIC_*` variable. If using a pooler, select a Supabase mode supported by the deployed Node `pg` client.
 
 ## Admin-settings fallback without PostgreSQL
 

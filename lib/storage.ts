@@ -354,7 +354,7 @@ export async function getStorageUsage() {
   `)
   const row = result.rows[0]
   return {
-    provider: 'Supabase connected to Vercel',
+    provider: databaseUrl ? 'Render PostgreSQL' : hasSupabaseStorageConfig() ? 'Supabase Storage' : 'Local fallback',
     databaseBytes: Number(row?.database_bytes ?? 0),
     stationAudioBytes: Number(row?.audio_bytes ?? 0),
     stationAudioFiles: Number(row?.audio_files ?? 0),

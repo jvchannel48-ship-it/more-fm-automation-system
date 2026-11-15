@@ -391,7 +391,7 @@ export function AdminPanel() {
         <Stat label="Supabase database" value={formatBytes(usageData.usage.databaseBytes)} />
         <Stat label="Station audio files" value={`${formatBytes(usageData.usage.stationAudioBytes)} · ${usageData.usage.stationAudioFiles} files`} />
       </div> : <p className="text-xs text-muted-foreground">Storage usage unavailable. Station controls remain available.</p>}
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Database size is reported by PostgreSQL; audio totals use stored object file sizes in this app’s Supabase Storage bucket. This is app storage, not total Vercel bandwidth, build, or function quota.</p>
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Database size is reported by PostgreSQL; audio totals use stored object file sizes in this app’s Supabase Storage bucket. This is app storage, not total Render bandwidth, build, or function quota.</p>
         <Button type="button" variant="ghost" size="sm" onClick={() => void mutateUsage()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh usage</Button></div>
     </div>
     <div className="flex flex-col gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">

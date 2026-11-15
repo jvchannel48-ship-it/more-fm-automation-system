@@ -8,11 +8,11 @@ When an identifiable song arrives, AutoDJ searches the configured MP3Juice-compa
 
 ## Unattended server updates
 
-The Vercel schedule in `vercel.json` invokes `/api/cron/mor-sync` once per minute. Add a random, at-least-16-character `CRON_SECRET` environment variable to the Vercel project for Production, then redeploy. Vercel sends it as `Authorization: Bearer <secret>`; the route rejects requests when the secret is missing or incorrect. The MOR switch and sync status are persisted in the app's Supabase/Postgres `public.morefm_state` table and are coordinated with AutoDJ through an atomic database lease. They do not depend on an admin session or the operator's computer.
+The Render schedule in `Render.json` invokes `/api/cron/mor-sync` once per minute. Add a random, at-least-16-character `CRON_SECRET` environment variable to the Render project for Production, then redeploy. Render sends it as `Authorization: Bearer <secret>`; the route rejects requests when the secret is missing or incorrect. The MOR switch and sync status are persisted in the app's Supabase/Postgres `public.morefm_state` table and are coordinated with AutoDJ through an atomic database lease. They do not depend on an admin session or the operator's computer.
 
 Configure the app's persistent Postgres connection (`POSTGRES_URL` is preferred; the storage module also accepts its documented URL aliases) and apply `supabase/migrations/20261114000000_morefm_state.sql` before relying on server-side persistence. Do not use process memory as the production state store.
 
-Vercel's current docs limit Hobby schedules to once per day and allow once-per-minute schedules on Pro/Enterprise. This repository's current runtime/hosting account was not visible from the sandbox; confirm deployment is Vercel Pro/Enterprise for minute-level automation. If it is hosted elsewhere, configure that host to call the same protected endpoint every minute and pass the same bearer secret.
+Render's current docs limit Hobby schedules to once per day and allow once-per-minute schedules on Pro/Enterprise. This repository's current runtime/hosting account was not visible from the sandbox; confirm deployment is Render Pro/Enterprise for minute-level automation. If it is hosted elsewhere, configure that host to call the same protected endpoint every minute and pass the same bearer secret.
 
 ## Sources
 
@@ -20,5 +20,5 @@ Vercel's current docs limit Hobby schedules to once per day and allow once-per-m
 - [Official TFC MOR Entertainment channel](https://mytfc.com/channels/mor-entertainment)
 - [MOR Entertainment listing on Zeno.FM](https://zeno.fm/radio/mor-entertainment/)
 - [Zeno Media Metadata API description](https://help.zeno.fm/en/article/what-is-the-metadata-api-wh2c9s/)
-- [Vercel Cron security and management](https://vercel.com/docs/schedules/cron-jobs/manage-cron-jobs)
-- [Vercel Cron usage and plan limits](https://vercel.com/docs/schedules/cron-jobs/usage-and-pricing)
+- [Render Cron security and management](https://Render.com/docs/schedules/cron-jobs/manage-cron-jobs)
+- [Render Cron usage and plan limits](https://Render.com/docs/schedules/cron-jobs/usage-and-pricing)
