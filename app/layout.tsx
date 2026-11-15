@@ -7,9 +7,9 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'RJ FM — Livestream Only',
+  title: 'RJ FM — Original AutoDJ',
   description:
-    'RJ FM livestream from the ABS-CBN Complex, Naga City, featuring automated English and Tagalog music.',
+    'RJ FM original AutoDJ with sequential RJ TOP SONGS and RJ PLAYED playlists, featuring English and Tagalog love songs from multiple eras.',
   generator: 'v0.app',
   icons: {
     icon: [

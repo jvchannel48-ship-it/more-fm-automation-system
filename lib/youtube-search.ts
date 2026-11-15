@@ -1,6 +1,7 @@
 import 'server-only'
 import { YouTube } from 'youtube-sr'
 import playlistCatalog from '../data/rj-fm-playlist.json'
+import ownPlaylists from '../data/rj-playlists.json'
 
 export interface YouTubeSearchResult {
   id: string
@@ -29,13 +30,15 @@ export interface PlaylistFetchOptions {
   waitForRefresh?: boolean
 }
 
-const STATIC_PLAYLIST: PlaylistTrackResult[] = (playlistCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>).map((track) => ({
+const LEGACY_PLAYLIST: PlaylistTrackResult[] = (playlistCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>).map((track) => ({
   ...track,
   durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
 }))
-export const RJ_FM_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLd469-e1TkbM'
-export const GOLDEN_SUNDAY_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLZxu4AZwv5H0'
-export const SUNDAY_AFTERNOON_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M'
+const OWN_PLAYLIST: PlaylistTrackResult[] = ([...ownPlaylists.topSongs, ...ownPlaylists.played] as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>).map((track) => ({
+  ...track,
+  durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
+}))
+export const RJ_FM_PLAYLIST_URL = 'rj://original-playlists'
 const PLAYLIST_REFRESH_MS = 60_000
 const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
 let lastSearchWarningAt = 0
@@ -72,7 +75,7 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
 
 /** Load the station's curated playlist in its original order. */
 export async function getRjFmPlaylistTracks(): Promise<PlaylistTrackResult[]> {
-  return getPlaylistTracks(RJ_FM_PLAYLIST_URL, STATIC_PLAYLIST)
+  return OWN_PLAYLIST.length > 0 ? OWN_PLAYLIST : LEGACY_PLAYLIST
 }
 
 export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = [], options: PlaylistFetchOptions = {}): Promise<PlaylistTrackResult[]> {

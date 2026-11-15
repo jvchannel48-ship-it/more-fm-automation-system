@@ -139,7 +139,7 @@ export function RadioPlayer() {
           <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />STARTCOPE BETA TEAM</span>
         </div>
         <p className="max-w-sm rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/90">
-          Romantic &amp; Contemporary Pop Hits Throwback
+          RJ TOP SONGS · RJ PLAYED · 60s to 2000s · Tagalog &amp; English love songs
         </p>
         {data?.boardOperatorEnabled && (
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">

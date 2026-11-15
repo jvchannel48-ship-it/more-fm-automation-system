@@ -1,12 +1,12 @@
 import 'server-only'
 import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, sundayPlaylistAt, type Artist, type Program } from './schedule'
+import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
-import { GOLDEN_SUNDAY_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, SUNDAY_AFTERNOON_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
+import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
 import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -574,11 +574,10 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 function playlistUrlForStart(ms: number) {
-  switch (sundayPlaylistAt(ms)) {
-    case 'golden-sunday': return GOLDEN_SUNDAY_PLAYLIST_URL
-    case 'sunday-afternoon': return SUNDAY_AFTERNOON_PLAYLIST_URL
-    default: return RJ_FM_PLAYLIST_URL
-  }
+  // Keep every day on the station's own deterministic RJ TOP SONGS → RJ PLAYED rotation.
+  // The argument is retained so callers do not need a separate schedule branch.
+  void ms
+  return RJ_FM_PLAYLIST_URL
 }
 
 function weeklyPlaylistOffset(ms: number, length: number) {
