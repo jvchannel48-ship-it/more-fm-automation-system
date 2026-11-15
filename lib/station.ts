@@ -223,13 +223,13 @@ export async function queueSongRequest(requestId: string) {
       : new Set<string>()
     const song = await findMorSong(request.title, request.artist, blocked, false)
     if (!song) return { queued: false, reason: 'Song not found yet. AutoDJ will keep retrying this request.' }
-    const startAt = nextStart(state, now)
-    state.tracks.push({
-      uid: `request-${request.id}-${startAt}`,
+    const position = insertRequestPosition(state, now, song.duration)
+    state.tracks.splice(position.insertAt, 0, {
+      uid: `request-${request.id}-${position.startAt}`,
       requestId: request.id,
       src: song.src,
       youtubeId: song.id,
-      startAt,
+      startAt: position.startAt,
       duration: song.duration,
       fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
@@ -240,7 +240,7 @@ export async function queueSongRequest(requestId: string) {
       title: song.title,
       artist: request.artist,
     })
-    state.history.push({ id: song.id, key: song.key, artist: request.artist, title: song.title, t: startAt })
+    state.history.push({ id: song.id, key: song.key, artist: request.artist, title: song.title, t: position.startAt })
     state.history = state.history.slice(-settings.rotationPoolSize)
     await writeJson(STATE_PATH, state)
     return { queued: true, track: { title: song.title, artist: request.artist } }
@@ -596,6 +596,24 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
+
+function insertRequestPosition(state: StationState, now: number, duration: number) {
+  const firstRegularFutureIndex = state.tracks.findIndex((track) => track.startAt > now && !track.requestId)
+  const queuedRequests = state.tracks.filter((track) => track.startAt > now && track.requestId)
+  const active = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now).at(-1)
+  const anchor = queuedRequests.at(-1) ?? active
+  const startAt = anchor
+    ? Math.max(now, trackEnd(anchor) - anchor.fadeOut * 1000)
+    : firstRegularFutureIndex >= 0 ? state.tracks[firstRegularFutureIndex].startAt : nextStart(state, now)
+  const insertAt = firstRegularFutureIndex >= 0 ? firstRegularFutureIndex : state.tracks.length
+  const shiftMs = Math.max(1, duration) * 1000
+  for (const track of state.tracks.slice(insertAt)) {
+    if (track.startAt >= startAt) track.startAt += shiftMs
+  }
+  for (const entry of state.history) if (entry.t >= startAt) entry.t += shiftMs
+  return { insertAt, startAt }
+}
+
 function playlistUrlForStart(ms: number) {
   // Keep every day on the station's own deterministic RJ TOP SONGS → RJ PLAYED rotation.
   // The argument is retained so callers do not need a separate schedule branch.
@@ -630,17 +648,19 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       christmasTracksRemaining: state.christmasSongsRemaining,
     })
     const pendingRequest = !nextSlotSeasonalPlan.playChristmas && hasQueuePersistence
-      ? (await getSongRequests()).find((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
+      ? (await getSongRequests())
+        .filter((request) => request.status === 'pending' && !state.tracks.some((track) => track.requestId === request.id))
+        .sort((a, b) => a.requestedAt - b.requestedAt)[0]
       : undefined
     if (pendingRequest) {
       const requestedSong = await findMorSong(pendingRequest.title, pendingRequest.artist, blockedTitleKeys, false)
       if (requestedSong) {
-        const requestedStart = nextStart(state, now)
-        state.tracks.push({
-          uid: `request-${pendingRequest.id}-${requestedStart}`,
+        const position = insertRequestPosition(state, now, requestedSong.duration)
+        state.tracks.splice(position.insertAt, 0, {
+          uid: `request-${pendingRequest.id}-${position.startAt}`,
           requestId: pendingRequest.id,
           src: requestedSong.src,
-          startAt: requestedStart,
+          startAt: position.startAt,
           duration: requestedSong.duration,
           fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
           fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
@@ -651,11 +671,11 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
           title: requestedSong.title,
           artist: pendingRequest.artist,
         })
-        state.history.push({ id: requestedSong.id, key: requestedSong.key, artist: pendingRequest.artist, title: requestedSong.title, t: requestedStart })
+        state.history.push({ id: requestedSong.id, key: requestedSong.key, artist: pendingRequest.artist, title: requestedSong.title, t: position.startAt })
         state.history = state.history.slice(-settings.rotationPoolSize)
         if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(requestedSong.title, pendingRequest.artist))
         state.songCount++
-        const requestSeasonalPlan = planChristmasTrack(requestedStart, {
+        const requestSeasonalPlan = planChristmasTrack(position.startAt, {
           regularTracksSinceChristmas: state.christmasRegularTrackCount,
           christmasTracksRemaining: state.christmasSongsRemaining,
         })
