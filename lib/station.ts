@@ -154,11 +154,7 @@ function asSearchItems(items: YouTubeSearchResult[]): SearchItem[] {
 }
 
 async function searchMusicItems(query: string) {
-  const [youtubeItems, providerData] = await Promise.all([
-    searchYouTube(`${query} official audio`, 12),
-    fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(query)}`, 8_000),
-  ])
-  const merged = [...asSearchItems(youtubeItems), ...(providerData?.items ?? [])]
+  const merged = asSearchItems(await searchYouTube(`${query} official audio`, 12))
   const seen = new Set<string>()
   return merged.filter((item) => {
     const key = item.id || item.url

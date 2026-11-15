@@ -12,7 +12,7 @@ export interface YouTubeSearchResult {
   channel?: string
   author?: string
   uploader?: string
-  source: 'YouTube'
+  source: 'YouTube' | 'MP3Juice'
   live?: boolean
 }
 
@@ -48,10 +48,34 @@ const OWN_PLAYLIST: PlaylistTrackResult[] = [
 }))
 export const RJ_FM_PLAYLIST_URL = 'rj://original-playlists'
 const PLAYLIST_REFRESH_MS = 60_000
+const MP3JUICE_SEARCH_API = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
 let lastSearchWarningAt = 0
 
 export async function searchYouTube(query: string, limit = 12): Promise<YouTubeSearchResult[]> {
+  try {
+    const response = await fetch(`${MP3JUICE_SEARCH_API}?search=${encodeURIComponent(query)}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json', 'User-Agent': 'RJFM-AutoDJ/1.0' },
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!response.ok) throw new Error(`MP3Juice search returned ${response.status}`)
+    const payload = await response.json() as { items?: Array<{ id?: unknown; title?: unknown; url?: unknown; duration?: unknown }> }
+    const items = (payload.items ?? []).flatMap((item) => {
+      const id = typeof item.id === 'string' ? item.id : ''
+      const title = typeof item.title === 'string' ? item.title.trim() : ''
+      const url = typeof item.url === 'string' ? item.url : ''
+      const duration = typeof item.duration === 'string' ? item.duration : ''
+      if (!id || !title || !url || !duration) return []
+      const parts = title.split(/\s+[-–—|:]\s+/, 2).map((part) => part.trim())
+      const artist = parts.length === 2 ? parts[0] : undefined
+      return [{ id, title, url, duration, channel: artist, author: artist, uploader: artist, source: 'MP3Juice' as const, live: false }]
+    })
+    if (items.length > 0) return items.slice(0, Math.max(1, limit))
+  } catch (error) {
+    console.warn('[morefm] MP3Juice search unavailable; falling back to YouTube search', error)
+  }
+
   try {
     const videos = await Promise.race([
       YouTube.search(query, { limit, type: 'video', safeSearch: true }),
