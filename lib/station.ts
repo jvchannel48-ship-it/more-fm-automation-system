@@ -384,8 +384,7 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
   for (let offset = 0; offset < EMERGENCY_OPM_ROTATION.length; offset++) {
     const [artist, title] = EMERGENCY_OPM_ROTATION[(songCount + offset) % EMERGENCY_OPM_ROTATION.length]
     if (blockedTitleKeys.has(repeatTitleKey(title, artist))) continue
-    const youtubeItems = await searchYouTube(`${artist} ${title} official audio`, 5)
-    const items = asSearchItems(youtubeItems)
+    const items = await searchMusicItems(`${artist} ${title}`)
     const item = items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
       return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
