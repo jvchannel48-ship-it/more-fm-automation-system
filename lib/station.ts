@@ -1129,11 +1129,11 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
   const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
-    // Bootstrap exactly one next track in this request. This is intentionally
-    // bounded so Render never times out while the rolling queue grows to 30.
-    await fillQueueIfNeeded(settings)
-    const refreshed = await loadState(Date.now())
-    state = refreshed.state
+    // Do not hold the live metadata/audio request open while searching. The
+    // station process persists the refill and the next poll picks it up.
+    void fillQueueIfNeeded(settings).catch((error) => {
+      console.error('[morefm] background AutoDJ refill failed', error)
+    })
   }
 
   const responseNow = Date.now()

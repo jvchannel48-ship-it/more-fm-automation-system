@@ -49,13 +49,18 @@ export async function GET(request: Request) {
     const headers = new Headers({
       'Cache-Control': 'no-store, no-cache, must-revalidate',
       'Content-Type': contentType,
-      'Accept-Ranges': 'bytes',
+      'Accept-Ranges': upstream.headers.get('accept-ranges') ?? 'bytes',
     })
     for (const name of ['content-length', 'content-range', 'content-disposition', 'etag', 'last-modified']) {
       const value = upstream.headers.get(name)
       if (value) headers.set(name, value)
     }
     return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers })
+    for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
+      const value = upstream.headers.get(name)
+      if (value) headers.set(name, value)
+    }
+    return new Response(upstream.body, { status: upstream.status, headers })
   } catch (error) {
     console.error('[morefm] audio proxy failed', target.hostname, error)
     return NextResponse.json({ error: 'Audio source unavailable.' }, { status: 502 })
