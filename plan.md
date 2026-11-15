@@ -2,6 +2,7 @@
 
 ## Scope
 Implement the listener-facing song request flow and make the existing AutoDJ queue continuously advance while keeping the existing no-repeat and low-storage architecture.
+For the follow-up, keep the uploaded RJ FM logo and RJ FM public identity, display the ABS-CBN Complex location, and validate Render disk writability before claiming filesystem persistence.
 
 ## Implementation
 - Add a public request endpoint that validates a song title and artist, persists the request, searches the existing YouTube/MP3 provider path, and immediately appends a playable request track behind the current queue when a match is available.

@@ -38,6 +38,7 @@ export const GOLDEN_SUNDAY_PLAYLIST_URL = 'https://music.youtube.com/playlist?li
 export const SUNDAY_AFTERNOON_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M'
 const PLAYLIST_REFRESH_MS = 60_000
 const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
+let lastSearchWarningAt = 0
 
 export async function searchYouTube(query: string, limit = 12): Promise<YouTubeSearchResult[]> {
   try {
@@ -60,7 +61,11 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
       }]
     })
   } catch (error) {
-    console.error('[morefm] YouTube search failed', error)
+    if (Date.now() - lastSearchWarningAt >= 60_000) {
+      lastSearchWarningAt = Date.now()
+      const timedOut = error instanceof Error && error.message.includes('timed out')
+      console.warn(`[morefm] YouTube search ${timedOut ? 'timed out' : 'is temporarily unavailable'}; using cached or queued music`)
+    }
     return []
   }
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 for (const key of ['POSTGRES_URL', 'POSTGRES_URL_NON_POOLING', 'DATABASE_URL', 'SUPABASE_DB_URL']) delete process.env[key]
 process.env.SUPABASE_URL = 'https://settings-test.supabase.co'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only-not-a-real-key'
-process.env.MORE_FM_DATA_DIR = '/var/data/more-fm'
+process.env.MORE_FM_DATA_DIR = '/root/more-fm-data'
 
 const objects = new Map<string, string>()
 let bucketExists = false
@@ -43,8 +43,9 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
 async function main() {
   try {
-    const { getSettings, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, STATE_PATH, readJson, writeJson } = await import('../lib/storage.ts')
-    assert.equal(hasPersistentStorage, true, 'test simulates a configured but inaccessible Render disk')
+    const { getSettings, hasFilesystemPersistence, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, STATE_PATH, readJson, writeJson } = await import('../lib/storage.ts')
+    assert.equal(hasFilesystemPersistence, false, 'an inaccessible Render mount is not advertised as persistent')
+    assert.equal(hasPersistentStorage, false, 'a configured but unwritable disk is not persistent storage')
     assert.equal(hasSettingsPersistence, true, 'private Supabase Storage is enough for admin settings')
 
     const initial = await getSettings()

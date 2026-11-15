@@ -31,6 +31,7 @@ export default function Home() {
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-success"><span className="size-1.5 rounded-full bg-success shadow-[0_0_12px_var(--success)]" /> On air from Naga</div>
+        <p className="text-[10px] font-medium tracking-wide text-muted-foreground">ABS-CBN Complex · Naga City</p>
       </footer>
     </div>
   )

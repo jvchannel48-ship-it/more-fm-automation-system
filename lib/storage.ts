@@ -1,5 +1,6 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
+import { accessSync, constants as fsConstants, mkdirSync } from 'node:fs'
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { Pool } from 'pg'
@@ -10,9 +11,25 @@ const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
   ?? process.env.DATABASE_URL
   ?? process.env.SUPABASE_DB_URL
-// Render persistent disks survive clear-build-cache deploys. The Render
-// blueprint sets MORE_FM_DATA_DIR to the mounted disk location.
-const filesystemDataDir = process.env.MORE_FM_DATA_DIR?.trim() || (process.env.RENDER ? '/var/data/more-fm' : '')
+// Render persistent disks survive clear-build-cache deploys. Do not advertise
+// filesystem persistence unless the configured mount is actually writable.
+const configuredFilesystemDataDir = process.env.MORE_FM_DATA_DIR?.trim() || (process.env.RENDER ? '/var/data/more-fm' : '')
+function resolveWritableFilesystemDataDir() {
+  if (!configuredFilesystemDataDir) return ''
+  try {
+    mkdirSync(configuredFilesystemDataDir, { recursive: true })
+    accessSync(configuredFilesystemDataDir, fsConstants.W_OK)
+    return configuredFilesystemDataDir
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (['EACCES', 'EPERM', 'EROFS', 'ENOENT', 'ENOTDIR'].includes(code ?? '')) {
+      console.warn('[morefm] configured station disk is not writable; using available fallbacks', code)
+      return ''
+    }
+    throw error
+  }
+}
+const filesystemDataDir = resolveWritableFilesystemDataDir()
 
 type MoreFmGlobals = typeof globalThis & {
   __moreFmPostgresPool?: Pool
@@ -49,7 +66,7 @@ function getPool() {
 
 function filesystemPath(pathname: string) {
   if (!filesystemDataDir) return null
-  const root = path.resolve(filesystemDataDir)
+  const root = path.resolve(/* turbopackIgnore: true */ filesystemDataDir)
   const target = path.resolve(root, pathname)
   if (target !== root && !target.startsWith(`${root}${path.sep}`)) throw new Error('Invalid station storage path.')
   return target

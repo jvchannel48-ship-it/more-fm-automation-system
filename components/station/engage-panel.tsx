@@ -71,7 +71,7 @@ export function EngagePanel() {
           onClick={() => void rate()}
           disabled={rated || ratingBusy}
           className={`size-11 rounded-full transition-colors ${rated ? 'text-rose-400' : 'hover:text-rose-400'}`}
-          aria-label={rated ? 'Thanks for rating MOR 93.5' : 'Rate MOR 93.5'}
+          aria-label={rated ? 'Thanks for rating RJ FM' : 'Rate RJ FM'}
           title={rated ? 'You rated this station' : 'Rate this station'}
         >
           {ratingBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Heart className={rated ? 'fill-current' : undefined} aria-hidden="true" />}

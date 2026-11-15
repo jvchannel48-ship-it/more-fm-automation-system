@@ -18,7 +18,8 @@
     "test:track-filter": "node --experimental-strip-types tests/track-filter.test.ts",
     "test:schedule": "node --experimental-strip-types tests/station-schedule.test.ts",
     "test:seasonal": "node --experimental-strip-types tests/seasonal-rotation.test.ts",
-    "test:settings-storage": "node --conditions=react-server --experimental-strip-types tests/settings-storage-fallback.test.ts"
+    "test:settings-storage": "node --conditions=react-server --experimental-strip-types tests/settings-storage-fallback.test.ts",
+    "test:render-disk": "node --conditions=react-server --experimental-strip-types tests/render-disk-permissions.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -186,7 +186,7 @@ export function AdminPanel() {
     </div>
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
-    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes need PostgreSQL, private Supabase Storage, or a Render persistent disk. Configure <code>POSTGRES_URL</code>, Supabase server credentials, or <code>MORE_FM_DATA_DIR=/var/data/more-fm</code>, then redeploy; see <code>docs/deployment-env.md</code>.</p>}
+    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes need PostgreSQL, private Supabase Storage, or a writable Render persistent disk. Configure <code>POSTGRES_URL</code>, Supabase server credentials, or attach the Render disk at <code>/var/data</code> with <code>MORE_FM_DATA_DIR=/var/data/more-fm</code>, then redeploy; see <code>docs/deployment-env.md</code>.</p>}
     {data?.queuePersistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Shared queue history is not persistent. Configure PostgreSQL, private Supabase Storage, or the Render persistent disk so the no-repeat ledger survives restarts and clear-cache redeploys.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
@@ -205,23 +205,23 @@ export function AdminPanel() {
 
     <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
       <div className="flex items-center justify-between gap-3">
-        <div><Label htmlFor="mor-sync-enabled">MOR SYNC MODE</Label><p className="text-xs text-muted-foreground">ON follows song-only MOR Manila stream metadata. It looks for the same title and artist, then queues a Tagalog OPM fallback when no exact match is available. Ads, DJ talk, and news are never copied.</p></div>
+        <div><Label htmlFor="mor-sync-enabled">RJ FM SONG SYNC</Label><p className="text-xs text-muted-foreground">ON follows song-only metadata from the configured reference stream. It looks for the same title and artist, then queues a Tagalog OPM fallback when no exact match is available. Ads, DJ talk, and news are never copied.</p></div>
         <Switch id="mor-sync-enabled" checked={data?.morSyncEnabled ?? false} disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { morSyncEnabled: checked })} />
       </div>
       <div className="grid gap-2">
         <div className="rounded-lg border border-border/70 bg-background/55 px-3 py-2">
-          <p className="text-[11px] font-medium text-muted-foreground">MOR Manila Now Playing</p>
-          <p className="mt-0.5 truncate text-sm font-semibold">{data?.morNowPlayingTitle ?? data?.morNowPlayingRaw ?? 'Waiting for MOR metadata…'}</p>
+          <p className="text-[11px] font-medium text-muted-foreground">Reference Stream Now Playing</p>
+          <p className="mt-0.5 truncate text-sm font-semibold">{data?.morNowPlayingTitle ?? data?.morNowPlayingRaw ?? 'Waiting for reference metadata…'}</p>
           {data?.morNowPlayingArtist && <p className="truncate text-xs text-muted-foreground">{data.morNowPlayingArtist}</p>}
         </div>
         <div className="rounded-lg border border-border/70 bg-background/55 px-3 py-2">
-          <p className="text-[11px] font-medium text-muted-foreground">MoRe FM Now Playing</p>
+          <p className="text-[11px] font-medium text-muted-foreground">RJ FM Now Playing</p>
           <p className="mt-0.5 truncate text-sm font-semibold">{data?.moreFmNowPlaying ?? 'No track queued'}</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.045] px-3 py-2">
-        <div><p className="text-[11px] font-medium text-muted-foreground">MOR sync status</p>
+        <div><p className="text-[11px] font-medium text-muted-foreground">RJ FM sync status</p>
           <p className={`text-sm font-bold tracking-wide ${data?.morSyncStatus === 'SYNCED' ? 'text-emerald-300' : 'text-amber-200'}`} role="status" aria-live="polite">{data?.morSyncStatus ?? 'Loading status…'}</p></div>
         {data?.morCheckedAt && <span className="text-[11px] text-muted-foreground">Checked {new Date(data.morCheckedAt).toLocaleTimeString()}</span>}
       </div>
@@ -230,7 +230,7 @@ export function AdminPanel() {
 
     <div className="rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
       <Label>Christmas playlist rotation</Label>
-      <p className="mt-1 text-xs text-muted-foreground">Automatically checks the latest Mor 101.9 YouTube Music playlist whenever a Christmas song is due, so new playlist additions need no app update or redeploy. September–October: one song after every 20 regular songs. November–December: three consecutive songs after every 20 regular songs. Rotation turns off January 1, Manila time. The 20-song interval is the default cadence because no interval was specified; the saved catalog is used if YouTube is temporarily unavailable.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Automatically checks the configured YouTube Music playlist whenever a Christmas song is due, so new playlist additions need no app update or redeploy. September–October: one song after every 20 regular songs. November–December: three consecutive songs after every 20 regular songs. Rotation turns off January 1, Manila time. The 20-song interval is the default cadence because no interval was specified; the saved catalog is used if YouTube is temporarily unavailable.</p>
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -271,7 +271,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only love-song mode</Label><p className="text-xs text-muted-foreground">Default ON: randomly rotates Tagalog OPM love songs and blocks titles already played that Manila day. English MOR matches are skipped while this mode is ON. The current song finishes; upcoming tracks are refreshed.</p></div>
+      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only love-song mode</Label><p className="text-xs text-muted-foreground">Default ON: randomly rotates Tagalog OPM love songs and blocks titles already played that Manila day. English tracks are skipped while this mode is ON. The current song finishes; upcoming tracks are refreshed.</p></div>
         <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
     </div>
