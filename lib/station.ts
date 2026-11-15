@@ -20,7 +20,7 @@ const SOURCE_REFRESH_RETRY_MS = 45_000
 const ACTIVE_SOURCE_REFRESH_AFTER_MS = 60_000
 const PRELOAD_QUEUE_WITH_ACTIVE_TRACKS = 6
 const PRELOAD_QUEUE_WITHOUT_ACTIVE_TRACK = 6
-const FILL_BATCH_SIZE = 1
+const FILL_BATCH_SIZE = 2
 const REJECTED_TITLE_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time|live\s+concerts?|concerts?\s+live)\b/i
 const SHOWTIME_METADATA_RULE = /\b(?:it['’]?s?\s+show\s*time|show\s*time)\b/i
 const CHRISTMAS_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLM6vJVhDAA3Q&si=SSN9aJjNp6Q96YSW&drli=1'
@@ -725,13 +725,20 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     let playlistUrl = playlistUrlForStart(startAt)
     let playlistTracks: PlaylistTrackResult[] = []
     if (!song) {
-      playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
-        ? await getRjFmPlaylistTracks()
-        : await getPlaylistTracks(playlistUrl)
-      song = playlistTracks.length > 0
-        ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
-        : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-      if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+      // Once audio is already on air, resolve the next track from the fast
+      // OPM fallback first. Playlist refreshes must never create an audio gap.
+      if (state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)) {
+        song = await findEmergencySong(state.songCount, blockedTitleKeys)
+      }
+      if (!song) {
+        playlistTracks = playlistUrl === RJ_FM_PLAYLIST_URL
+          ? await getRjFmPlaylistTracks()
+          : await getPlaylistTracks(playlistUrl)
+        song = playlistTracks.length > 0
+          ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
+          : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+        if (!song) song = await findEmergencySong(state.songCount, blockedTitleKeys)
+      }
     }
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
@@ -790,8 +797,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       state.christmasRegularTrackCount = finalSeasonalPlan.nextState.regularTracksSinceChristmas
       state.christmasSongsRemaining = 0
     }
-    // One song per station poll keeps the now-playing endpoint responsive.
-    break
+    // Continue until the small prebuffer target is reached.
   }
 }
 
