@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const body = (await request.json().catch(() => ({}))) as {
-      broadcastEnabled?: unknown; boardOperatorEnabled?: unknown; noRepeatEnabled?: unknown; autoDjEnabled?: unknown; morSyncEnabled?: unknown; shuffleEnabled?: unknown; goodVibesEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
+      broadcastEnabled?: unknown; rjMakatiEnabled?: unknown; rjMakatiScheduleEnabled?: unknown; rjMakatiScheduleStartHour?: unknown; rjMakatiScheduleEndHour?: unknown; boardOperatorEnabled?: unknown; noRepeatEnabled?: unknown; autoDjEnabled?: unknown; morSyncEnabled?: unknown; shuffleEnabled?: unknown; goodVibesEnabled?: unknown; rotationPoolSize?: unknown; listenerLimit?: unknown; tagalogOnlyEnabled?: unknown; transmitterWatts?: unknown
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
       christmasEnabled?: unknown; autoVoiceEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
@@ -34,6 +34,8 @@ export async function PUT(request: NextRequest) {
     const signOnHour = hour(body.signOnHour, current.signOnHour)
     const discoStartHour = hour(body.discoStartHour, current.discoStartHour)
     const discoEndHour = hour(body.discoEndHour, current.discoEndHour)
+    const rjMakatiScheduleStartHour = hour(body.rjMakatiScheduleStartHour, current.rjMakatiScheduleStartHour)
+    const rjMakatiScheduleEndHour = hour(body.rjMakatiScheduleEndHour, current.rjMakatiScheduleEndHour)
     const nightVolumeStartHour = hour(body.nightVolumeStartHour, current.nightVolumeStartHour)
     const nightVolumeEndHour = hour(body.nightVolumeEndHour, current.nightVolumeEndHour)
     const bounded = (value: unknown, fallback: number, min: number, max: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
@@ -49,8 +51,13 @@ export async function PUT(request: NextRequest) {
     if (signOffHour === signOnHour) return jsonError('Sign-off and sign-on must be different.', 400)
     if (discoStartHour === discoEndHour) return jsonError('Disco start and end must be different.', 400)
     if (nightVolumeStartHour === nightVolumeEndHour) return jsonError('Night-volume start and end must be different.', 400)
+    if (rjMakatiScheduleStartHour === rjMakatiScheduleEndHour) return jsonError('Makati schedule start and end must be different.', 400)
     const next = {
       broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
+      rjMakatiEnabled: typeof body.rjMakatiEnabled === 'boolean' ? body.rjMakatiEnabled : current.rjMakatiEnabled,
+      rjMakatiScheduleEnabled: typeof body.rjMakatiScheduleEnabled === 'boolean' ? body.rjMakatiScheduleEnabled : current.rjMakatiScheduleEnabled,
+      rjMakatiScheduleStartHour,
+      rjMakatiScheduleEndHour,
       boardOperatorEnabled: typeof body.boardOperatorEnabled === 'boolean' ? body.boardOperatorEnabled : current.boardOperatorEnabled,
       noRepeatEnabled: true,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,

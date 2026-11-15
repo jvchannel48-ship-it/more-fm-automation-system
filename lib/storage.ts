@@ -435,6 +435,10 @@ const isCrossfaderCurve = (value: unknown): value is CrossfaderCurve => CROSSFAD
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
+  rjMakatiEnabled: false,
+  rjMakatiScheduleEnabled: false,
+  rjMakatiScheduleStartHour: 0,
+  rjMakatiScheduleEndHour: 6,
   boardOperatorEnabled: false,
   noRepeatEnabled: true,
   autoDjEnabled: true,
@@ -517,6 +521,10 @@ export async function getSettings(): Promise<StationSettings> {
   }
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+    rjMakatiEnabled: typeof saved.rjMakatiEnabled === 'boolean' ? saved.rjMakatiEnabled : DEFAULT_SETTINGS.rjMakatiEnabled,
+    rjMakatiScheduleEnabled: typeof saved.rjMakatiScheduleEnabled === 'boolean' ? saved.rjMakatiScheduleEnabled : DEFAULT_SETTINGS.rjMakatiScheduleEnabled,
+    rjMakatiScheduleStartHour: typeof saved.rjMakatiScheduleStartHour === 'number' && saved.rjMakatiScheduleStartHour >= 0 && saved.rjMakatiScheduleStartHour <= 23 ? Math.round(saved.rjMakatiScheduleStartHour) : DEFAULT_SETTINGS.rjMakatiScheduleStartHour,
+    rjMakatiScheduleEndHour: typeof saved.rjMakatiScheduleEndHour === 'number' && saved.rjMakatiScheduleEndHour >= 0 && saved.rjMakatiScheduleEndHour <= 23 ? Math.round(saved.rjMakatiScheduleEndHour) : DEFAULT_SETTINGS.rjMakatiScheduleEndHour,
     boardOperatorEnabled: typeof saved.boardOperatorEnabled === 'boolean' ? saved.boardOperatorEnabled : false,
     // Keep song rotation from repeating titles across the active daily history.
     noRepeatEnabled: true,

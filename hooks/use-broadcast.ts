@@ -145,6 +145,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         : [
             ...serverTracks,
             ...[...knownTracks.current.values()].filter((track) =>
+              track.kind !== 'rj-makati'
+              &&
               !serverTracks.some((candidate) => candidate.uid === track.uid)
               && track.startAt <= now
               && now < track.startAt + track.duration * 1000,
@@ -265,7 +267,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           onStreamError?.(track.uid)
           continue
         }
-        if (el.readyState >= 1 && isActive) {
+        if (el.readyState >= 1 && isActive && track.kind !== 'rj-makati') {
           if (track.kind === 'brigada-news') {
             slot.synced = true
           } else {

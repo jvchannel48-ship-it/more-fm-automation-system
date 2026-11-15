@@ -81,6 +81,8 @@ export function AdminPanel() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [rjMakatiScheduleStartHour, setRjMakatiScheduleStartHour] = useState('0')
+  const [rjMakatiScheduleEndHour, setRjMakatiScheduleEndHour] = useState('6')
   const [signOffHour, setSignOffHour] = useState('1')
   const [signOnHour, setSignOnHour] = useState('4')
   const [discoStartHour, setDiscoStartHour] = useState('16')
@@ -101,6 +103,8 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (!data) return
+    setRjMakatiScheduleStartHour(String(data.rjMakatiScheduleStartHour))
+    setRjMakatiScheduleEndHour(String(data.rjMakatiScheduleEndHour))
     setSignOffHour(String(data.signOffHour))
     setSignOnHour(String(data.signOnHour))
     setDiscoStartHour(String(data.discoStartHour))
@@ -114,7 +118,7 @@ export function AdminPanel() {
     setBassGainDb(String(data.bassGainDb))
     setCrossfadeSeconds(String(data.crossfadeSeconds))
     setReplayGainTargetLufs(String(data.replayGainTargetLufs))
-  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
+  }, [data?.rjMakatiScheduleStartHour, data?.rjMakatiScheduleEndHour, data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -219,6 +223,17 @@ export function AdminPanel() {
       {(requestData?.requests ?? []).length > 0 ? <div className="max-h-72 space-y-2 overflow-y-auto">{requestData?.requests.map((request) => <div key={request.id} className="rounded-lg border border-border/70 bg-background/45 p-2.5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{request.title}</p><p className="truncate text-xs text-muted-foreground">{request.name || 'Listener'} · {request.artist} · {new Date(request.requestedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p></div><span className="shrink-0 text-[10px] font-semibold uppercase text-primary">{request.status}</span></div>{request.status === 'pending' && <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'played')}>Played</Button><Button type="button" size="sm" variant="ghost" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'skipped')}>Skip</Button></div>}</div>)}</div> : <p className="text-xs text-muted-foreground">No song requests yet.</p>}
     </section>
     <SongsPlaylistManager />
+    <section className="flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/[0.06] p-3">
+      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="rj-makati-enabled">RJ FM MAKATI relay</Label><p className="mt-1 text-xs text-muted-foreground">ON plays the live 100.3 RJFM Makati stream. The Makati playlist is not copied or shown here. OFF returns listeners to your RJ FM queue.</p></div><Switch id="rj-makati-enabled" checked={data?.rjMakatiEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { rjMakatiEnabled: checked })} /></div>
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/35 p-2.5"><div><Label htmlFor="rj-makati-schedule-enabled">Auto-switch schedule</Label><p className="text-[11px] text-muted-foreground">Uses Manila time. The relay remains OFF outside this window.</p></div><Switch id="rj-makati-schedule-enabled" checked={data?.rjMakatiScheduleEnabled ?? false} disabled={!data || busy || !data?.rjMakatiEnabled} onCheckedChange={(checked) => send('PUT', { rjMakatiScheduleEnabled: checked })} /></div>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium">Makati starts<select value={rjMakatiScheduleStartHour} onChange={(event) => setRjMakatiScheduleStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select></label>
+        <label className="flex flex-col gap-1 text-xs font-medium">Makati ends<select value={rjMakatiScheduleEndHour} onChange={(event) => setRjMakatiScheduleEndHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select></label>
+      </div>
+      <Button variant="secondary" disabled={!data || busy || rjMakatiScheduleStartHour === rjMakatiScheduleEndHour} onClick={() => send('PUT', { rjMakatiScheduleStartHour: Number(rjMakatiScheduleStartHour), rjMakatiScheduleEndHour: Number(rjMakatiScheduleEndHour) })}>Save Makati schedule</Button>
+      {rjMakatiScheduleStartHour === rjMakatiScheduleEndHour && <p className="text-xs text-destructive">Makati start and end must be different.</p>}
+      <p className="text-[11px] text-muted-foreground">Source: 100.3 RJFM Makati live stream listed by Online Radio PH. Only the live relay is used; its songs are never added to your playlist.</p>
+    </section>
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>

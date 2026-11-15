@@ -18,6 +18,10 @@
 - [ ] Admin can search YouTube without an API key, review updated results, and add selected songs to the RJ TOP SONGS or RJ PLAYED playlist.
 - [ ] Admin can view the saved songs playlist and remove entries without deleting audio files or interrupting the currently playing song.
 
+## RJ FM Makati relay
+- [ ] Admin can turn the live 100.3 RJFM Makati relay ON or OFF without exposing or importing its playlist.
+- [ ] Admin can configure a Manila-time schedule that automatically switches the relay on within the saved window and returns to the local RJ FM queue outside it.
+
 ## Immediate play and balanced transitions
 - [x] Pre-create and preload current/upcoming audio before Play; clicking Play starts the prepared source directly when it is ready.
 - [x] Warm the incoming track muted throughout the look-ahead window and use a persisted constant-power crossfade so the old track fades down as the next fades up without a midpoint volume dip.

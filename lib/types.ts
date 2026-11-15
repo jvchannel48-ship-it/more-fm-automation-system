@@ -14,7 +14,7 @@ export interface Track {
   sourceChannel?: string
   sourcePlaylist?: string
   sourceRefreshedAt?: number
-  kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic' | 'brigada-news'
+  kind?: 'music' | 'mor-sync' | 'jingle' | 'commercial' | 'golden-sunday' | 'news' | 'dj-mic' | 'brigada-news' | 'rj-makati'
   title?: string
   artist?: string
   morKey?: string
@@ -30,6 +30,10 @@ export interface AudioAsset {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  rjMakatiEnabled: boolean
+  rjMakatiScheduleEnabled: boolean
+  rjMakatiScheduleStartHour: number
+  rjMakatiScheduleEndHour: number
   boardOperatorEnabled: boolean
   noRepeatEnabled: boolean
   autoDjEnabled: boolean
