@@ -129,7 +129,7 @@ export function SongsPlaylistManager() {
       {songs.length > 0 ? songs.map((song) => <div key={song.youtube_id} className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs hover:bg-background/45">
         <div className="min-w-0 flex-1"><p className="truncate font-medium">{song.title}</p><p className="truncate text-[11px] text-muted-foreground">{song.artist} · {song.playlist_group}</p></div>
         <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${song.title}`} disabled={busyId === song.youtube_id} onClick={() => void removeSong(song)}><Trash2 aria-hidden="true" /></Button>
-      </div>) : <p className="px-1 py-2 text-xs text-muted-foreground">No database playlist yet. Add a song after configuring PostgreSQL.</p>}
+      </div>) : <p className="px-1 py-2 text-xs text-muted-foreground">No saved playlist songs yet. Add a result from YouTube search.</p>}
     </div>
   </section>
 }

@@ -1,5 +1,5 @@
 import 'server-only'
-import { ensureDatabaseTables, getPostgresPool } from './storage'
+import { ensureDatabaseTables, getPostgresPool, readJson, writeJson } from './storage'
 
 export type RadioCatalogSong = {
   title: string
@@ -17,14 +17,19 @@ export type RadioCatalogSong = {
 let catalogCache: { rows: RadioCatalogSong[] | null; expiresAt: number } | null = null
 let catalogLoad: Promise<RadioCatalogSong[] | null> | null = null
 let lastCatalogWarningAt = 0
+const CATALOG_PATH = 'station/radio-catalog.json'
 
 export async function getRadioCatalogSongs(): Promise<RadioCatalogSong[] | null> {
   const pool = getPostgresPool()
-  if (!pool) return null
   if (catalogCache && catalogCache.expiresAt > Date.now()) return catalogCache.rows
   if (catalogLoad) return catalogLoad
   catalogLoad = (async () => {
     try {
+      if (!pool) {
+        const rows = await readJson<RadioCatalogSong[]>(CATALOG_PATH, [])
+        catalogCache = { rows, expiresAt: Date.now() + 10_000 }
+        return rows
+      }
       await ensureDatabaseTables()
       const result = await pool.query<RadioCatalogSong>(`
         SELECT title, artist, youtube_id, category, language, decade, picture,
@@ -59,7 +64,25 @@ export async function upsertRadioCatalogSong(input: {
   picture?: string | null
 }) {
   const pool = getPostgresPool()
-  if (!pool) throw new Error('PostgreSQL is required to update the songs playlist.')
+  if (!pool) {
+    const current = await readJson<RadioCatalogSong[]>(CATALOG_PATH, [])
+    const existing = current.find((song) => song.youtube_id === input.youtubeId)
+    const nextSong: RadioCatalogSong = {
+      title: input.title.slice(0, 200),
+      artist: input.artist.slice(0, 120),
+      youtube_id: input.youtubeId,
+      category: input.category ?? 'english',
+      language: null,
+      decade: null,
+      picture: input.picture ?? null,
+      duration_seconds: Math.max(60, Math.min(540, Math.round(input.durationSeconds))),
+      playlist_group: input.playlistGroup,
+      sort_order: existing?.sort_order ?? current.filter((song) => song.playlist_group === input.playlistGroup).reduce((max, song) => Math.max(max, song.sort_order), -1) + 1,
+    }
+    await writeJson(CATALOG_PATH, [...current.filter((song) => song.youtube_id !== input.youtubeId), nextSong])
+    catalogCache = null
+    return nextSong
+  }
   await ensureDatabaseTables()
   const durationSeconds = Math.max(60, Math.min(540, Math.round(input.durationSeconds)))
   const result = await pool.query<RadioCatalogSong>(`
@@ -80,7 +103,14 @@ export async function upsertRadioCatalogSong(input: {
 
 export async function deactivateRadioCatalogSong(youtubeId: string) {
   const pool = getPostgresPool()
-  if (!pool) throw new Error('PostgreSQL is required to update the songs playlist.')
+  if (!pool) {
+    const current = await readJson<RadioCatalogSong[]>(CATALOG_PATH, [])
+    const next = current.filter((song) => song.youtube_id !== youtubeId)
+    if (next.length === current.length) return false
+    await writeJson(CATALOG_PATH, next)
+    catalogCache = null
+    return true
+  }
   await ensureDatabaseTables()
   const result = await pool.query<{ youtube_id: string }>(
     'UPDATE public.songs SET is_active = false, updated_at = now() WHERE youtube_id = $1 RETURNING youtube_id',
