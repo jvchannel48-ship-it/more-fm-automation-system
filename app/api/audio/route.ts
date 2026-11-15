@@ -47,11 +47,13 @@ export async function GET(request: Request) {
     }
 
     const headers = new Headers({
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Cache-Control': 'public, max-age=3600, immutable',
       'Content-Type': contentType,
       'Accept-Ranges': upstream.headers.get('accept-ranges') ?? 'bytes',
+      'Content-Disposition': 'inline',
+      'Vary': 'Range',
     })
-    for (const name of ['content-length', 'content-range', 'content-disposition', 'etag', 'last-modified']) {
+    for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
       const value = upstream.headers.get(name)
       if (value) headers.set(name, value)
     }
