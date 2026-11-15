@@ -9,8 +9,9 @@ export interface TrackFilterItem {
   isLive?: unknown
 }
 
-const BLACKLIST_TITLE_RULE = /\b(?:live|concert|araneta|mall\s+show|it['’]?s\s+showtime|showtime|asap|eat\s+bulaga|tv\s+patrol|performance|studio|guesting|karaoke|lyric\s+video|lyrics?|cover|reaction)\b/i
-const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke)\b/i
+// Block non-song results: live, concert, TV, news, rock, dance, disco, remix.
+const BLACKLIST_TITLE_RULE = /\b(?:live|concert|araneta|mall\s+show|it['’]?s\s+showtime|showtime|asap|eat\s+bulaga|tv\s+patrol|performance|studio\s+version|guesting|karaoke|lyric\s+video|cover|reaction|remix|re-?mix|dance\s+mix|disco|edm|techno|trance|dubstep|rave|club\s+mix|rock\s+version|hard\s+rock|metal|punk|news\s+(?:break|update|report)|breaking\s+news|tv\s+news|radio\s+news|interview|podcast|vlog|livestream|live\s+stream|live\s+performance|sung\s+live|singing\s+live|concert\s+version)\b/i
+const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke|news)\b/i
 const OFFICIAL_TITLE_RULE = /\bofficial(?:\s+[a-z0-9]+){0,3}\s+(?:audio|video)\b/i
 const AUDIO_TITLE_RULE = /\baudio\b/i
 const OFFICIAL_CHANNEL_RULE = /\b(?:official|vevo|topic)\b/i
@@ -58,6 +59,6 @@ export function isAllowedTrack(item: TrackFilterItem, artist = '') {
 }
 
 export const PLAYLIST_FILTER_DESCRIPTION = {
-  blacklist: 'live, concert, araneta, mall show, it\'s showtime, showtime, ASAP, Eat Bulaga, TV Patrol, performance, studio, guesting, karaoke, lyric video, cover, reaction',
+  blacklist: 'live, concert, remix, disco, dance mix, rock, metal, news, interview, TV shows, karaoke, cover, reaction, performance',
   whitelist: 'official audio, official music video, audio, or an official artist/VEVO/Topic channel when the title has no official label',
 } as const

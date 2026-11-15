@@ -17,6 +17,12 @@ for (const title of [
   'Artist - Song Lyric Video',
   'Artist - Song Cover',
   'Artist - Song Reaction',
+  'Artist - Song Remix',
+  'Artist - Song Disco Version',
+  'Artist - Song Dance Mix',
+  'Artist - Song Live Performance',
+  'Artist - Song Rock Version',
+  'Artist - Song Breaking News',
 ]) assert.equal(hasBlacklistedTitle(title), true, `blacklist must reject ${title}`)
 
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', channel: 'Fan Uploads' }, 'Artist'), true)
