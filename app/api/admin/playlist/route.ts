@@ -19,24 +19,47 @@ function artistFromTitle(title: string, channel?: string) {
   return parts.length === 2 ? parts[0] : channel ?? 'YouTube artist'
 }
 
+function rankSearchResults(results: Array<{ id: string; title: string; artist: string; duration: string; durationSeconds: number; channel?: string; picture: string }>, query: string) {
+  const q = query.toLowerCase()
+  const parts = q.split(/\s+/).filter(Boolean)
+  return [...results].sort((a, b) => {
+    const score = (item: typeof a) => {
+      let value = 0
+      const title = item.title.toLowerCase()
+      const artist = item.artist.toLowerCase()
+      if (title.includes(q) || q.includes(title)) value += 4
+      for (const part of parts) {
+        if (title.includes(part)) value += 2
+        if (artist.includes(part)) value += 1
+      }
+      if (item.durationSeconds >= 150 && item.durationSeconds <= 360) value += 2
+      return value
+    }
+    return score(b) - score(a)
+  })
+}
+
 export async function GET(request: Request) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
     const query = new URL(request.url).searchParams.get('q')?.trim().slice(0, 120) ?? ''
     if (query) {
-      const results = (await searchYouTube(`${query} official audio`, 12))
-        .filter((item) => !item.live)
-        .map((item) => ({
-          id: item.id,
-          title: item.title,
-          artist: artistFromTitle(item.title, item.channel ?? item.author),
-          url: item.url,
-          duration: item.duration,
-          durationSeconds: durationSeconds(item.duration),
-          channel: item.channel,
-          picture: `https://i.ytimg.com/vi/${encodeURIComponent(item.id)}/hqdefault.jpg`,
-        }))
-        .filter((item) => item.durationSeconds >= 60 && item.durationSeconds <= 540)
+      const results = rankSearchResults(
+        (await searchYouTube(`${query} official audio`, 12))
+          .filter((item) => !item.live)
+          .map((item) => ({
+            id: item.id,
+            title: item.title,
+            artist: artistFromTitle(item.title, item.channel ?? item.author),
+            url: item.url,
+            duration: item.duration,
+            durationSeconds: durationSeconds(item.duration),
+            channel: item.channel,
+            picture: `https://i.ytimg.com/vi/${encodeURIComponent(item.id)}/hqdefault.jpg`,
+          }))
+          .filter((item) => item.durationSeconds >= 60 && item.durationSeconds <= 540),
+        query,
+      )
       return NextResponse.json({ query, results }, { headers: { 'Cache-Control': 'no-store' } })
     }
     const songs = (await getRadioCatalogSongs()) ?? []
