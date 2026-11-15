@@ -23,8 +23,8 @@ export function FeedbackForm() {
 
   return (
     <div className="relative">
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <Mail aria-hidden="true" /> Feedback
+      <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 rounded-full px-2 shadow-sm sm:px-3" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <Mail aria-hidden="true" /> <span className="hidden sm:inline">Feedback</span>
       </Button>
       {open && (
         <form onSubmit={submit} className="absolute right-0 top-full z-50 mt-2 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-2xl">

@@ -39,6 +39,7 @@ const globals = globalThis as MoreFmGlobals
 const memoryState = new Map<string, string>()
 const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
 const memoryListeners = new Map<string, { lastSeenAt: number }>()
+const memoryRequests: SongRequest[] = []
 const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasFilesystemPersistence = Boolean(filesystemDataDir)
@@ -540,7 +541,7 @@ export async function addRating(voterId: string) {
 }
 
 export async function getSongRequests() {
-  const saved = await readJson<unknown>(REQUESTS_PATH, [])
+  const saved = hasQueuePersistence ? await readJson<unknown>(REQUESTS_PATH, []) : memoryRequests
   const requests = Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(
     item && typeof item === 'object'
     && typeof (item as SongRequest).id === 'string'
@@ -561,7 +562,10 @@ export async function addSongRequest(title: string, artist: string) {
     requestedAt: Date.now(),
     status: 'pending',
   }
-  await writeJson(REQUESTS_PATH, [...requests.slice(-199), request])
+  if (hasQueuePersistence) await writeJson(REQUESTS_PATH, [...requests.slice(-199), request])
+  else {
+    memoryRequests.splice(0, memoryRequests.length, ...requests.slice(-199), request)
+  }
   return request
 }
 export async function updateSongRequest(id: string, status: SongRequest['status']) {
@@ -571,6 +575,7 @@ export async function updateSongRequest(id: string, status: SongRequest['status'
   const next = status === 'played'
     ? requests.filter((request) => request.id !== id)
     : requests.map((request) => request.id === id ? { ...request, status } : request)
-  await writeJson(REQUESTS_PATH, next)
+  if (hasQueuePersistence) await writeJson(REQUESTS_PATH, next)
+  else memoryRequests.splice(0, memoryRequests.length, ...next)
   return { ...updated, status }
 }

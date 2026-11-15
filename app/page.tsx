@@ -11,16 +11,16 @@ export default function Home() {
         className="pointer-events-none absolute left-1/2 top-1/3 -z-10 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl"
         aria-hidden="true"
       />
-      <header className="glass-surface mx-auto mt-3 flex w-[calc(100%-1.5rem)] max-w-3xl items-center justify-between gap-3 rounded-2xl px-4 py-3 sm:mt-5">
-        <div className="flex items-center gap-3">
-          <div className="size-16 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10 sm:size-20">
+      <header className="glass-surface mx-auto mt-3 flex w-[calc(100%-1rem)] max-w-3xl flex-wrap items-center justify-between gap-2 rounded-2xl px-2.5 py-2.5 sm:mt-5 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="size-12 shrink-0 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10 sm:size-20">
             <img src="/rj-fm-logo.jpg" alt="RJ FM station logo" className="size-full rounded-full object-cover" />
           </div>
-          <span className="font-mono text-sm font-bold tracking-widest">
+          <span className="font-mono text-xs font-bold tracking-widest sm:text-sm">
             RJ <span className="text-primary">FM</span>
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
           <PlaylistMenu />
           <FeedbackForm />
           <AdminMenu />

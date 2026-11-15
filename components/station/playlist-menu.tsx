@@ -63,8 +63,8 @@ export function PlaylistMenu() {
   }
 
   return <Sheet open={open} onOpenChange={setOpen}>
-    <SheetTrigger render={<Button variant="outline" size="sm" aria-label="Open song request form" />}>
-      <MessageCircle aria-hidden="true" /> Song Request
+    <SheetTrigger render={<Button variant="outline" size="sm" className="h-9 shrink-0 rounded-full px-2 shadow-sm sm:px-3" aria-label="Open song request form" />}>
+      <MessageCircle aria-hidden="true" /> <span className="hidden sm:inline">Request</span>
     </SheetTrigger>
     <SheetContent side="right" className="w-full sm:max-w-lg">
       <SheetHeader>
