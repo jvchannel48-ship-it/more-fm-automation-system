@@ -61,7 +61,12 @@ async function readFilesystemJson<T>(pathname: string): Promise<T | undefined> {
   try {
     return JSON.parse(await readFile(/* turbopackIgnore: true */ target, 'utf8')) as T
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return undefined
+    if (code === 'EACCES' || code === 'EPERM' || code === 'EROFS') {
+      console.warn('[morefm] station disk is not readable; using local fallback', pathname, code)
+      return undefined
+    }
     throw error
   }
 }
@@ -163,7 +168,13 @@ export async function writeJson(pathname: string, data: unknown) {
         console.warn('[morefm] Supabase JSON write failed; using local fallback', pathname)
       }
     }
-    if (await writeFilesystemJson(pathname, serialized)) return
+    try {
+      if (await writeFilesystemJson(pathname, serialized)) return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (pathname !== STATION_STATE_PATH || !['EACCES', 'EPERM', 'EROFS', 'ENOENT'].includes(code ?? '')) throw error
+      console.warn('[morefm] station disk is not writable; using in-memory queue state', code)
+    }
     if (pathname === STATION_STATE_PATH) {
       memoryState.set(pathname, serialized)
       return

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 for (const key of ['POSTGRES_URL', 'POSTGRES_URL_NON_POOLING', 'DATABASE_URL', 'SUPABASE_DB_URL']) delete process.env[key]
 process.env.SUPABASE_URL = 'https://settings-test.supabase.co'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only-not-a-real-key'
+process.env.MORE_FM_DATA_DIR = '/var/data/more-fm'
 
 const objects = new Map<string, string>()
 let bucketExists = false
@@ -43,7 +44,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 async function main() {
   try {
     const { getSettings, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, STATE_PATH, readJson, writeJson } = await import('../lib/storage.ts')
-    assert.equal(hasPersistentStorage, false, 'test is running without PostgreSQL')
+    assert.equal(hasPersistentStorage, true, 'test simulates a configured but inaccessible Render disk')
     assert.equal(hasSettingsPersistence, true, 'private Supabase Storage is enough for admin settings')
 
     const initial = await getSettings()
@@ -79,7 +80,7 @@ async function main() {
     assert.equal(localState.songCount, 4, 'station state remains readable from memory during a Storage outage without a disk')
     const fallbackSettings = await readJson<{ fallback?: boolean }>('station/settings.json', { fallback: true })
     assert.equal(fallbackSettings.fallback, true, 'missing remote settings degrade to defaults instead of failing the station API')
-    console.log('settings-storage-fallback: durable storage and outage fallback passed')
+    console.log('settings-storage-fallback: durable storage and unavailable-disk outage fallback passed')
   } finally {
     globalThis.fetch = originalFetch
     Date.now = realDateNow
