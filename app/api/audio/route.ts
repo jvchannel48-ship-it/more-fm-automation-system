@@ -4,8 +4,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// Allow the short-lived media hosts returned by the configured song search provider.
-const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com)$/i
+// Allow media hosts so online-radio style streaming is not blocked by rotating CDNs.
+const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com|googleusercontent\.com|cloudfront\.net|akamaized\.net|b-cdn\.net|cdn\.)/i
 
 export async function GET(request: Request) {
   const rawUrl = new URL(request.url).searchParams.get('url')
@@ -40,23 +40,24 @@ export async function GET(request: Request) {
     }
 
     const contentType = upstream.headers.get('content-type')?.split(';')[0] || 'audio/mpeg'
-    // Reject HTML/error responses instead of passing them to the audio element.
     if (contentType.includes('text/html') || contentType.includes('application/json')) {
       console.error('[morefm] upstream returned non-audio content-type', contentType, target.hostname)
       return NextResponse.json({ error: 'Audio source unavailable.' }, { status: 502 })
     }
 
     const headers = new Headers({
-      'Cache-Control': 'public, max-age=3600, immutable',
-      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=300',
+      'Content-Type': contentType.includes('audio') ? contentType : 'audio/mpeg',
       'Accept-Ranges': upstream.headers.get('accept-ranges') ?? 'bytes',
       'Content-Disposition': 'inline',
+      'Access-Control-Allow-Origin': '*',
       'Vary': 'Range',
     })
     for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
       const value = upstream.headers.get(name)
       if (value) headers.set(name, value)
     }
+    headers.set('Content-Disposition', 'inline')
     return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers })
   } catch (error) {
     console.error('[morefm] audio proxy failed', target.hostname, error)
