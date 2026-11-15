@@ -47,6 +47,22 @@ function trackGain(track: Track, now: number, enabled: boolean, curveName: strin
   return Math.min(fadeIn, fadeOut)
 }
 
+function trackIdentity(track: Track) {
+  if (track.kind === 'rj-makati') return 'rj-makati-live'
+  if (track.youtubeId) return `youtube:${track.youtubeId}`
+  return `${track.title ?? ''}|${track.artist ?? ''}|${track.src}`.toLowerCase()
+}
+
+function withoutDuplicateTracks(tracks: Track[]) {
+  const seen = new Set<string>()
+  return tracks.filter((track) => {
+    const identity = trackIdentity(track)
+    if (seen.has(identity)) return false
+    seen.add(identity)
+    return true
+  })
+}
+
 function playErrorMessage(error: unknown) {
   const name = error instanceof DOMException ? error.name : ''
   if (name === 'NotAllowedError') return 'Your browser blocked audio playback. Click Play once to allow the station audio.'
@@ -141,7 +157,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       const now = Date.now() + offset.current
       const serverTracks = data?.tracks ?? []
       const makatiRelayActive = serverTracks.some((track) => track.kind === 'rj-makati')
-      const tracks = data?.offAir
+      const tracks = withoutDuplicateTracks(data?.offAir
         ? []
         : makatiRelayActive
           ? serverTracks
@@ -154,7 +170,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
               && track.startAt <= now
               && now < track.startAt + track.duration * 1000,
             ),
-          ]
+          ])
       const signOnReached = data?.nextOnAir != null && now >= data.nextOnAir
       const scheduleOffAir = Boolean((data?.offAir && !signOnReached) || (data?.signOffAt != null && now >= data.signOffAt && !signOnReached))
       const scheduledActive = scheduleOffAir ? [] : tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
