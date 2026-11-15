@@ -1,6 +1,6 @@
 # RJ FM original playlists
 
-The station no longer uses the OnlineRadio.ph stream or its Top Songs/Last played metadata.
+The station uses its own AutoDJ playlist and does not display third-party station metadata.
 
 AutoDJ now reads `data/rj-playlists.json` in this order:
 

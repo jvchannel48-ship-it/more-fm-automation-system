@@ -81,7 +81,7 @@ export function AdminMenu() {
           <SheetTitle>
             RJ <span className="text-primary">FM</span>
           </SheetTitle>
-          <SheetDescription>RJ FM LIVESTREAM ONLY</SheetDescription>
+          <SheetDescription>RJ SONGS</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
@@ -89,8 +89,7 @@ export function AdminMenu() {
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
               <p className="font-medium">RJ FM</p>
-              <p className="text-muted-foreground">Livestream only · 24/7 automated music</p>
-              <p className="text-muted-foreground">Romantic &amp; Contemporary Pop Hits Throwback</p>
+              <p className="text-muted-foreground">Your current songs and next track</p>
               <p className="text-muted-foreground">Schedule is managed in the Admin Panel.</p>
               <p className="mt-2 text-muted-foreground">Tune in, relax, and enjoy the music.</p>
             </div>

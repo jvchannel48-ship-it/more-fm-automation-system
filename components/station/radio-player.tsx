@@ -138,9 +138,6 @@ export function RadioPlayer() {
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
           <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />STARTCOPE BETA TEAM</span>
         </div>
-        <p className="max-w-sm rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/90">
-          RJ TOP SONGS · RJ PLAYED · 60s to 2000s · Tagalog &amp; English love songs
-        </p>
         {data?.boardOperatorEnabled && (
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">
             <span className="size-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden="true" />
