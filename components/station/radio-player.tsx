@@ -10,7 +10,7 @@ import type { NowResponse } from '@/lib/types'
 
 const fetcher = async (url: string) => {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 10_000)
+  const timeout = window.setTimeout(() => controller.abort(), 18_000)
   try {
     const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
     if (!response.ok) throw new Error('Station unavailable')
@@ -99,9 +99,18 @@ export function RadioPlayer() {
     if (error && !data) setPlaying(false)
   }, [playbackIssue, error, data, mutate])
   const offAir = (data?.offAir ?? false) || scheduledOffAir
-  const live = playing && !buffering && !offAir && !playbackIssue
+  const hasTracks = Boolean(data?.tracks && data.tracks.length > 0)
+  const live = playing && !buffering && !offAir && !playbackIssue && hasTracks
   const canPause = playing && !playbackIssue && !(error && !data)
-  const statusLabel = offAir ? 'Off Air' : live ? 'Live' : playing || (error && !data) ? 'Connecting' : 'Standby'
+  const statusLabel = offAir
+    ? 'Off Air'
+    : live
+      ? 'Live'
+      : playing
+        ? (playbackIssue ? 'Retrying' : hasTracks ? 'Buffering' : 'Loading songs')
+        : (error && !data)
+          ? 'Connecting'
+          : 'Standby'
 
   const togglePlay = async () => {
     if (canPause) {
