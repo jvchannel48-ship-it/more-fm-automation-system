@@ -4,9 +4,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-// Allow media hosts from song download providers. Keep broad so a strong
-// listener connection is not blocked by a rotating CDN hostname.
-const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com|googleusercontent\.com|cdn\.|cloudfront\.net|akamaized\.net|fastly|b-cdn\.net)$/i
+// Allow the short-lived media hosts returned by the configured song search provider.
+const ALLOWED_HOST = /(^|\.)(savetube\.vip|savetube\.me|savetube\.io|save\.tube|cdn\.savetube\.|rapidcdn\.|ytmp3\.|y2mate\.|googlevideo\.com)$/i
 
 export async function GET(request: Request) {
   const rawUrl = new URL(request.url).searchParams.get('url')
@@ -48,19 +47,16 @@ export async function GET(request: Request) {
     }
 
     const headers = new Headers({
-      // Force streamable inline audio — upstream often sends Content-Disposition: attachment.
-      'Cache-Control': 'public, max-age=300',
-      'Content-Type': contentType.includes('audio') ? contentType : 'audio/mpeg',
+      'Cache-Control': 'public, max-age=3600, immutable',
+      'Content-Type': contentType,
       'Accept-Ranges': upstream.headers.get('accept-ranges') ?? 'bytes',
       'Content-Disposition': 'inline',
-      'Access-Control-Allow-Origin': '*',
       'Vary': 'Range',
     })
     for (const name of ['content-length', 'content-range', 'etag', 'last-modified']) {
       const value = upstream.headers.get(name)
       if (value) headers.set(name, value)
     }
-    headers.set('Content-Disposition', 'inline')
     return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers })
   } catch (error) {
     console.error('[morefm] audio proxy failed', target.hostname, error)

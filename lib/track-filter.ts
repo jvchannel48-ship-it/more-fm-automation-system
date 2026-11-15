@@ -9,9 +9,8 @@ export interface TrackFilterItem {
   isLive?: unknown
 }
 
-// Block non-song results. Tag live/concert carefully so normal studio titles stay.
-const BLACKLIST_TITLE_RULE = /(?:\(\s*live\s*\)|\[\s*live\s*\]|\blive\s*$|\blive\s+at\b|\blive\s+from\b|\blive\s+in\b|\blive\s+on\b|\blive\s+version\b|\blive\s+concert\b|\blive\s+performance\b|\blive\s+stream\b|\bconcert(?:\s+live|\s+version)?\b|\baraneta\b|\bmall\s+show\b|\bit['’]?s\s+showtime\b|\bshowtime\b|\basap\b|\beat\s+bulaga\b|\btv\s+patrol\b|\bperformance\b|\bstudio\s+version\b|\bguesting\b|\bkaraoke\b|\blyric\s+video\b|\bcover\b|\breaction\b|\bremix\b|\bre-?mix\b|\bdance\s+mix\b|\bdisco(?:\s+mix|\s+version)?\b|\bedm\b|\btechno\b|\btrance\b|\bdubstep\b|\brave\b|\bclub\s+mix\b|\brock\s+version\b|\bhard\s+rock\b|\bmetal\b|\bpunk\b|\bnews\s+(?:break|update|report)\b|\bbreaking\s+news\b|\btv\s+news\b|\bradio\s+news\b|\binterview\b|\bpodcast\b|\bvlog\b|\blivestream\b|\bsung\s+live\b|\bsinging\s+live\b)/i
-const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke|news)\b/i
+const BLACKLIST_TITLE_RULE = /\b(?:live|concert|araneta|mall\s+show|it['’]?s\s+showtime|showtime|asap|eat\s+bulaga|tv\s+patrol|performance|studio|guesting|karaoke|lyric\s+video|lyrics?|cover|reaction)\b/i
+const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke)\b/i
 const OFFICIAL_TITLE_RULE = /\bofficial(?:\s+[a-z0-9]+){0,3}\s+(?:audio|video)\b/i
 const AUDIO_TITLE_RULE = /\baudio\b/i
 const OFFICIAL_CHANNEL_RULE = /\b(?:official|vevo|topic)\b/i
@@ -59,6 +58,6 @@ export function isAllowedTrack(item: TrackFilterItem, artist = '') {
 }
 
 export const PLAYLIST_FILTER_DESCRIPTION = {
-  blacklist: 'live, concert, remix, disco, dance mix, rock, metal, news, interview, TV shows, karaoke, cover, reaction, performance',
+  blacklist: 'live, concert, araneta, mall show, it\'s showtime, showtime, ASAP, Eat Bulaga, TV Patrol, performance, studio, guesting, karaoke, lyric video, cover, reaction',
   whitelist: 'official audio, official music video, audio, or an official artist/VEVO/Topic channel when the title has no official label',
 } as const
