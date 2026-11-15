@@ -49,7 +49,8 @@ export async function POST(request: Request) {
     const artist = typeof body?.artist === 'string' ? body.artist.trim().slice(0, 120) : ''
     if (!title || !artist) return NextResponse.json({ error: 'Choose a song and artist first.' }, { status: 400 })
     const result = await submitSongRequest(title, artist)
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
+    const reason = result.reason?.replace(/AutoDJ/gi, 'station queue')
+    return NextResponse.json({ ...result, reason }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('[morefm] playlist add failed', error)
     return NextResponse.json({ error: 'The song could not be added to the playlist.' }, { status: 500 })
