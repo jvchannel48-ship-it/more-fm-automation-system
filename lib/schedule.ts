@@ -61,6 +61,7 @@ const PINOY_OLDIES = artists('tagalog', [
   'Dulce',
 ])
 
+// Classic Tagalog love / OPM ballad artists (mostly 60s–90s). No modern rock or dance acts.
 const PINOY_LOVE = artists('tagalog', [
   'Rey Valera',
   'Basil Valdez',
@@ -96,11 +97,13 @@ const PINOY_LOVE = artists('tagalog', [
   'Lani Misalucha',
   'Jamie Rivera',
   'Jaya',
-  'Moira Dela Torre',
-  'Sarah Geronimo',
-  'Yeng Constantino',
-  'Ben&Ben',
-  'Zack Tabudlo',
+  'Imelda Papin',
+  'Claire dela Fuente|dela fuente',
+  'Didith Reyes',
+  'Celeste Legaspi',
+  'Pilita Corrales',
+  'Jose Mari Chan',
+  'Dulce',
 ])
 
 const SUNDAY_TAGALOG_OLDIES = [
@@ -120,6 +123,7 @@ const SUNDAY_TAGALOG_OLDIES = [
   ...PINOY_OLDIES,
 ]
 
+// Classic English love ballads / soft pop (60s–90s). No rock bands, no dance/EDM acts.
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
   'Air Supply',
@@ -148,22 +152,18 @@ const ENGLISH_LOVE = artists('english', [
   'Mariah Carey',
   'Peabo Bryson',
   'Brian McKnight',
-  'Lionel Richie',
-  'Adele',
-  'John Legend',
-  'Sam Smith',
-  'Norah Jones',
   'Sade',
   'Simply Red',
   'Chicago',
   'The Righteous Brothers',
   'The Corrs',
-  'James Blunt',
-  'Coldplay',
-  'Jason Mraz',
-  'Bruno Mars',
-  'Taylor Swift',
-  'Ed Sheeran',
+  'Anita Baker',
+  'Luther Vandross',
+  'Toni Braxton',
+  'Natalie Cole',
+  'Barbra Streisand',
+  'Atlantic Starr',
+  'Vanessa Williams',
 ])
 
 const NIGHT_LOVE = artists('english', [
@@ -195,11 +195,10 @@ const NIGHT_LOVE = artists('english', [
   'Dan Hill',
   'Sade',
   'Simply Red',
-  'Norah Jones',
-  'John Legend',
-  'Adele',
   'The Righteous Brothers',
-  'Heart',
+  'Barry Manilow',
+  'Michael Bolton',
+  'Richard Marx',
 ])
 
 const SUNDAY_ENGLISH_OLDIES = artists('english', [
@@ -280,21 +279,35 @@ const GOOD_VIBES_ENGLISH = artists('english', [
   'Ellie Goulding',
 ])
 
-const LOVE_VARIANTS = ['', 'official audio', 'greatest hits', 'love song', 'soft pop', 'classic love song']
+// Prefer classic love ballads (60s–90s). Explicitly avoid rock/dance wording in search variants.
+const LOVE_VARIANTS = [
+  'love song official audio',
+  'classic love ballad 80s 90s',
+  'soft love song 70s 80s',
+  'romantic ballad official audio',
+  'greatest love songs 60s 70s 80s',
+  'slow love song official audio',
+]
 const GOOD_VIBES_VARIANTS = ['', 'official audio', 'pop hits', 'feel good hits', 'greatest hits']
-const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
+const OPM_VARIANTS = [
+  'OPM love song official audio',
+  'Tagalog love ballad 80s 90s',
+  'classic OPM love song',
+  'romantic OPM ballad official audio',
+  'OPM slow love song 70s 80s',
+]
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
     pools: { english: [], tagalog: SUNDAY_TAGALOG_OLDIES },
-    variants: { english: [], tagalog: ['Tagalog oldies', 'classic OPM Tagalog', 'Filipino classics', 'OPM oldies 80s 90s'] },
+    variants: { english: [], tagalog: ['Tagalog love oldies 60s 70s 80s', 'classic OPM love ballad', 'Filipino love classics official audio', 'OPM oldies love song 80s 90s'] },
     tagalogOnly: true,
   },
   'sunday-english-oldies': {
     id: 'sunday-english-oldies',
     pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
-    variants: { english: ['', 'classic oldies', 'senior classics', 'golden oldies'], tagalog: [] },
+    variants: { english: ['classic love oldies 60s 70s', 'golden oldies love song', 'soft romantic oldies official audio', 'classic ballad 60s 70s 80s'], tagalog: [] },
   },
   'sunday-tagalog': {
     id: 'sunday-tagalog',
@@ -326,8 +339,8 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     id: 'night-love',
     pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
     variants: {
-      english: ['soft love ballad', 'slow romantic ballad', 'classic love song'],
-      tagalog: ['Tagalog love ballad', 'OPM slow love song', 'romantic OPM ballad'],
+      english: ['soft love ballad 80s 90s', 'slow romantic ballad official audio', 'classic love song 70s 80s'],
+      tagalog: ['Tagalog love ballad 80s 90s', 'OPM slow love song official audio', 'romantic OPM ballad 70s 80s'],
     },
   },
   'love-mix': {
