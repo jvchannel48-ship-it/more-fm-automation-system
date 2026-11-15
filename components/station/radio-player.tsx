@@ -10,7 +10,7 @@ import type { NowResponse } from '@/lib/types'
 
 const fetcher = async (url: string) => {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 20_000)
+  const timeout = window.setTimeout(() => controller.abort(), 10_000)
   try {
     const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
     if (!response.ok) throw new Error('Station unavailable')
@@ -40,7 +40,7 @@ export function RadioPlayer() {
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
-    refreshInterval: 8000,
+    refreshInterval: 3000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
@@ -54,8 +54,9 @@ export function RadioPlayer() {
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
   useEffect(() => {
     if (playbackIssue) {
+      // Keep the user-requested Play session alive during transient CDN or
+      // decoder hiccups; the broadcast hook retries and SWR refreshes the URL.
       void mutate()
-      setPlaying(false)
       return
     }
     if (error && !data) setPlaying(false)
