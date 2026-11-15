@@ -116,11 +116,6 @@ export function AdminPanel() {
   }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
-    if (data?.persistenceConfigured === false) {
-      setError('Cannot save admin settings: configure POSTGRES_URL, private Supabase Storage (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY), or a writable Render disk at /var/data with MORE_FM_DATA_DIR=/var/data/more-fm, then redeploy. See docs/deployment-env.md.')
-      setMessage('')
-      return
-    }
     setBusy(true)
     setError('')
     setMessage('')
@@ -131,7 +126,11 @@ export function AdminPanel() {
       const result = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(result.error ?? 'Could not update settings.')
       mutate(result as AdminStatus, { revalidate: false })
-      setMessage(method === 'POST' ? 'Rotation refreshed.' : 'Settings saved.')
+      setMessage(method === 'POST'
+        ? 'Rotation refreshed.'
+        : result.persistenceConfigured === false
+          ? 'Settings saved for this server session; they reset if the server restarts.'
+          : 'Settings saved.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not update settings.')
     } finally { setBusy(false) }
@@ -211,7 +210,6 @@ export function AdminPanel() {
     </div>
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
-    {data?.persistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Admin changes need PostgreSQL, private Supabase Storage, or a writable Render persistent disk. Configure <code>POSTGRES_URL</code>, Supabase server credentials, or attach the Render disk at <code>/var/data</code> with <code>MORE_FM_DATA_DIR=/var/data/more-fm</code>, then redeploy; see <code>docs/deployment-env.md</code>.</p>}
     {data?.queuePersistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Shared queue history is not persistent. Configure PostgreSQL, private Supabase Storage, or the Render persistent disk so the no-repeat ledger survives restarts and clear-cache redeploys.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}

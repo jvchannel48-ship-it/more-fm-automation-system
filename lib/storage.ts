@@ -151,11 +151,9 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     }
     const filesystemValue = await readFilesystemJson<T>(pathname)
     if (filesystemValue !== undefined) return filesystemValue
-    if (pathname === STATION_STATE_PATH) {
-      const cached = memoryState.get(pathname)
-      if (cached) {
-        try { return JSON.parse(cached) as T } catch { /* Ignore a corrupted process-local entry. */ }
-      }
+    const cached = memoryState.get(pathname)
+    if (cached) {
+      try { return JSON.parse(cached) as T } catch { /* Ignore a corrupted process-local entry. */ }
     }
     return fallback
   }
@@ -182,7 +180,6 @@ export async function writeJson(pathname: string, data: unknown) {
         // Continue to the Render disk fallback below when available.
         // Station queue state can also use the existing process-local fallback
         // on single-instance hosts without a persistent disk.
-        if (!filesystemDataDir && pathname !== STATION_STATE_PATH) throw error
         console.warn('[morefm] Supabase JSON write failed; using local fallback', pathname)
       }
     }
@@ -190,14 +187,11 @@ export async function writeJson(pathname: string, data: unknown) {
       if (await writeFilesystemJson(pathname, serialized)) return
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code
-      if (pathname !== STATION_STATE_PATH || !['EACCES', 'EPERM', 'EROFS', 'ENOENT'].includes(code ?? '')) throw error
-      console.warn('[morefm] station disk is not writable; using in-memory queue state', code)
+      if (!['EACCES', 'EPERM', 'EROFS', 'ENOENT'].includes(code ?? '')) throw error
+      console.warn('[morefm] station disk is not writable; using process-local state', code)
     }
-    if (pathname === STATION_STATE_PATH) {
-      memoryState.set(pathname, serialized)
-      return
-    }
-    throw new Error('Supabase Postgres is not configured for this deployment.')
+    memoryState.set(pathname, serialized)
+    return
   }
   await ensureStateTable()
   await pool.query(

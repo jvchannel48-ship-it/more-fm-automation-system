@@ -77,17 +77,13 @@ export async function PUT(request: NextRequest) {
       jingle: current.jingle, commercials: current.commercials, goldenSunday: current.goldenSunday, news: current.news, djMic: current.djMic,
     }
     await writeJson(SETTINGS_PATH, next)
-    if (next.morSyncEnabled !== current.morSyncEnabled || next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.goodVibesEnabled !== current.goodVibesEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled || next.noRepeatEnabled !== current.noRepeatEnabled || next.crossfaderEnabled !== current.crossfaderEnabled || next.crossfadeSeconds !== current.crossfadeSeconds) await refreshQueue()
+    if (next.morSyncEnabled !== current.morSyncEnabled || next.tagalogOnlyEnabled !== current.tagalogOnlyEnabled || next.goodVibesEnabled !== current.goodVibesEnabled || next.jingleEnabled !== current.jingleEnabled || next.commercialEnabled !== current.commercialEnabled || next.shuffleEnabled !== current.shuffleEnabled || next.noRepeatEnabled !== current.noRepeatEnabled || next.crossfaderEnabled !== current.crossfaderEnabled || next.crossfadeSeconds !== current.crossfadeSeconds || next.signOffHour !== current.signOffHour || next.signOnHour !== current.signOnHour || next.discoStartHour !== current.discoStartHour || next.discoEndHour !== current.discoEndHour) await refreshQueue()
     return NextResponse.json({ ...await getAdminStatus(), persistenceConfigured: hasSettingsPersistence }, noStore)
   } catch (error) {
     console.error('[morefm] admin settings PUT failed', error)
-    const message = error instanceof Error && error.message.includes('No persistent settings backend is configured')
-      ? 'Cannot save admin settings: configure POSTGRES_URL, or Supabase Storage with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then redeploy.'
-      : (error instanceof Error && error.message.includes('Supabase Storage')) || (hasSettingsPersistence && !hasPersistentStorage)
-        ? 'Cannot save admin settings: Supabase Storage could not save or prepare the private settings file. Check SUPABASE_URL, the service-role key, and bucket permissions.'
-        : hasPersistentStorage
-          ? 'Could not update admin settings: POSTGRES_URL is present but Supabase PostgreSQL could not be reached. Verify the connection string and database migrations.'
-          : 'Could not update admin settings. Please retry.'
+    const message = hasPersistentStorage
+      ? 'Could not update settings. Check the configured storage connection and retry.'
+      : 'Could not update settings. Please retry.'
     return jsonError(message)
   }
 }

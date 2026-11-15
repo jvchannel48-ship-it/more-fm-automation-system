@@ -6,7 +6,7 @@ import type { NowResponse, Track } from '@/lib/types'
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 // Keep only the current and immediately upcoming songs active. Two slots are
 // required for a real overlap: one fades down while the next fades up.
-const PRELOAD_AHEAD_MS = 30_000
+const PRELOAD_AHEAD_MS = 60_000
 const DRIFT_TOLERANCE_S = 15
 
 interface Slot {

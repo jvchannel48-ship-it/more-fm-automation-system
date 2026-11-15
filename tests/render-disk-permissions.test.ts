@@ -26,11 +26,10 @@ async function main() {
   await writeJson(STATE_PATH, { tracks: [], songCount: 7 })
   const queue = await readJson<{ songCount?: number }>(STATE_PATH, {})
   assert.equal(queue.songCount, 7, 'queue state can continue in process memory without a writable disk')
-  await assert.rejects(
-    writeJson(SETTINGS_PATH, { tagalogOnlyEnabled: true }),
-    /Supabase Postgres is not configured for this deployment/,
-    'admin settings are rejected instead of falsely succeeding without durable storage',
-  )
+  await writeJson(SETTINGS_PATH, { tagalogOnlyEnabled: false, signOffHour: 22 })
+  const updated = await getSettings()
+  assert.equal(updated.tagalogOnlyEnabled, false, 'admin toggles can be saved in process memory without a persistent backend')
+  assert.equal(updated.signOffHour, 22, 'schedule settings can be saved in process memory without a persistent backend')
 
   console.log('render-disk-permissions: inaccessible mount fallback and persistence status passed')
 }
