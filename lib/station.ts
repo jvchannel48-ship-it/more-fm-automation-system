@@ -7,6 +7,7 @@ import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, rep
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
 import { selectSingleBreakAudio } from './break-rotation'
+import { incrementTopPlayed } from './radio-catalog'
 import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
 import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
@@ -230,6 +231,7 @@ export async function queueSongRequest(requestId: string) {
       uid: `request-${request.id}-${startAt}`,
       requestId: request.id,
       src: song.src,
+      youtubeId: song.id,
       startAt,
       duration: song.duration,
       fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
@@ -250,8 +252,8 @@ export async function queueSongRequest(requestId: string) {
   }
 }
 
-export async function submitSongRequest(title: string, artist: string) {
-  const request = await addSongRequest(title, artist)
+export async function submitSongRequest(title: string, artist: string, name = 'Listener') {
+  const request = await addSongRequest(title, artist, name)
   const result = await queueSongRequest(request.id)
   return { request, ...result }
 }
@@ -425,7 +427,7 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
   const weeklyOffset = weeklyPlaylistOffset(startAt, playlist.length)
   for (let offset = 0; offset < playlist.length; offset++) {
     const item = playlist[(weeklyOffset + songCount + offset) % playlist.length]
-    const artist = playlistArtist(item.title, item.channel)
+    const artist = item.artist?.trim() || playlistArtist(item.title, item.channel)
     if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist))) continue
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 8_000)
     if (!download?.downloadUrl) continue
@@ -766,6 +768,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
+      youtubeId: song.id,
       startAt: songStart,
       duration: Math.max(1, playableDuration),
       fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
@@ -864,6 +867,9 @@ async function loadState(now: number) {
       state.dailyPlayedTitles = completed
       dailyKeys.add(key)
       dailyChanged = true
+      if (track.kind === 'music' || track.kind === 'mor-sync') {
+        void incrementTopPlayed({ youtubeId: track.youtubeId, title: track.title, artist })
+      }
     }
     if (track.requestId) await updateSongRequest(track.requestId, 'played')
   }
@@ -1019,6 +1025,7 @@ export async function runMorSyncTick(): Promise<MorSyncRecord> {
       state.tracks.push({
         uid: `mor-${metadata.key}-${startAt}`,
         src: song.src,
+        youtubeId: song.id,
         startAt,
         duration: song.duration,
         fadeIn: verifiedSettings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,

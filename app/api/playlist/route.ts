@@ -22,6 +22,9 @@ export async function GET(request: Request) {
 
     const [playlist, now] = await Promise.all([getRjFmPlaylistTracks(), getNowPlaying()])
     const nowMs = now.serverTime
+    const topSongs = playlist.filter((track) => track.playlistGroup === 'RJ TOP SONGS')
+    const playedSongs = playlist.filter((track) => track.playlistGroup === 'RJ PLAYED')
+    const hasDatabaseGroups = topSongs.length > 0 || playedSongs.length > 0
     const queue = now.tracks
       .filter((track) => track.startAt + track.duration * 1000 > nowMs)
       .sort((a, b) => a.startAt - b.startAt)
@@ -30,8 +33,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       name: 'RJ SONGS',
       sections: [
-        { id: 'top-songs', label: 'RJ TOP SONGS', tracks: playlist.slice(0, 30) },
-        { id: 'played', label: 'RJ PLAYED', tracks: playlist.slice(30) },
+        { id: 'top-songs', label: 'RJ TOP SONGS', tracks: hasDatabaseGroups ? topSongs : playlist.slice(0, 30) },
+        { id: 'played', label: 'RJ PLAYED', tracks: hasDatabaseGroups ? playedSongs : playlist.slice(30) },
       ],
       queue,
       fetchedAt: Date.now(),
@@ -44,11 +47,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => null) as { title?: unknown; artist?: unknown } | null
+    const body = await request.json().catch(() => null) as { name?: unknown; title?: unknown; artist?: unknown } | null
+    const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 80) : 'Listener'
     const title = typeof body?.title === 'string' ? body.title.trim().slice(0, 200) : ''
     const artist = typeof body?.artist === 'string' ? body.artist.trim().slice(0, 120) : ''
     if (!title || !artist) return NextResponse.json({ error: 'Choose a song and artist first.' }, { status: 400 })
-    const result = await submitSongRequest(title, artist)
+    const result = await submitSongRequest(title, artist, name || 'Listener')
     const reason = result.reason?.replace(/AutoDJ/gi, 'station queue')
     return NextResponse.json({ ...result, reason }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {

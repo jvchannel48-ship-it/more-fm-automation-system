@@ -121,12 +121,60 @@ async function ensureStateTable() {
       ALTER TABLE public.morefm_listeners DROP COLUMN IF EXISTS region;
       ALTER TABLE public.morefm_listeners DROP COLUMN IF EXISTS city;
       ALTER TABLE public.morefm_state ENABLE ROW LEVEL SECURITY;
+      CREATE TABLE IF NOT EXISTS public.songs (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        title text NOT NULL,
+        artist text NOT NULL,
+        youtube_id text NOT NULL UNIQUE,
+        category text NOT NULL CHECK (category IN ('60s', '70s', '80s', '90s', '20s', 'tagalog', 'english')),
+        language text CHECK (language IS NULL OR language IN ('Tagalog', 'English')),
+        decade text CHECK (decade IS NULL OR decade IN ('60s', '70s', '80s', '90s', '20s')),
+        picture text,
+        duration_seconds integer NOT NULL CHECK (duration_seconds BETWEEN 60 AND 540),
+        playlist_group text NOT NULL DEFAULT 'RJ TOP SONGS' CHECK (playlist_group IN ('RJ TOP SONGS', 'RJ PLAYED')),
+        sort_order integer NOT NULL DEFAULT 0,
+        is_active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS songs_active_playlist_idx ON public.songs (is_active, playlist_group, sort_order);
+      CREATE TABLE IF NOT EXISTS public.requests (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL DEFAULT 'Listener',
+        song_title text NOT NULL,
+        artist text,
+        status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'played', 'skipped')),
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS requests_status_created_idx ON public.requests (status, created_at DESC);
+      CREATE TABLE IF NOT EXISTS public.top_played (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        song_id uuid REFERENCES public.songs(id) ON DELETE SET NULL,
+        youtube_id text NOT NULL UNIQUE,
+        title text NOT NULL,
+        artist text NOT NULL,
+        play_count bigint NOT NULL DEFAULT 0 CHECK (play_count >= 0),
+        last_played_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS top_played_rank_idx ON public.top_played (play_count DESC, last_played_at DESC);
+      ALTER TABLE public.songs ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.top_played ENABLE ROW LEVEL SECURITY;
     `).then(() => undefined).catch((error) => {
       globals.__moreFmSchemaPromise = undefined
       throw error
     })
   }
   await globals.__moreFmSchemaPromise
+}
+
+export function getPostgresPool() {
+  return getPool()
+}
+
+export async function ensureDatabaseTables() {
+  await ensureStateTable()
 }
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
@@ -535,6 +583,21 @@ export async function addRating(voterId: string) {
 }
 
 export async function getSongRequests() {
+  const pool = getPool()
+  if (pool) {
+    await ensureStateTable()
+    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status'] }>(
+      "SELECT id::text, name, song_title, artist, created_at, status FROM public.requests WHERE status IN ('pending', 'skipped') ORDER BY created_at DESC LIMIT 200",
+    )
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      title: row.song_title,
+      artist: row.artist || 'Unknown artist',
+      requestedAt: new Date(row.created_at).getTime(),
+      status: row.status,
+    }))
+  }
   const saved = hasQueuePersistence ? await readJson<unknown>(REQUESTS_PATH, []) : memoryRequests
   const requests = Array.isArray(saved) ? saved.filter((item): item is SongRequest => Boolean(
     item && typeof item === 'object'
@@ -547,12 +610,23 @@ export async function getSongRequests() {
   if (activeRequests.length !== requests.length) await writeJson(REQUESTS_PATH, activeRequests)
   return activeRequests
 }
-export async function addSongRequest(title: string, artist: string) {
+export async function addSongRequest(title: string, artist: string, name = 'Listener') {
+  const pool = getPool()
+  if (pool) {
+    await ensureStateTable()
+    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status'] }>(
+      "INSERT INTO public.requests (name, song_title, artist) VALUES ($1, $2, $3) RETURNING id::text, name, song_title, artist, created_at, status",
+      [name, title, artist || null],
+    )
+    const row = result.rows[0]
+    if (row) return { id: row.id, name: row.name, title: row.song_title, artist: row.artist || 'Unknown artist', requestedAt: new Date(row.created_at).getTime(), status: row.status }
+  }
   const requests = await getSongRequests()
   const request: SongRequest = {
     id: `request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title,
     artist,
+    name,
     requestedAt: Date.now(),
     status: 'pending',
   }
@@ -563,6 +637,17 @@ export async function addSongRequest(title: string, artist: string) {
   return request
 }
 export async function updateSongRequest(id: string, status: SongRequest['status']) {
+  const pool = getPool()
+  if (pool) {
+    await ensureStateTable()
+    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status'] }>(
+      'UPDATE public.requests SET status = $2 WHERE id = $1::uuid RETURNING id::text, name, song_title, artist, created_at, status',
+      [id, status],
+    )
+    const row = result.rows[0]
+    if (!row) return null
+    return { id: row.id, name: row.name, title: row.song_title, artist: row.artist || 'Unknown artist', requestedAt: new Date(row.created_at).getTime(), status: row.status }
+  }
   const requests = await getSongRequests()
   const updated = requests.find((request) => request.id === id)
   if (!updated) return null

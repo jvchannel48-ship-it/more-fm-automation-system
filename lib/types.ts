@@ -10,6 +10,7 @@ export interface Track {
   fadeIn: number
   fadeOut: number
   sourceUrl?: string
+  youtubeId?: string
   sourceChannel?: string
   sourcePlaylist?: string
   sourceRefreshedAt?: number
@@ -72,6 +73,7 @@ export interface SongRequest {
   id: string
   title: string
   artist: string
+  name?: string
   requestedAt: number
   status: 'pending' | 'played' | 'skipped'
 }

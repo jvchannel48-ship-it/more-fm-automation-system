@@ -14,6 +14,7 @@ type RequestResponse = {
 
 export function PlaylistMenu() {
   const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -22,6 +23,7 @@ export function PlaylistMenu() {
 
   useEffect(() => {
     if (!open) {
+      setName('')
       setTitle('')
       setArtist('')
       setMessage('')
@@ -31,18 +33,19 @@ export function PlaylistMenu() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    const cleanName = name.trim()
     const cleanTitle = title.trim()
     const cleanArtist = artist.trim()
-    if (!cleanTitle || !cleanArtist) return
+    if (!cleanName || !cleanTitle || !cleanArtist) return
 
     setSubmitting(true)
     setMessage('Searching for your song and preparing your request…')
     setMessageTone('info')
     try {
-      const response = await fetch('/api/playlist', {
+      const response = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: cleanTitle, artist: cleanArtist }),
+        body: JSON.stringify({ name: cleanName, song_title: cleanTitle, artist: cleanArtist }),
       })
       const result = await response.json() as RequestResponse
       if (!response.ok) throw new Error(result.error ?? 'Hindi naisumite ang request. Subukan muli.')
@@ -69,12 +72,16 @@ export function PlaylistMenu() {
     <SheetContent side="right" className="w-full sm:max-w-lg">
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2"><MessageCircle className="size-5 text-primary" /> SEND ME YOUR SONG REQUEST</SheetTitle>
-        <SheetDescription>Type the song title and artist. The request will be searched and prepared for play.</SheetDescription>
+        <SheetDescription>Type your name, song title, and artist. The request will be searched and prepared for play.</SheetDescription>
       </SheetHeader>
       <form onSubmit={submit} className="flex flex-col gap-4 px-4 pb-8">
         <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
-          Isulat ang title at artist ng kanta. Pag-submit, hahanapin ito at ilalagay sa pila. Hintayin ang pag-play ng request mo.
+          Ilagay ang pangalan mo at ang title at artist ng kanta. Pag-submit, hahanapin ito at ilalagay sa pila.
         </div>
+        <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="song-request-name">
+          Your name
+          <Input id="song-request-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Halimbawa: Juan" maxLength={80} required disabled={submitting} />
+        </label>
         <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="song-request-title">
           Song title
           <Input id="song-request-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Halimbawa: Ikaw Lamang" maxLength={200} required disabled={submitting} />
@@ -84,7 +91,7 @@ export function PlaylistMenu() {
           <Input id="song-request-artist" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Halimbawa: Janno Gibbs" maxLength={120} required disabled={submitting} />
         </label>
         {message && <p className={`rounded-xl border px-3 py-3 text-sm leading-relaxed ${messageTone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/25 bg-primary/5 text-primary'}`} role="status" aria-live="polite">{message}</p>}
-        <Button type="submit" disabled={submitting || !title.trim() || !artist.trim()}>
+        <Button type="submit" disabled={submitting || !name.trim() || !title.trim() || !artist.trim()}>
           {submitting ? <><Loader2 className="animate-spin" /> Searching and submitting…</> : <><Send /> Submit song request</>}
         </Button>
         <p className="text-center text-xs text-muted-foreground">Your request is read by the station queue. It may play after one or several songs.</p>
