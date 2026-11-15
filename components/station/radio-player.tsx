@@ -42,9 +42,11 @@ export function RadioPlayer() {
   const [listenerIssue, setListenerIssue] = useState<string | null>(null)
   const listenerId = useRef<string | null>(null)
   const { data, error, mutate } = useSWR('/api/now', fetcher, {
-    refreshInterval: 3000,
+    refreshInterval: playing ? 2000 : 4000,
     revalidateOnFocus: true,
     keepPreviousData: true,
+    errorRetryInterval: 2000,
+    errorRetryCount: 8,
   })
   const recoverStream = useCallback((uid: string) => {
     void fetch('/api/now', {
@@ -91,8 +93,6 @@ export function RadioPlayer() {
   }, [playing])
   useEffect(() => {
     if (playbackIssue) {
-      // Keep the user-requested Play session alive during transient CDN or
-      // decoder hiccups; the broadcast hook retries and SWR refreshes the URL.
       void mutate()
       return
     }
