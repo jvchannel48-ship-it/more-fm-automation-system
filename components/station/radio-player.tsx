@@ -56,6 +56,17 @@ export function RadioPlayer() {
     }).then(() => mutate()).catch(() => undefined)
   }, [mutate])
   const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
+  // Empty queue while user is playing → force an emergency OPM/love track on air.
+  useEffect(() => {
+    if (!playing || data?.offAir) return
+    if (data?.tracks && data.tracks.length > 0) return
+    const timer = window.setTimeout(() => {
+      void fetch('/api/bootstrap-queue', { method: 'POST', cache: 'no-store' })
+        .then(() => mutate())
+        .catch(() => undefined)
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [playing, data?.offAir, data?.tracks, mutate])
   useEffect(() => {
     if (!playing) return
     const getListenerId = () => {
