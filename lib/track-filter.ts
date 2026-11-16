@@ -55,12 +55,13 @@ export function isOfficialArtistChannel(channel: unknown, artist: string) {
   return artistMatches && (OFFICIAL_CHANNEL_RULE.test(channel) || channelText === artistText)
 }
 
-export function isAllowedTrack(item: TrackFilterItem, artist = '') {
+export function isAllowedTrack(item: TrackFilterItem, artist = '', allowExactTitleArtistMatch = false) {
   const title = typeof item.title === 'string' ? item.title : ''
   if (hasBlacklistedTitle(title)) return false
   if (item.live === true || item.live === 'true' || item.isLive === true || item.isLive === 'true') return false
   if (hasRejectedContent(title, item.channel, item.author, item.uploader, item.source, item.description)) return false
   if (hasWhitelistedTitle(title)) return true
+  if (allowExactTitleArtistMatch && (typeof item.channel !== 'string' || !TV_CHANNEL_RULE.test(item.channel))) return true
   return isOfficialArtistChannel(item.channel, artist)
 }
 

@@ -10,7 +10,6 @@ import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
 import { SongsPlaylistManager } from './songs-playlist-manager'
 
-// Keep the admin rotation-history control aligned with the server's 50–300 song range.
 const fetcher = async (url: string) => {
   const response = await fetch(url, { cache: 'no-store' })
   const result = await response.json().catch(() => null) as (AdminStatus & { error?: string }) | null
@@ -33,7 +32,7 @@ function hourLabel(hour: number) {
 }
 
 type UsageResponse = { usage: { provider: string; databaseBytes: number; stationAudioBytes: number; stationAudioFiles: number; measuredAt: number } | null; unavailable?: boolean; error?: string }
-type AdminRequest = { id: string; name?: string; title: string; artist: string; requestedAt: number; status: 'pending' | 'played' | 'skipped' }
+type AdminRequest = { id: string; name?: string; title: string; artist: string; requestedAt: number; status: 'pending' | 'played' | 'skipped'; reason?: string }
 async function usageFetcher(url: string): Promise<UsageResponse> {
   const response = await fetch(url, { cache: 'no-store' })
   const result = await response.json().catch(() => null) as (UsageResponse & { error?: string }) | null
@@ -89,7 +88,6 @@ export function AdminPanel() {
   const [discoEndHour, setDiscoEndHour] = useState('19')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
-  const [rotationPoolSize, setRotationPoolSize] = useState('100')
   const [listenerLimit, setListenerLimit] = useState('2')
   const [masterVolume, setMasterVolume] = useState('100')
   const [nightVolumePercent, setNightVolumePercent] = useState('72')
@@ -111,14 +109,13 @@ export function AdminPanel() {
     setDiscoEndHour(String(data.discoEndHour))
     setNightVolumeStartHour(String(data.nightVolumeStartHour))
     setNightVolumeEndHour(String(data.nightVolumeEndHour))
-    setRotationPoolSize(String(data.rotationPoolSize))
     setListenerLimit(String(data.listenerLimit))
     setMasterVolume(String(data.masterVolume))
     setNightVolumePercent(String(data.nightVolumePercent))
     setBassGainDb(String(data.bassGainDb))
     setCrossfadeSeconds(String(data.crossfadeSeconds))
     setReplayGainTargetLufs(String(data.replayGainTargetLufs))
-  }, [data?.rjMakatiScheduleStartHour, data?.rjMakatiScheduleEndHour, data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
+  }, [data?.rjMakatiScheduleStartHour, data?.rjMakatiScheduleEndHour, data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -215,12 +212,11 @@ export function AdminPanel() {
     </div>
     {loadError && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{loadError.message}{loadError.message.toLowerCase().includes('unauthorized') || loadError.message.toLowerCase().includes('session') ? ' Log out, then sign in again.' : ''}</p>}
     {!data && !loadError && <p className="text-xs text-muted-foreground" role="status">Loading admin settings…</p>}
-    {data?.queuePersistenceConfigured === false && <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" role="alert">Shared queue history is not persistent. Configure PostgreSQL, private Supabase Storage, or the Render persistent disk so the no-repeat ledger survives restarts and clear-cache redeploys.</p>}
     {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
     {message && <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
     <section className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-3"><div><Label>Song requests</Label><p className="text-xs text-muted-foreground">Admin-only list. Hindi ito ipinapakita sa public player.</p></div><Button type="button" variant="ghost" size="sm" onClick={() => void mutateRequests()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh</Button></div>
-      {(requestData?.requests ?? []).length > 0 ? <div className="max-h-72 space-y-2 overflow-y-auto">{requestData?.requests.map((request) => <div key={request.id} className="rounded-lg border border-border/70 bg-background/45 p-2.5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{request.title}</p><p className="truncate text-xs text-muted-foreground">{request.name || 'Listener'} · {request.artist} · {new Date(request.requestedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p></div><span className="shrink-0 text-[10px] font-semibold uppercase text-primary">{request.status}</span></div>{request.status === 'pending' && <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'played')}>Played</Button><Button type="button" size="sm" variant="ghost" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'skipped')}>Skip</Button></div>}</div>)}</div> : <p className="text-xs text-muted-foreground">No song requests yet.</p>}
+      {(requestData?.requests ?? []).length > 0 ? <div className="max-h-72 space-y-2 overflow-y-auto">{requestData?.requests.map((request) => <div key={request.id} className="rounded-lg border border-border/70 bg-background/45 p-2.5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{request.title}</p><p className="truncate text-xs text-muted-foreground">{request.name || 'Listener'} · {request.artist} · {new Date(request.requestedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p>{request.reason && <p className="mt-1 text-[11px] text-amber-200">{request.reason}</p>}</div><span className="shrink-0 text-[10px] font-semibold uppercase text-primary">{request.status}</span></div>{request.status === 'pending' && <div className="mt-2 flex gap-2"><Button type="button" size="sm" variant="secondary" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'played')}>Played</Button><Button type="button" size="sm" variant="ghost" disabled={requestBusy === request.id} onClick={() => void updateRequest(request.id, 'skipped')}>Skip</Button></div>}</div>)}</div> : <p className="text-xs text-muted-foreground">No song requests yet.</p>}
     </section>
     <SongsPlaylistManager />
     <section className="flex flex-col gap-3 rounded-lg border border-amber-300/30 bg-amber-300/[0.06] p-3">
@@ -282,31 +278,20 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
+      <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. The player queues just a few upcoming tracks.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle: {data?.shuffleEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON randomizes eligible songs and artists; OFF follows source order. No-repeat protection remains active in either mode.</p></div>
           <Switch id="shuffle-enabled" aria-label="Shuffle on or off" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
           <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
       </div>
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300/30 bg-emerald-300/[0.07] p-3">
-        <div><Label htmlFor="no-repeat-enabled">{data?.noRepeatEnabled ? 'No Repeat: ON' : 'No Repeat: OFF'}</Label><p className="text-xs text-muted-foreground">Blocks normalized song titles across artists and common version labels across the retained recent rotation history, so songs do not immediately repeat after a day change.</p></div>
-        <Switch id="no-repeat-enabled" aria-label="No Repeat on or off" checked={data?.noRepeatEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { noRepeatEnabled: checked })} />
-      </div>
-      <div className="rounded-lg border border-emerald-300/20 bg-background/45 p-3">
-        <div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold">Played today · {data?.dailyPlayedDate ?? '—'}</p><p className="text-[11px] text-muted-foreground">Finished tracks leave the short playback queue and are logged here. Songs are discovered on demand; no local music files are deleted.</p></div><span className="font-mono text-xs text-emerald-200">{data?.dailyPlayedTitles?.length ?? 0} titles</span></div>
-        {(data?.dailyPlayedTitles ?? []).length > 0 ? <div className="max-h-48 space-y-1 overflow-y-auto">{data?.dailyPlayedTitles.map((song) => <div key={`${song.playedAt}-${song.title}`} className="flex items-center justify-between gap-3 rounded border border-border/60 px-2 py-1.5 text-xs"><span className="truncate">{song.title}</span><span className="shrink-0 text-muted-foreground">{song.artist} · {new Date(song.playedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}</span></div>)}</div> : <p className="text-xs text-muted-foreground">No songs completed today yet.</p>}
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label htmlFor="rotation-pool-size" className="flex flex-col gap-1 text-xs font-medium">Rotation history size (50–300 songs)
-          <Input id="rotation-pool-size" type="number" min={50} max={300} step={1} value={rotationPoolSize} onChange={(event) => setRotationPoolSize(event.target.value)} disabled={!data || busy} />
-        </label>
+      <div className="grid grid-cols-1 gap-2">
         <label htmlFor="listener-limit" className="flex flex-col gap-1 text-xs font-medium">Listener cap (0 = unlimited)
           <Input id="listener-limit" type="number" min={0} max={1000} step={1} value={listenerLimit} onChange={(event) => setListenerLimit(event.target.value)} disabled={!data || busy} />
         </label>
       </div>
-      <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 300 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
-        onClick={() => send('PUT', { rotationPoolSize: Number(rotationPoolSize), listenerLimit: Number(listenerLimit) })}>Save rotation and listener limits</Button>
+      <Button variant="secondary" disabled={!data || busy || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(listenerLimit))}
+        onClick={() => send('PUT', { listenerLimit: Number(listenerLimit) })}>Save listener limit</Button>
       <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION HAS REACHED ITS LISTENER LIMIT.” Existing listeners stay connected. The default cap is 2; set it to 0 for unlimited.</p>
       <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
         <div className="flex items-start justify-between gap-3"><div className="flex items-start gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-sky-300" aria-hidden="true" /><div><Label>Listener Monitor</Label><p className="text-xs text-muted-foreground">Basic active-listener count and capacity only. No location data is collected.</p></div></div><Button type="button" variant="ghost" size="sm" disabled={!data || busy} onClick={() => void mutate()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh</Button></div>
@@ -422,16 +407,8 @@ export function AdminPanel() {
 
     <div className="grid grid-cols-2 gap-2">
       <Stat label="Total listeners now" value={data?.listenersNow ?? '–'} />
-      <Stat label="Songs in history" value={data?.songsThisWeek ?? '–'} />
-      <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />
       <Stat label="Heart ratings" value={data?.totalRatings ?? '–'} />
-    </div>
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Playback statistics</Label><p className="text-xs text-muted-foreground">Based on songs successfully added to station history.</p></div>
-      <div className="grid grid-cols-2 gap-2"><Stat label="Plays / last 24 hours" value={data?.playbackStats?.last24Hours ?? '–'} /><Stat label="Plays / last 7 days" value={data?.playbackStats?.last7Days ?? '–'} /></div>
-      <div className="grid gap-1 text-xs">{data?.playbackStats?.topArtists?.slice(0, 5).map((item) => <div key={item.artist} className="flex justify-between gap-3"><span className="truncate">{item.artist}</span><span className="font-mono text-muted-foreground">{item.plays}</span></div>)}</div>
-      <div className="border-t border-border pt-2 text-xs">{data?.playbackStats?.recentSongs?.slice(0, 5).map((song) => <div key={`${song.playedAt}-${song.title}`} className="flex justify-between gap-3 py-1"><span className="truncate">{song.title}</span><span className="shrink-0 text-muted-foreground">{song.artist}</span></div>)}</div>
     </div>
     <p className="-mt-2 text-[11px] text-muted-foreground">Estimated browsers currently playing; inactive sessions expire after one minute.</p>
     <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
@@ -448,7 +425,7 @@ export function AdminPanel() {
       <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
         <li>Identical audio uploads reuse the same stored file instead of creating duplicates.</li>
         <li>Replacing a jingle, commercial, DJ Mic, or voice clip removes the old stored copy.</li>
-        <li>Audio uploads are limited to 4 MB per file, and song rotation keeps only recent history.</li>
+        <li>Audio uploads are limited to 4 MB per file, and the station keeps only a short upcoming playback queue.</li>
       </ul>
     </div>
 

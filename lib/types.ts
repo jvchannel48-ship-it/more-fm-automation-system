@@ -80,6 +80,7 @@ export interface SongRequest {
   name?: string
   requestedAt: number
   status: 'pending' | 'played' | 'skipped'
+  reason?: string
 }
 
 export interface NowResponse {
@@ -91,13 +92,6 @@ export interface NowResponse {
   tracks: Track[]
   nightVolumeActive: boolean
   audioConfig: Pick<StationSettings, 'masterVolume' | 'nightVolumePercent' | 'bassGainDb' | 'crossfaderEnabled' | 'crossfaderCurve' | 'crossfadeSeconds' | 'replayGainEnabled' | 'replayGainTargetLufs'>
-}
-
-export interface PlaybackStats {
-  last24Hours: number
-  last7Days: number
-  topArtists: Array<{ artist: string; plays: number }>
-  recentSongs: Array<{ title: string; artist: string; playedAt: number }>
 }
 
 export type MorMetadataStatus = 'music' | 'non-music' | 'unrecognized' | 'unavailable'
@@ -125,12 +119,9 @@ export interface AdminStatus extends StationSettings {
   persistenceConfigured?: boolean
   queuePersistenceConfigured?: boolean
   listenerCapGloballyEnforced?: boolean
-  songsThisWeek: number
-  artistsThisHour: number
   queued: number
   listenersNow: number
   totalRatings: number
-  playbackStats: PlaybackStats
   storageUsage?: {
     provider: string
     databaseBytes: number
@@ -145,6 +136,4 @@ export interface AdminStatus extends StationSettings {
   moreFmNowPlaying: string | null
   morSyncStatus: MorSyncStatus
   morCheckedAt: number | null
-  dailyPlayedTitles: Array<{ title: string; artist: string; playedAt: number }>
-  dailyPlayedDate: string
 }

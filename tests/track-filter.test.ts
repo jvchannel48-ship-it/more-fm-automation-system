@@ -35,6 +35,11 @@ assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist Official'
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist - Topic' }, 'Artist'), true)
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist Fan Channel' }, 'Artist'), false)
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'TV Network' }, 'Artist'), false)
+assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Random Uploads' }, 'Artist', true), true, 'exact title/artist matches may come from an unrecognized non-TV channel')
+assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Independent Uploads' }, 'Artist', true), true, 'an exact title/artist match is independent of unrecognized non-TV uploader labels')
+assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Fan Channel' }, 'Artist', true), false, 'exact matches still respect the fan/TV-channel rejection gate')
+assert.equal(isAllowedTrack({ title: 'Artist - Song (Live Concert)', channel: 'Random Uploads' }, 'Artist', true), false, 'exact title/artist matching does not bypass blacklisted content')
+assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'TV Network' }, 'Artist', true), false, 'exact title/artist matching does not bypass TV-channel filtering')
 assert.equal(isAllowedTrack({ title: 'Artist - Song' }, 'Artist'), false)
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', live: true }, 'Artist'), false)
 for (const value of [

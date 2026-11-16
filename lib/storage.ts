@@ -151,8 +151,10 @@ async function ensureStateTable() {
         song_title text NOT NULL,
         artist text,
         status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'played', 'skipped')),
+        status_reason text,
         created_at timestamptz NOT NULL DEFAULT now()
       );
+      ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS status_reason text;
       CREATE INDEX IF NOT EXISTS requests_status_created_idx ON public.requests (status, created_at DESC);
       CREATE TABLE IF NOT EXISTS public.top_played (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -645,8 +647,8 @@ export async function getSongRequests() {
   const pool = getPool()
   if (pool) {
     await ensureStateTable()
-    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status'] }>(
-      "SELECT id::text, name, song_title, artist, created_at, status FROM public.requests WHERE status IN ('pending', 'skipped') ORDER BY created_at DESC LIMIT 200",
+    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status']; status_reason: string | null }>(
+      "SELECT id::text, name, song_title, artist, created_at, status, status_reason FROM public.requests WHERE status IN ('pending', 'skipped') ORDER BY created_at DESC LIMIT 200",
     )
     return result.rows.map((row) => ({
       id: row.id,
@@ -655,6 +657,7 @@ export async function getSongRequests() {
       artist: row.artist || 'Unknown artist',
       requestedAt: new Date(row.created_at).getTime(),
       status: row.status,
+      ...(row.status_reason ? { reason: row.status_reason } : {}),
     }))
   }
   const saved = hasQueuePersistence ? await readJson<unknown>(REQUESTS_PATH, []) : memoryRequests
@@ -695,25 +698,25 @@ export async function addSongRequest(title: string, artist: string, name = 'List
   }
   return request
 }
-export async function updateSongRequest(id: string, status: SongRequest['status']) {
+export async function updateSongRequest(id: string, status: SongRequest['status'], reason?: string) {
   const pool = getPool()
   if (pool) {
     await ensureStateTable()
-    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status'] }>(
-      'UPDATE public.requests SET status = $2 WHERE id = $1::uuid RETURNING id::text, name, song_title, artist, created_at, status',
-      [id, status],
+    const result = await pool.query<{ id: string; name: string; song_title: string; artist: string | null; created_at: Date | string; status: SongRequest['status']; status_reason: string | null }>(
+      "UPDATE public.requests SET status = $2, status_reason = CASE WHEN $2 = 'skipped' THEN $3 ELSE NULL END WHERE id = $1::uuid RETURNING id::text, name, song_title, artist, created_at, status, status_reason",
+      [id, status, reason ?? null],
     )
     const row = result.rows[0]
     if (!row) return null
-    return { id: row.id, name: row.name, title: row.song_title, artist: row.artist || 'Unknown artist', requestedAt: new Date(row.created_at).getTime(), status: row.status }
+    return { id: row.id, name: row.name, title: row.song_title, artist: row.artist || 'Unknown artist', requestedAt: new Date(row.created_at).getTime(), status: row.status, ...(row.status_reason ? { reason: row.status_reason } : {}) }
   }
   const requests = await getSongRequests()
   const updated = requests.find((request) => request.id === id)
   if (!updated) return null
   const next = status === 'played'
     ? requests.filter((request) => request.id !== id)
-    : requests.map((request) => request.id === id ? { ...request, status } : request)
+    : requests.map((request) => request.id === id ? { ...request, status, reason: status === 'skipped' ? reason : undefined } : request)
   if (hasQueuePersistence) await writeJson(REQUESTS_PATH, next)
   else memoryRequests.splice(0, memoryRequests.length, ...next)
-  return { ...updated, status }
+  return { ...updated, status, reason: status === 'skipped' ? reason : undefined }
 }

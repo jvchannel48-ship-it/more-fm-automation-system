@@ -57,6 +57,10 @@ export function repeatTitleKey(title: string, artist = '') {
   return key
 }
 
+export function createRepeatBlocklist(completedKeys: Iterable<string>, queuedKeys: Iterable<string>) {
+  return new Set([...completedKeys, ...queuedKeys].filter(Boolean))
+}
+
 export function rollDailyPlayedLog<T>(savedDate: string, currentDate: string, entries: T[]) {
   if (savedDate === currentDate) return { date: currentDate, entries, changed: false }
   return { date: currentDate, entries: [] as T[], changed: true }

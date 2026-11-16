@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   appendCompletedSong,
+  createRepeatBlocklist,
   isCompletedDailyMusicTrack,
   isInPlaybackQueue,
   repeatTitleKey,
@@ -33,6 +34,7 @@ const completed = { title: 'Because You Loved Me', artist: 'Celine Dion', played
 assert.deepEqual(appendCompletedSong([], completed), [completed])
 const existingLedger = [completed]
 assert.equal(appendCompletedSong(existingLedger, { ...completed, playedAt: 200 }), existingLedger, 'a completed title is logged only once daily')
+assert.deepEqual(createRepeatBlocklist([baseKey], ['queued song']), new Set([baseKey, 'queued song']), 'repeat blocking includes completed titles and current queued titles')
 
 assert.equal(isCompletedDailyMusicTrack({ kind: 'music', title: 'Song', endAt: 100, trackDay: day1, currentDay: day1, now: 100 }), true)
 assert.equal(isCompletedDailyMusicTrack({ kind: 'music', title: 'Song', endAt: 101, trackDay: day1, currentDay: day1, now: 100 }), false, 'do not mark a song completed before it ends')

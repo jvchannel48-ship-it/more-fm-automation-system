@@ -1,13 +1,20 @@
 # Delivery outcomes
 
 ## Listener song request flow
-- [x] Public listener request UI and endpoint are temporarily disabled while the persistent backend is not configured.
-- [ ] Re-enable the message/request button only after the production queue backend is configured and verified.
+- [x] Preserve the active public song-request UI and POST `/api/requests` route from the current upstream branch; do not restore stale local code that disabled the endpoint.
+- [ ] Verify production queue persistence and end-to-end listener request processing after a fresh deployment.
 
 ## AutoDJ request playback
 - [x] AutoDJ reads pending message requests, matches them through the existing YouTube/provider lookup, and queues them in request order.
 - [x] Requested songs are played automatically in sequence, without repeating the same song through the existing no-repeat rules.
 - [x] A request is removed from durable storage only after its associated track finishes; failed or unmatched requests remain retryable.
+
+## Song-request lookup and history controls
+- [x] Match a requested song by exact title and artist in no-key YouTube search results even when the uploader/channel label is not recognized as official; retain the existing track filters.
+- [x] Do not let general selection history block a song lookup; always block songs in the completed-song ledger for the current Manila day or in the current music queue, even if an old saved no-repeat setting is false.
+- [x] Identify a duplicate request as already played or already scheduled; keep unmatched requests pending for retry instead of reporting them as duplicates.
+- [x] Remove played-song history displays, playback-history statistics, no-repeat and rotation-history controls, and the “Based on songs successfully added to station history” copy from the Admin Panel; keep the private completed-song ledger for repeat prevention.
+- [ ] Live listener request verification remains pending until a fresh deployment is confirmed; the source route is active, and an unmatched request must remain pending for retry.
 
 ## Continuous playback and recovery
 - [x] The browser preloads upcoming tracks and automatically retries an active source that stalls or takes too long to load.
