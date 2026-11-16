@@ -447,6 +447,9 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
     ? await getRjFmPlaylistTracks()
     : await getPlaylistTracks(playlistUrl)
   if (playlist.length === 0) return null
+  if (playlistUrl === RJ_FM_PLAYLIST_URL && songCount > 0 && songCount % playlist.length === 0) {
+    await getRjFmPlaylistTracks({ refreshNow: true })
+  }
   const weeklyOffset = weeklyPlaylistOffset(startAt, playlist.length)
   for (let offset = 0; offset < playlist.length; offset++) {
     const item = playlist[(weeklyOffset + songCount + offset) % playlist.length]
@@ -465,6 +468,29 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
       sourcePlaylist: playlistUrl,
       sourceRefreshedAt: Date.now(),
       duration: item.duration,
+    }
+  }
+  if (playlistUrl === RJ_FM_PLAYLIST_URL) {
+    const refreshed = await getRjFmPlaylistTracks({ refreshNow: true })
+    if (refreshed.length > playlist.length) {
+      for (const item of refreshed) {
+        const artist = item.artist?.trim() || playlistArtist(item.title, item.channel)
+        if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist)) || blockedTitleKeys.has(`id:${item.id}`)) continue
+        const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 8_000)
+        if (!download?.downloadUrl) continue
+        return {
+          id: item.id,
+          key: songKey(item.title),
+          artist,
+          title: item.title,
+          src: playableSource(download.downloadUrl),
+          sourceUrl: item.url,
+          sourceChannel: item.channel,
+          sourcePlaylist: playlistUrl,
+          sourceRefreshedAt: Date.now(),
+          duration: item.duration,
+        }
+      }
     }
   }
   return null
