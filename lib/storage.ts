@@ -45,9 +45,11 @@ const memoryState = new Map<string, string>()
 const memoryLeases = new Map<string, { owner: string; expiresAt: number }>()
 const memoryListeners = new Map<string, { lastSeenAt: number }>()
 const memoryRequests: SongRequest[] = []
+let listenerMutationQueue = Promise.resolve()
 const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number }>()
 const STATION_STATE_PATH = 'station/state-v2.json'
 export const hasFilesystemPersistence = Boolean(filesystemDataDir)
+export const hasPostgresPersistence = Boolean(databaseUrl)
 export const hasPersistentStorage = Boolean(databaseUrl) || hasFilesystemPersistence
 export const hasSettingsPersistence = hasPersistentStorage || hasSupabaseStorageConfig()
 export const hasQueuePersistence = hasPersistentStorage || hasSupabaseStorageConfig()
@@ -332,13 +334,45 @@ export async function renewStationLease(lease: StationLease, leaseMs: number): P
 export async function registerListener(id: string, active: boolean, listenerLimit: number) {
   const pool = getPool()
   if (!pool) {
-    const cutoff = Date.now() - 60_000
-    for (const [listenerId, listener] of memoryListeners) if (listener.lastSeenAt < cutoff) memoryListeners.delete(listenerId)
-    const alreadyActive = memoryListeners.has(id)
-    const accepted = !active || alreadyActive || listenerLimit <= 0 || memoryListeners.size < listenerLimit
-    if (active && accepted) memoryListeners.set(id, { lastSeenAt: Date.now() })
-    if (!active) memoryListeners.delete(id)
-    return { accepted, listenersNow: memoryListeners.size }
+    const previous = listenerMutationQueue
+    let release!: () => void
+    listenerMutationQueue = new Promise<void>((resolve) => { release = resolve })
+    await previous
+    try {
+      const now = Date.now()
+      const cutoff = now - 60_000
+      let listeners: Record<string, number> = {}
+      if (hasQueuePersistence) {
+        try {
+          const stored = await readJson<Record<string, number>>(LISTENERS_PATH, {})
+          if (stored && typeof stored === 'object' && !Array.isArray(stored)) listeners = stored
+        } catch { /* Retain process-local heartbeats when shared storage is unavailable. */ }
+      }
+      for (const [listenerId, lastSeenAt] of Object.entries(listeners)) {
+        if (typeof lastSeenAt !== 'number' || lastSeenAt < cutoff) delete listeners[listenerId]
+      }
+      for (const [listenerId, record] of memoryListeners) {
+        if (record.lastSeenAt < cutoff) memoryListeners.delete(listenerId)
+        else listeners[listenerId] = Math.max(listeners[listenerId] ?? 0, record.lastSeenAt)
+      }
+      const alreadyActive = Object.hasOwn(listeners, id)
+      const accepted = !active || alreadyActive || listenerLimit <= 0 || Object.keys(listeners).length < listenerLimit
+      if (active && accepted) {
+        listeners[id] = now
+        memoryListeners.set(id, { lastSeenAt: now })
+      }
+      if (!active) {
+        delete listeners[id]
+        memoryListeners.delete(id)
+      }
+      if (hasQueuePersistence) {
+        try { await writeJson(LISTENERS_PATH, listeners) }
+        catch (error) { console.warn('[morefm] could not persist listener heartbeats; using process-local count', error) }
+      }
+      return { accepted, listenersNow: Object.keys(listeners).length }
+    } finally {
+      release()
+    }
   }
   await ensureStateTable()
   const client = await pool.connect()
@@ -385,9 +419,19 @@ export async function getStoredListenerCount() {
 }
 
 async function getListenerCountFromState() {
-  const listeners = await readJson<Record<string, number>>(LISTENERS_PATH, {})
   const cutoff = Date.now() - 60_000
-  return Object.values(listeners).filter((seenAt) => seenAt >= cutoff).length
+  for (const [id, listener] of memoryListeners) if (listener.lastSeenAt < cutoff) memoryListeners.delete(id)
+  if (!hasQueuePersistence) return memoryListeners.size
+  try {
+    const listeners = await readJson<Record<string, number>>(LISTENERS_PATH, {})
+    for (const [id, lastSeenAt] of Object.entries(listeners)) {
+      if (typeof lastSeenAt !== 'number' || lastSeenAt < cutoff) delete listeners[id]
+    }
+    for (const [id, listener] of memoryListeners) listeners[id] = Math.max(listeners[id] ?? 0, listener.lastSeenAt)
+    return Object.keys(listeners).length
+  } catch {
+    return memoryListeners.size
+  }
 }
 
 export async function getStorageUsage() {
@@ -448,7 +492,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   noRepeatEnabled: true,
   autoDjEnabled: true,
   morSyncEnabled: false,
-  shuffleEnabled: false,
+  shuffleEnabled: true,
   goodVibesEnabled: false,
   rotationPoolSize: 100,
   listenerLimit: 2,
@@ -489,17 +533,17 @@ export const DEFAULT_SETTINGS: StationSettings = {
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
-  const migrations = await readJson<{ tagalogLoveRotation?: number; crossfaderCurve?: number; listenerLimit?: number }>(SETTINGS_MIGRATIONS_PATH, {})
+  const migrations = await readJson<{ tagalogLoveRotation?: number; crossfaderCurve?: number; listenerLimit?: number; shuffleEnabled?: number }>(SETTINGS_MIGRATIONS_PATH, {})
   const needsTagalogMigration = migrations.tagalogLoveRotation !== 2
   const needsCrossfaderMigration = migrations.crossfaderCurve !== 1
   const needsListenerLimitMigration = migrations.listenerLimit !== 1
-  if (hasSettingsPersistence && (needsTagalogMigration || needsCrossfaderMigration || needsListenerLimitMigration)) {
+  const needsShuffleMigration = migrations.shuffleEnabled !== 1
+  if (hasSettingsPersistence && (needsTagalogMigration || needsCrossfaderMigration || needsListenerLimitMigration || needsShuffleMigration)) {
     const migrated = {
       ...saved,
       ...(needsTagalogMigration ? {
         tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
         noRepeatEnabled: typeof saved.noRepeatEnabled === 'boolean' ? saved.noRepeatEnabled : true,
-        shuffleEnabled: false,
       } : {}),
       ...(needsCrossfaderMigration ? {
         crossfaderCurve: isCrossfaderCurve(saved.crossfaderCurve) && saved.crossfaderCurve !== 'smooth'
@@ -509,12 +553,14 @@ export async function getSettings(): Promise<StationSettings> {
       ...(needsListenerLimitMigration ? {
         listenerLimit: typeof saved.listenerLimit === 'number' && saved.listenerLimit > 0 ? saved.listenerLimit : DEFAULT_SETTINGS.listenerLimit,
       } : {}),
+      ...(needsShuffleMigration ? { shuffleEnabled: true } : {}),
     }
     const nextMigrations = {
       ...migrations,
       ...(needsTagalogMigration ? { tagalogLoveRotation: 2 } : {}),
       ...(needsCrossfaderMigration ? { crossfaderCurve: 1 } : {}),
       ...(needsListenerLimitMigration ? { listenerLimit: 1 } : {}),
+      ...(needsShuffleMigration ? { shuffleEnabled: 1 } : {}),
     }
     try {
       await writeJson(SETTINGS_PATH, migrated)
@@ -535,7 +581,7 @@ export async function getSettings(): Promise<StationSettings> {
     noRepeatEnabled: true,
     autoDjEnabled: true,
     morSyncEnabled: typeof saved.morSyncEnabled === 'boolean' ? saved.morSyncEnabled : false,
-    shuffleEnabled: false,
+    shuffleEnabled: typeof saved.shuffleEnabled === 'boolean' ? saved.shuffleEnabled : true,
     goodVibesEnabled: typeof saved.goodVibesEnabled === 'boolean' ? saved.goodVibesEnabled : false,
     rotationPoolSize: typeof saved.rotationPoolSize === 'number' ? Math.max(50, Math.min(300, Math.round(saved.rotationPoolSize))) : 100,
     listenerLimit: typeof saved.listenerLimit === 'number' ? Math.max(0, Math.min(1000, Math.round(saved.listenerLimit))) : DEFAULT_SETTINGS.listenerLimit,

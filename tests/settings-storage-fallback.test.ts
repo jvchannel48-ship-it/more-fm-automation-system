@@ -43,7 +43,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
 async function main() {
   try {
-    const { getSettings, hasFilesystemPersistence, hasPersistentStorage, hasSettingsPersistence, SETTINGS_PATH, STATE_PATH, readJson, writeJson } = await import('../lib/storage.ts')
+    const { getSettings, getStoredListenerCount, hasFilesystemPersistence, hasPersistentStorage, hasSettingsPersistence, LISTENERS_PATH, SETTINGS_PATH, STATE_PATH, readJson, registerListener, writeJson } = await import('../lib/storage.ts')
     assert.equal(hasFilesystemPersistence, false, 'an inaccessible Render mount is not advertised as persistent')
     assert.equal(hasPersistentStorage, false, 'a configured but unwritable disk is not persistent storage')
     assert.equal(hasSettingsPersistence, true, 'private Supabase Storage is enough for admin settings')
@@ -52,7 +52,8 @@ async function main() {
     const initial = await getSettings()
     assert.equal(initial.tagalogOnlyEnabled, true)
     assert.equal(initial.noRepeatEnabled, true)
-    assert.equal(initial.shuffleEnabled, false, 'shuffle is permanently disabled for sequential rotation')
+    assert.equal(initial.shuffleEnabled, true, 'shuffle is enabled by default for randomized rotation')
+    assert.equal(initial.listenerLimit, 2, 'the default listener cap remains two')
     assert.equal(initial.jingleEnabled, true, 'the configured default station jingle is enabled')
     assert.equal(initial.jingle?.url, '/rj-fm-jingle.mp3', 'the default station jingle remains configured')
     assert.equal(initial.goldenSunday, null, 'Golden Sunday jingle asset is disabled')
@@ -65,13 +66,28 @@ async function main() {
     assert.ok(objects.has('app-state/station/settings.json'), 'settings JSON is stored in the private bucket')
     assert.ok(objects.has('app-state/station/settings-migrations-v1.json'), 'migration marker is stored durably')
     assert.equal(JSON.parse(objects.get('app-state/station/settings-migrations-v1.json') ?? '{}').crossfaderCurve, 1, 'equal-power settings migration is recorded')
+    assert.equal(JSON.parse(objects.get('app-state/station/settings-migrations-v1.json') ?? '{}').shuffleEnabled, 1, 'shuffle default migration is recorded')
 
-    await writeJson(SETTINGS_PATH, { ...initial, tagalogOnlyEnabled: false, noRepeatEnabled: false, shuffleEnabled: false, crossfaderCurve: 'smooth', crossfadeSeconds: 5 })
+    const listenerOne = await registerListener('listener-tab-id-000001', true, 2)
+    const listenerTwo = await registerListener('listener-tab-id-000002', true, 2)
+    const listenerThree = await registerListener('listener-tab-id-000003', true, 2)
+    assert.deepEqual([listenerOne.accepted, listenerOne.listenersNow], [true, 1], 'first active tab is counted')
+    assert.deepEqual([listenerTwo.accepted, listenerTwo.listenersNow], [true, 2], 'second active tab fills the default capacity')
+    assert.deepEqual([listenerThree.accepted, listenerThree.listenersNow], [false, 2], 'a new tab is rejected when the listener cap is reached')
+    assert.equal(await getStoredListenerCount(), 2, 'admin listener monitor reads active sessions from shared storage')
+    assert.ok(objects.has(`app-state/${LISTENERS_PATH}`), 'active listener heartbeats are stored in private storage')
+    await registerListener('listener-tab-id-000001', false, 2)
+    assert.equal(await getStoredListenerCount(), 1, 'stopping a player removes its listener session')
+    timeOffset += 61_000
+    assert.equal(await getStoredListenerCount(), 0, 'inactive sessions expire after 60 seconds')
+
+    await writeJson(SETTINGS_PATH, { ...initial, tagalogOnlyEnabled: false, noRepeatEnabled: false, shuffleEnabled: false, listenerLimit: 7, crossfaderCurve: 'smooth', crossfadeSeconds: 5 })
     timeOffset += 3_000
     const reloaded = await getSettings()
     assert.equal(reloaded.tagalogOnlyEnabled, false, 'an explicit saved Tagalog-only admin choice is preserved')
     assert.equal(reloaded.noRepeatEnabled, true, 'no-repeat remains enforced')
     assert.equal(reloaded.shuffleEnabled, false, 'an explicit saved shuffle choice is preserved')
+    assert.equal(reloaded.listenerLimit, 7, 'an explicit saved listener cap is preserved')
     assert.equal(reloaded.crossfaderCurve, 'smooth', 'a later explicit admin curve choice is honored')
     assert.equal(reloaded.crossfadeSeconds, 5, 'a later explicit admin crossfade duration is honored')
     await writeJson(STATE_PATH, { dailyPlayedDate: '2026-11-14', dailyPlayedTitles: [{ title: 'Because You Loved Me', artist: 'Celine Dion', playedAt: 1, key: 'because you loved me' }] })

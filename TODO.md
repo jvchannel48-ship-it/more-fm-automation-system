@@ -39,3 +39,11 @@
 - [x] Keep `public/manus-routes.json` synchronized with the page routes.
 - [x] Run the crossfade, settings/disk, queue/repeat/filter/schedule tests plus TypeScript/build checks.
 - [x] Commit and push the completed change to the imported repository's `main` branch.
+
+## Bicol-region RJ FM branding
+- [x] Update the RJ FM logo with the exact “NO. 1 BICOL REGION” wording and “RJ FM” name, keeping the supplied gold/teal emblem in a dark-navy-compatible palette.
+
+## Admin listener and shuffle controls
+- [x] Add per-tab listener heartbeats and report the current active-listener total; remove stopped tabs and expire stale sessions after 60 seconds.
+- [x] Make the listener-cap control save and enforce integers from 0–1,000 (default 2; 0 means unlimited), and show the active total alongside the cap. Postgres advisory locking provides a race-free global cap; JSON-storage fallback warns that simultaneous multi-instance admission is best-effort.
+- [x] Make Shuffle an enabled, persistent ON/OFF switch; ON randomizes eligible songs, OFF follows source order, and no-repeat protection remains enforced.

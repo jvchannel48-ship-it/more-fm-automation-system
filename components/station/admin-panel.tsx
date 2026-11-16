@@ -284,8 +284,8 @@ export function AdminPanel() {
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div><Label>Song rotation and listeners</Label><p className="text-xs text-muted-foreground">Songs stream from their source; the station does not save MP3 copies. Only recent song identifiers are kept for repeat avoidance, and the player queues just a few upcoming tracks.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle: OFF</Label><p className="text-xs text-muted-foreground">Fixed OFF so the eligible catalog follows source order and the no-repeat ledger can work through every song.</p></div>
-          <Switch id="shuffle-enabled" checked={false} disabled /></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/45 p-3"><div><Label htmlFor="shuffle-enabled">Shuffle: {data?.shuffleEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON randomizes eligible songs and artists; OFF follows source order. No-repeat protection remains active in either mode.</p></div>
+          <Switch id="shuffle-enabled" aria-label="Shuffle on or off" checked={data?.shuffleEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { shuffleEnabled: checked })} /></div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/35 bg-amber-300/[0.08] p-3"><div><Label htmlFor="board-operator-enabled">Board Operator</Label><p className="text-xs text-muted-foreground">ON displays “Board Operator Active” on the public player.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200" role="status">{data?.boardOperatorEnabled ? 'ON · visible' : 'OFF · hidden'}</p></div>
           <Switch id="board-operator-enabled" aria-label="Board Operator on or off" checked={data?.boardOperatorEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { boardOperatorEnabled: checked })} /></div>
       </div>
@@ -307,14 +307,15 @@ export function AdminPanel() {
       </div>
       <Button variant="secondary" disabled={!data || busy || Number(rotationPoolSize) < 50 || Number(rotationPoolSize) > 300 || Number(listenerLimit) < 0 || Number(listenerLimit) > 1000 || !Number.isInteger(Number(rotationPoolSize)) || !Number.isInteger(Number(listenerLimit))}
         onClick={() => send('PUT', { rotationPoolSize: Number(rotationPoolSize), listenerLimit: Number(listenerLimit) })}>Save rotation and listener limits</Button>
-      <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION IS LIMITED LISTENER. Please try again later.” Existing listeners stay connected. Listener cap defaults to unlimited.</p>
+      <p className="text-xs text-muted-foreground">When the cap is reached, new listeners see “THIS STATION HAS REACHED ITS LISTENER LIMIT.” Existing listeners stay connected. The default cap is 2; set it to 0 for unlimited.</p>
       <div className="flex flex-col gap-3 rounded-lg border border-sky-300/20 bg-sky-300/[0.045] p-3">
         <div className="flex items-start justify-between gap-3"><div className="flex items-start gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-sky-300" aria-hidden="true" /><div><Label>Listener Monitor</Label><p className="text-xs text-muted-foreground">Basic active-listener count and capacity only. No location data is collected.</p></div></div><Button type="button" variant="ghost" size="sm" disabled={!data || busy} onClick={() => void mutate()}><RefreshCw className="size-3.5" aria-hidden="true" /> Refresh</Button></div>
         <div className="grid grid-cols-2 gap-2">
-          <Stat label="Active listeners" value={data?.listenersNow ?? '–'} />
+          <Stat label="Total active listeners" value={data?.listenersNow ?? '–'} />
           <Stat label="Listener limit" value={data?.listenerLimit ? data.listenerLimit : 'Unlimited'} />
         </div>
-        <p className="text-[11px] text-muted-foreground">Listener sessions expire after 60 seconds without a heartbeat. No location data is collected.</p>
+        <p className="text-[11px] text-muted-foreground">Shows unique active player tabs; sessions expire after 60 seconds without a heartbeat. No location data is collected.</p>
+        {data?.listenerLimit && data.listenerCapGloballyEnforced === false && <p className="text-[11px] text-amber-200">This storage-only listener cap is best-effort across simultaneously running app instances. Configure PostgreSQL for a race-free global cap.</p>}
       </div>
     </div>
 
@@ -420,7 +421,7 @@ export function AdminPanel() {
     </div>
 
     <div className="grid grid-cols-2 gap-2">
-      <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
+      <Stat label="Total listeners now" value={data?.listenersNow ?? '–'} />
       <Stat label="Songs in history" value={data?.songsThisWeek ?? '–'} />
       <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
       <Stat label="Queued tracks" value={data?.queued ?? '–'} />

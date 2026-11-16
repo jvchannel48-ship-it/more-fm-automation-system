@@ -7,16 +7,16 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'RJ FM — Songs',
+  title: 'RJ FM — No. 1 Bicol Region',
   description:
-    'RJ FM radio with a personal songs playlist and automatic next-track queue.',
+    'RJ FM, No. 1 Bicol Region — broadcasting from the ABS-CBN Complex, Naga City.',
   generator: 'v0.app',
   icons: {
     icon: [
-      { url: '/rj-fm-logo.jpg', media: '(prefers-color-scheme: light)' },
-      { url: '/rj-fm-logo.jpg', media: '(prefers-color-scheme: dark)' },
+      { url: '/rj-fm-bicol-logo.jpg', media: '(prefers-color-scheme: light)' },
+      { url: '/rj-fm-bicol-logo.jpg', media: '(prefers-color-scheme: dark)' },
     ],
-    apple: '/rj-fm-logo.jpg',
+    apple: '/rj-fm-bicol-logo.jpg',
   },
 }
 

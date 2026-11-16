@@ -13,12 +13,13 @@ export default function Home() {
       />
       <header className="glass-surface mx-auto mt-3 flex w-[calc(100%-1rem)] max-w-3xl flex-wrap items-center justify-between gap-2 rounded-2xl px-2.5 py-2.5 sm:mt-5 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <div className="size-12 shrink-0 overflow-hidden rounded-full border border-primary/60 bg-card p-1 shadow-lg shadow-primary/10 sm:size-20">
-            <img src="/rj-fm-logo.jpg" alt="RJ FM station logo" className="size-full rounded-full object-cover" />
+          <div className="size-12 shrink-0 overflow-hidden rounded-full border border-primary/60 bg-[#0b1220] p-1 shadow-lg shadow-primary/10 sm:size-20">
+            <img src="/rj-fm-bicol-logo.jpg" alt="RJ FM — No. 1 Bicol Region" className="size-full rounded-full object-cover" />
           </div>
-          <span className="font-mono text-xs font-bold tracking-widest sm:text-sm">
-            RJ <span className="text-primary">FM</span>
-          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-mono text-xs font-bold tracking-widest sm:text-sm">RJ <span className="text-primary">FM</span></span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.12em] text-amber-300 sm:text-[9px] sm:tracking-[0.16em]">No. 1 Bicol Region</span>
+          </div>
         </div>
         <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
           <PlaylistMenu />

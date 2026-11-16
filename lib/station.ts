@@ -1,5 +1,5 @@
 import 'server-only'
-import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
+import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasPostgresPersistence, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
@@ -1300,6 +1300,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
   return {
     ...settings,
     queuePersistenceConfigured: hasQueuePersistence,
+    listenerCapGloballyEnforced: hasPostgresPersistence,
     songsThisWeek: state.history.length,
     artistsThisHour: hourArtists.size,
     queued: state.tracks.filter((t) => t.startAt > now).length,

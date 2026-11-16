@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
       noRepeatEnabled: true,
       autoDjEnabled: typeof body.autoDjEnabled === 'boolean' ? body.autoDjEnabled : current.autoDjEnabled,
       morSyncEnabled: typeof body.morSyncEnabled === 'boolean' ? body.morSyncEnabled : current.morSyncEnabled,
-      shuffleEnabled: false,
+      shuffleEnabled: typeof body.shuffleEnabled === 'boolean' ? body.shuffleEnabled : current.shuffleEnabled,
       goodVibesEnabled: typeof body.goodVibesEnabled === 'boolean' ? body.goodVibesEnabled : current.goodVibesEnabled,
       rotationPoolSize: typeof body.rotationPoolSize === 'number' ? body.rotationPoolSize : current.rotationPoolSize,
       listenerLimit: typeof body.listenerLimit === 'number' ? body.listenerLimit : current.listenerLimit,
