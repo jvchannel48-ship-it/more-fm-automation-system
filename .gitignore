@@ -9,8 +9,6 @@
 
 # production
 /build
-/.open-next/
-/.wrangler/
 
 # debug
 npm-debug.log*
@@ -20,14 +18,10 @@ yarn-error.log*
 
 # env files
 .env*
-!.env.example
-.dev.vars
 
 # vercel
 .vercel
-.morefm-storage/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-cloudflare-env.d.ts

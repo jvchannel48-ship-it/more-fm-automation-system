@@ -1,9 +1,0 @@
-# OpenNext uses this to choose the .env file loaded by Next.js locally.
-NEXTJS_ENV=development
-
-# Copy required application secrets from .env.example when testing protected routes locally.
-# ADMIN_PASSWORD=
-# ADMIN_SECRET=
-# SUPABASE_URL=
-# SUPABASE_SERVICE_ROLE_KEY=
-# CRON_SECRET=

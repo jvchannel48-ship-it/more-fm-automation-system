@@ -3,8 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type PlaylistId = 'senior-classics' | 'overnight' | 'morning-pop'
-export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -52,13 +51,6 @@ const PINOY_OLDIES = artists('tagalog', [
   'Celeste Legaspi',
   'Merci Molina',
   'Asin',
-  'Freddie Aguilar',
-  'Florante',
-  'Sampaguita',
-  'APO Hiking Society|apo hiking',
-  'VST & Company|vst',
-  'Jose Mari Chan',
-  'Dulce',
 ])
 
 const PINOY_LOVE = artists('tagalog', [
@@ -96,52 +88,6 @@ const PINOY_LOVE = artists('tagalog', [
   'Lani Misalucha',
   'Jamie Rivera',
   'Jaya',
-  'Moira Dela Torre',
-  'Sarah Geronimo',
-  'Yeng Constantino',
-  'Ben&Ben',
-  'Zack Tabudlo',
-])
-
-const SUNDAY_TAGALOG_OLDIES = [
-  ...artists('tagalog', [
-  'Imelda Papin',
-  'Claire dela Fuente|dela fuente',
-  'Victor Wood',
-  'Eddie Peregrina',
-  'Pilita Corrales',
-  'Nora Aunor',
-  'Bing Rodrigo',
-  'Diomedes Maturan',
-  'Basil Valdez',
-  'Marco Sison',
-  'Rey Valera',
-  ]),
-  ...PINOY_OLDIES,
-]
-
-const OPM_ACOUSTIC = artists('tagalog', [
-  'MYMP',
-  'Freestyle',
-  'Nina',
-  'Aiza Seguerra',
-  'Guitarist Manila',
-  'South Border',
-  'Side A',
-  'Kyla',
-])
-
-const SYNTH_POP_80S = artists('english', [
-  'a-ha',
-  'Tears for Fears',
-  'Duran Duran',
-  'The Human League',
-  'Depeche Mode',
-  'Pet Shop Boys',
-  'Alphaville',
-  'Eurythmics',
-  'OMD',
-  'Simple Minds',
 ])
 
 const ENGLISH_LOVE = artists('english', [
@@ -173,21 +119,6 @@ const ENGLISH_LOVE = artists('english', [
   'Peabo Bryson',
   'Brian McKnight',
   'Lionel Richie',
-  'Adele',
-  'John Legend',
-  'Sam Smith',
-  'Norah Jones',
-  'Sade',
-  'Simply Red',
-  'Chicago',
-  'The Righteous Brothers',
-  'The Corrs',
-  'James Blunt',
-  'Coldplay',
-  'Jason Mraz',
-  'Bruno Mars',
-  'Taylor Swift',
-  'Ed Sheeran',
 ])
 
 const NIGHT_LOVE = artists('english', [
@@ -217,40 +148,6 @@ const NIGHT_LOVE = artists('english', [
   'Deniece Williams',
   'Lionel Richie',
   'Dan Hill',
-  'Sade',
-  'Simply Red',
-  'Norah Jones',
-  'John Legend',
-  'Adele',
-  'The Righteous Brothers',
-  'Heart',
-])
-
-const SUNDAY_ENGLISH_OLDIES = artists('english', [
-  'Victor Wood',
-  'The Platters',
-  'Elvis Presley',
-  'Frank Sinatra',
-  'Nat King Cole',
-  'Dean Martin',
-  'Perry Como',
-  'Andy Williams',
-  'Neil Sedaka',
-  'Paul Anka',
-  'The Carpenters',
-  'The Everly Brothers',
-  'The Righteous Brothers',
-  'The Beatles',
-  'The Monkees',
-  'The Lettermen',
-  'Bobby Vinton',
-  'Connie Francis',
-  'Brenda Lee',
-  'Dionne Warwick',
-  'Engelbert Humperdinck|engelbert',
-  'Tom Jones',
-  'Cliff Richard',
-  'Johnny Mathis',
 ])
 
 const ENGLISH_DISCO = artists('english', [
@@ -258,108 +155,74 @@ const ENGLISH_DISCO = artists('english', [
   'Donna Summer',
   'ABBA',
   'Boney M',
+  'Village People',
+  'KC and the Sunshine Band|sunshine band',
+  'Gloria Gaynor',
   'Earth Wind and Fire|earth wind',
   'Kool and the Gang|kool',
-  'Diana Ross',
-  'Lionel Richie',
-  'Stevie Wonder',
+  'Sister Sledge',
+  'Madonna',
+  'Modern Talking',
+  'Sandra',
+  'C.C. Catch|catch',
+  'Bad Boys Blue',
   'Michael Jackson',
+  'Ace of Base',
+  'La Bouche',
+  'Real McCoy',
+  'Haddaway',
+  'Dr. Alban|alban',
+  'Pet Shop Boys',
+  'Rick Astley',
+  'Samantha Fox',
   'Laura Branigan',
-  'Commodores',
-  'Olivia Newton-John',
+  'Eruption',
+  'Whigfield',
+  'Corona',
 ])
 
 const TAGALOG_DISCO = artists('tagalog', [
-  'Rey Valera',
-  'Basil Valdez',
-  'Martin Nievera',
+  'VST & Company|vst',
+  'Hotdog',
   'Sharon Cuneta',
   'Pops Fernandez',
   'Gary Valenciano',
   'Vina Morales',
-  'Joey Albert',
+  'Manilyn Reynes',
+  'Jaya',
+  'Andrew E',
   'Rico J. Puno|rico j',
 ])
 
-const GOOD_VIBES_ENGLISH = artists('english', [
-  'Ava Max',
-  'Dua Lipa',
-  'Sia',
-  'Katy Perry',
-  'Lady Gaga',
-  'Miley Cyrus',
-  'Kelly Clarkson',
-  'P!nk|pink',
-  'OneRepublic',
-  'Maroon 5|maroon five',
-  'Bruno Mars',
-  'Taylor Swift',
-  'Ed Sheeran',
-  'Harry Styles',
-  'Shawn Mendes',
-  'Jason Mraz',
-  'The Script',
-  'Imagine Dragons',
-  'One Direction',
-  'Ellie Goulding',
-])
-
-// Decade tags help YouTube search land on classic and modern studio recordings.
-const DECADE_VARIANTS = ['1960s classic love song', '1970s classic love song', '1980s classic love song', '1990s love song', '2000s love song', '2010s love song', '2020s love song']
-const LOVE_VARIANTS = ['', 'official audio', 'love song', 'classic love song', '80s 90s', '70s 80s', '2000s', ...DECADE_VARIANTS]
-const GOOD_VIBES_VARIANTS = ['', 'official audio', 'pop hits', 'feel good hits', 'greatest hits', ...DECADE_VARIANTS]
-const OPM_VARIANTS = ['', 'official audio', 'OPM', 'Tagalog love song', '80s 90s OPM', 'classic OPM', ...DECADE_VARIANTS]
+const LOVE_VARIANTS = ['', 'official audio', 'lyrics', 'greatest hits', 'love song']
+const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
-    pools: { english: [], tagalog: SUNDAY_TAGALOG_OLDIES },
-    variants: { english: [], tagalog: ['Tagalog oldies', 'classic OPM Tagalog', 'Filipino classics', 'OPM oldies 80s 90s'] },
-    tagalogOnly: true,
-  },
-  'sunday-english-oldies': {
-    id: 'sunday-english-oldies',
-    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
-    variants: { english: ['', 'classic oldies', 'senior classics', 'golden oldies'], tagalog: [] },
-  },
-  'sunday-tagalog': {
-    id: 'sunday-tagalog',
-    pools: { english: [], tagalog: PINOY_LOVE },
-    variants: { english: [], tagalog: OPM_VARIANTS },
+    pools: { english: [], tagalog: PINOY_OLDIES },
+    variants: { english: [], tagalog: ['', 'official audio', 'lyrics', 'greatest hits'] },
     tagalogOnly: true,
   },
   'english-love': {
     id: 'english-love',
-    pools: { english: [...ENGLISH_LOVE, ...SYNTH_POP_80S], tagalog: [...PINOY_LOVE, ...OPM_ACOUSTIC] },
-    variants: { english: [...LOVE_VARIANTS, '80s synth-pop', '80s synth pop love songs'], tagalog: [...OPM_VARIANTS, 'OPM acoustic', 'Tagalog acoustic love songs'] },
-  },
-  'good-vibes': {
-    id: 'good-vibes',
-    pools: { english: GOOD_VIBES_ENGLISH, tagalog: [] },
-    variants: { english: GOOD_VIBES_VARIANTS, tagalog: [] },
+    pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
+    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   disco: {
     id: 'disco',
     pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
-    variants: { english: ['', 'soft disco', 'classic hits', 'soul hits'], tagalog: ['', 'official audio', 'OPM love songs'] },
-  },
-  news: {
-    id: 'news',
-    pools: { english: [], tagalog: [] },
-    variants: { english: [], tagalog: [] },
+    variants: { english: ['', 'official audio', 'hits', 'official video'], tagalog: ['', 'official audio', 'disco'] },
   },
   'night-love': {
     id: 'night-love',
     pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
-    variants: {
-      english: ['soft love ballad', 'slow romantic ballad', 'classic love song'],
-      tagalog: ['Tagalog love ballad', 'OPM slow love song', 'romantic OPM ballad'],
-    },
+    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...SYNTH_POP_80S], tagalog: [...PINOY_LOVE, ...OPM_ACOUSTIC] },
-    variants: { english: [...LOVE_VARIANTS, '80s synth-pop'], tagalog: [...OPM_VARIANTS, 'OPM acoustic'] },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
+    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {
     id: 'off-air',
@@ -370,111 +233,44 @@ export const PROGRAMS: Record<ProgramId, Program> = {
 
 export interface ManilaTime {
   hour: number
-  minute: number
   day: number
 }
 
 export function manilaTime(ms: number): ManilaTime {
   const d = new Date(ms + MANILA_OFFSET_MS)
-  return { hour: d.getUTCHours(), minute: d.getUTCMinutes(), day: d.getUTCDay() }
+  return { hour: d.getUTCHours(), day: d.getUTCDay() }
 }
 
-/** Daily playlist windows in Manila time; the station stays on air continuously. */
-export function playlistAt(ms: number): PlaylistId {
-  const { hour, minute } = manilaTime(ms)
-  const minutes = hour * 60 + minute
-  if (minutes >= 16 * 60 || minutes < 2) return 'senior-classics'
-  if (minutes < 4 * 60) return 'overnight'
-  return 'morning-pop'
+export function isOffAir(ms: number): boolean {
+  const { hour } = manilaTime(ms)
+  return hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
 }
 
-/** Return the next daily playlist handoff in Manila time. */
-export function nextPlaylistBoundary(ms: number): number {
-  const date = new Date(ms + MANILA_OFFSET_MS)
-  const { hour, minute } = manilaTime(ms)
-  if (hour === 0 && minute < 2) date.setUTCHours(0, 2, 0, 0)
-  else if (hour < 4) date.setUTCHours(4, 0, 0, 0)
-  else if (hour < 16) date.setUTCHours(16, 0, 0, 0)
-  else date.setUTCHours(24, 2, 0, 0)
-  return date.getTime() - MANILA_OFFSET_MS
-}
-
-export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {
-  // Scheduled sign-offs are disabled while AutoDJ plays continuously.
-  void ms
-  void signOffHour
-  void signOnHour
-  return false
-}
-
-export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {
+export function nextSignOn(ms: number): number {
   const d = new Date(ms + MANILA_OFFSET_MS)
-  d.setUTCHours(signOnHour, 0, 0, 0)
+  d.setUTCHours(SIGN_ON_HOUR, 0, 0, 0)
   let target = d.getTime() - MANILA_OFFSET_MS
   if (target <= ms) target += 24 * 60 * 60 * 1000
   return target
 }
 
-export function nextSignOff(ms: number, signOffHour = SIGN_OFF_HOUR): number {
-  const d = new Date(ms + MANILA_OFFSET_MS)
-  d.setUTCHours(signOffHour, 0, 0, 0)
-  let target = d.getTime() - MANILA_OFFSET_MS
-  if (target <= ms) target += 24 * 60 * 60 * 1000
-  if (manilaTime(target).day === 0) target += 24 * 60 * 60 * 1000
-  return target
-}
-
-/** Sunday programming keeps a gentle oldies-to-love-song flow from 4 AM through the evening. */
-export function programAt(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR, discoStartHour = 16, discoEndHour = 19, newsEnabled = true): Program {
-  const { hour, minute, day } = manilaTime(ms)
-  if (isOffAir(ms, signOffHour, signOnHour)) return PROGRAMS['off-air']
-  if (day === 0) {
-    const minutes = hour * 60 + minute
-    if (minutes >= 4 * 60 && minutes < 9 * 60 + 1) return PROGRAMS['sunday-english-oldies']
-    if (minutes < 17 * 60 + 2) return PROGRAMS['sunday-oldies']
-    if (hour < 21) return PROGRAMS['sunday-tagalog']
-    if (hour >= 22) return PROGRAMS['night-love']
-    return PROGRAMS['english-love']
-  }
+/**
+ * Sunday 4–9 AM: old OPM for seniors. 10 AM–3 PM: English love songs.
+ * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
+ * Every other on-air hour: English love songs mixed with Tagalog.
+ */
+export function programAt(ms: number): Program {
+  const { hour, day } = manilaTime(ms)
+  if (hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR) return PROGRAMS['off-air']
+  if (day === 0 && hour >= 4 && hour < 9) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
-  // Disco programming is intentionally disabled; use the regular love mix.
-  if (hour >= 22) return PROGRAMS['night-love']
-  if (hour >= 21) return PROGRAMS['english-love']
+  if (hour >= 16 && hour < 20) return PROGRAMS.disco
+  if (hour >= 20) return PROGRAMS['night-love']
   return PROGRAMS['love-mix']
-}
-
-export function rotationProgramFor(program: Program, day: number, tagalogOnlyEnabled: boolean, goodVibesEnabled: boolean): Program {
-  if (program.id === 'night-love' || day === 0) return program
-  if (tagalogOnlyEnabled) return PROGRAMS['sunday-tagalog']
-  if (goodVibesEnabled) return PROGRAMS['good-vibes']
-  return program.id === 'news' ? PROGRAMS['love-mix'] : program
 }
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
-}
-
-export function manilaMonth(ms: number): number {
-  return new Date(ms + MANILA_OFFSET_MS).getUTCMonth() + 1
-}
-
-export function manilaMonthKey(ms: number): string {
-  const date = new Date(ms + MANILA_OFFSET_MS)
-  return `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`
-}
-
-export function manilaDateKey(ms: number): string {
-  const date = new Date(ms + MANILA_OFFSET_MS)
-  return `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`
-}
-
-export function isNightVolumeWindow(ms: number, startHour: number, endHour: number): boolean {
-  const { hour } = manilaTime(ms)
-  return startHour < endHour ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour
-}
-
-export function isChristmasTitle(title: string): boolean {
-  return /\b(?:christmas|xmas|pasko|santa(?:\s+claus|\s+baby)?|silent\s+night|jingle\s+bells?|holly|winter\s+wonderland|maligayang\s+pasko|himig\s+ng\s+pasko|sa\s+araw\s+ng\s+pasko|deck\s+the\s+halls|o\s+holy\s+night|joy\s+to\s+the\s+world|we\s+wish\s+you|let\s+it\s+snow|white\s+christmas|blue\s+christmas|last\s+christmas|merry\s+christmas|christmas\s+time|christmas\s+song|christmas\s+eve|rudolph|frosty\s+the\s+snowman|grinch|grandma\s+got\s+run\s+over\s+by\s+a\s+reindeer|reindeer|sleigh\s+ride|first\s+noel|feliz\s+navidad|silver\s+bells|little\s+drummer\s+boy|carol\s+of\s+the\s+bells|o\s+christmas\s+tree|have\s+yourself\s+a\s+merry\s+little\s+christmas|wonderful\s+christmastime|mary['’]?s\s+boy\s+child|hark\s+the\s+herald\s+angels\s+sing)\b/i.test(title)
 }

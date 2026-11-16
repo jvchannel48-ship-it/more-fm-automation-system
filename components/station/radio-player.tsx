@@ -1,121 +1,36 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, MapPin, Moon, Pause, Play, Radio, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
+import { Equalizer } from './equalizer'
 
-const fetcher = async (url: string) => {
-  const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 10_000)
-  try {
-    const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
-    if (!response.ok) throw new Error('Station unavailable')
-    return await response.json() as NowResponse
-  } finally {
-    window.clearTimeout(timeout)
-  }
-}
-
-function StationVerifiedBadge() {
-  return (
-    <svg
-      aria-label="RJ FM station badge"
-      role="img"
-      viewBox="0 0 24 24"
-      className="inline-block size-6 shrink-0 align-middle drop-shadow-[0_2px_8px_rgba(24,119,242,0.35)]"
-    >
-      <circle cx="12" cy="12" r="10" fill="#1877F2" />
-      <path d="m7.3 12.1 3.05 3.05 6.45-6.4" fill="none" stroke="white" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-      <title>RJ FM station badge</title>
-    </svg>
-  )
-}
+const fetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => {
+    if (!r.ok) throw new Error('Station unavailable')
+    return r.json() as Promise<NowResponse>
+  })
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [volume, setVolume] = useState(1)
+  const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
-  const [listenerIssue, setListenerIssue] = useState<string | null>(null)
-  const listenerId = useRef<string | null>(null)
-  const { data, error, mutate } = useSWR('/api/now', fetcher, {
-    refreshInterval: 3000,
+  const { data, error } = useSWR('/api/now', fetcher, {
+    refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const recoverStream = useCallback((uid: string) => {
-    void fetch('/api/now', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid }),
-    }).then(() => mutate()).catch(() => undefined)
-  }, [mutate])
-  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
-  useEffect(() => {
-    if (!playing) return
-    const getListenerId = () => {
-      if (listenerId.current) return listenerId.current
-      const storageKey = 'rj-fm-listener-tab-id'
-      let id = `listener-${window.crypto.randomUUID()}`
-      try {
-        const saved = window.sessionStorage.getItem(storageKey)
-        id = saved || id
-        window.sessionStorage.setItem(storageKey, id)
-      } catch {
-        // Keep a valid per-tab identifier even when browser storage is disabled.
-      }
-      listenerId.current = id
-      return id
-    }
-    const heartbeat = async (active: boolean) => {
-      try {
-        const response = await fetch('/api/listeners', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: getListenerId(), active }),
-          cache: 'no-store',
-        })
-        const result = await response.json().catch(() => ({})) as { accepted?: boolean; message?: string }
-        if (active && response.ok && result.accepted === false) {
-          setListenerIssue(result.message ?? 'This station is currently full. Please try again later.')
-          setPlaying(false)
-        }
-      } catch {
-        // A temporary heartbeat failure should not interrupt an already playing listener.
-      }
-    }
-    void heartbeat(true)
-    const interval = window.setInterval(() => void heartbeat(true), 30_000)
-    return () => {
-      window.clearInterval(interval)
-      void heartbeat(false)
-    }
-  }, [playing])
-  useEffect(() => {
-    if (playbackIssue) {
-      // Keep the user-requested Play session alive during transient CDN or
-      // decoder hiccups; the broadcast hook retries and SWR refreshes the URL.
-      void mutate()
-      return
-    }
-    if (error && !data) setPlaying(false)
-  }, [playbackIssue, error, data, mutate])
-  const offAir = (data?.offAir ?? false) || scheduledOffAir
-  const live = playing && !buffering && !offAir && !playbackIssue
-  const canPause = playing && !playbackIssue && !(error && !data)
-  const statusLabel = offAir ? 'Off Air' : live ? 'Live' : playing || (error && !data) ? 'Connecting' : 'Standby'
+  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
 
-  const togglePlay = async () => {
-    if (canPause) {
-      setPlaying(false)
-      return
-    }
-    setListenerIssue(null)
+  const offAir = data?.offAir ?? false
+  const live = playing && !buffering && !offAir
+  const togglePlay = () => {
     unlock()
-    setPlaying(true)
+    setPlaying((p) => !p)
   }
 
   const onAirAgain = data?.nextOnAir
@@ -127,17 +42,17 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="RJ FM live player" className="studio-deck flex w-full flex-col items-center gap-8 px-4 py-8 text-center">
+    <section aria-label="MOR 93.5 Naga live player" className="flex w-full flex-col items-center gap-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
         }`}
       >
         <span
-          className={`size-1.5 rounded-full ${live ? 'animate-pulse bg-live' : 'bg-muted-foreground'}`}
+          className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`}
           aria-hidden="true"
         />
-        {statusLabel}
+        {offAir ? 'Off Air' : 'Live'}
       </span>
 
       <div className="relative flex size-64 items-center justify-center sm:size-72">
@@ -155,16 +70,16 @@ export function RadioPlayer() {
 
         <Button
           size="icon"
-          onClick={() => void togglePlay()}
+          onClick={togglePlay}
           disabled={offAir}
-          aria-label={canPause ? 'Pause RJ FM' : 'Play RJ FM'}
+          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
             <Moon aria-hidden="true" />
-          ) : canPause && buffering ? (
+          ) : playing && buffering ? (
             <Loader2 className="animate-spin" aria-hidden="true" />
-          ) : canPause ? (
+          ) : playing ? (
             <Pause aria-hidden="true" />
           ) : (
             <Play className="translate-x-0.5" aria-hidden="true" />
@@ -174,33 +89,24 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          RJ <span className="text-primary">FM</span> <StationVerifiedBadge />
+          MOR <span className="text-primary">93.5</span> Naga
         </h2>
-        <p className="-mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">No. 1 Bicol Region</p>
-        <p className="text-xs font-semibold tracking-wide text-primary">Romantic &amp; Contemporary Pop Hits Throwback</p>
-        <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
-          <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />RJ FM</span>
-          <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
-          <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />ABS-CBN Complex · Naga City</span>
+        <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+          MOR 93.5 NAGA LIVESTREAM ONLY
+        </p>
+        <div className="mt-2">
+          <Equalizer active={live} />
         </div>
-        {data?.boardOperatorEnabled && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">
-            <span className="size-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden="true" />
-            Board Operator Active
-          </div>
-        )}
         {offAir && (
           <p className="text-sm text-muted-foreground">
-            {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
+            {onAirAgain ? `Signed off. Babalik kami ng ${onAirAgain}.` : 'Signed off.'}
           </p>
         )}
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
-            Could not connect to the station. Retrying...
+            Hindi ma-connect sa station. Sinusubukan ulit...
           </p>
         )}
-        {listenerIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert">{listenerIssue}</p>}
-        {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
       </div>
 
       <div className="flex w-full max-w-xs items-center gap-3">
