@@ -10,6 +10,7 @@ export interface TrackFilterItem {
 }
 
 const BLACKLIST_TITLE_RULE = /\b(?:live|concert|araneta|mall\s+show|it['’]?s\s+showtime|showtime|asap|eat\s+bulaga|tv\s+patrol|performance|studio|guesting|karaoke|lyric\s+video|lyrics?|cover|reaction)\b/i
+const REJECTED_CONTENT_RULE = /\b(?:live\s+(?:concert|performance|recording|version|session|show|set|stream|acoustic|cover)|concert\s+(?:live|recording|version|video|footage|performance)|concerts?|livestream|live\s+band|karaoke|videoke|it['’]?s\s+show\s*time|show\s*time|wishclusive|wish\s*107(?:[.]?5)?|wish[\s-]*bus)\b/i
 const TV_CHANNEL_RULE = /\b(?:tv|television|network|channel|showtime|asap|eat\s+bulaga|tv\s+patrol|wish\s*107(?:[.]?5)?|wishclusive|fan(?:\s+page|\s+channel)?|karaoke)\b/i
 const OFFICIAL_TITLE_RULE = /\bofficial(?:\s+[a-z0-9]+){0,3}\s+(?:audio|video)\b/i
 const AUDIO_TITLE_RULE = /\baudio\b/i
@@ -26,6 +27,11 @@ function normalized(value: string) {
 
 export function hasBlacklistedTitle(title: unknown) {
   return typeof title !== 'string' || BLACKLIST_TITLE_RULE.test(title)
+}
+
+export function hasRejectedContent(...values: unknown[]) {
+  const text = values.filter((value): value is string => typeof value === 'string').join(' ')
+  return REJECTED_CONTENT_RULE.test(text)
 }
 
 export function hasWhitelistedTitle(title: unknown) {
@@ -53,6 +59,7 @@ export function isAllowedTrack(item: TrackFilterItem, artist = '') {
   const title = typeof item.title === 'string' ? item.title : ''
   if (hasBlacklistedTitle(title)) return false
   if (item.live === true || item.live === 'true' || item.isLive === true || item.isLive === 'true') return false
+  if (hasRejectedContent(title, item.channel, item.author, item.uploader, item.source, item.description)) return false
   if (hasWhitelistedTitle(title)) return true
   return isOfficialArtistChannel(item.channel, artist)
 }

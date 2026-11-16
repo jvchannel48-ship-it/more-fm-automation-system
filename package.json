@@ -9,6 +9,7 @@
     "start": "next start",
     "db:seed": "node scripts/seed-songs.mjs",
     "test:queue": "node --experimental-strip-types tests/song-request-queue.test.ts",
+    "test:queue-dedupe": "node --experimental-strip-types tests/queue-dedupe.test.ts",
     "test:mor": "node --conditions=react-server --experimental-strip-types tests/mor-sync-parser.test.ts",
     "test:repeat": "node --experimental-strip-types tests/song-repeat.test.ts",
     "test:track-filter": "node --experimental-strip-types tests/track-filter.test.ts",

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { hasBlacklistedTitle, isAllowedTrack, isOfficialArtistChannel } from '../lib/track-filter.ts'
+import { hasBlacklistedTitle, hasRejectedContent, isAllowedTrack, isOfficialArtistChannel } from '../lib/track-filter.ts'
 
 // Matches the production blacklist in lib/track-filter.ts
 for (const title of [
@@ -37,5 +37,14 @@ assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'Artist Fan Chann
 assert.equal(isAllowedTrack({ title: 'Artist - Song', channel: 'TV Network' }, 'Artist'), false)
 assert.equal(isAllowedTrack({ title: 'Artist - Song' }, 'Artist'), false)
 assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', live: true }, 'Artist'), false)
+for (const value of [
+  'Artist - Song Karaoke Version',
+  'Artist - Song Live Concert',
+  'Artist - Song Live Performance',
+  'It\'s Showtime official channel',
+  'Wishclusive live session',
+]) assert.equal(hasRejectedContent(value), true, `content filter must reject ${value}`)
+assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', channel: 'Artist Official', description: 'Live concert recording' }, 'Artist'), false)
+assert.equal(isAllowedTrack({ title: 'Artist - Song (Official Audio)', channel: 'Artist Official', description: 'studio audio' }, 'Artist'), true)
 assert.equal(isOfficialArtistChannel('Artist Official', 'Artist'), true)
-console.log('track-filter: blacklist, whitelist, official-channel, and live gates passed')
+console.log('track-filter: blacklist, whitelist, metadata, official-channel, and live gates passed')

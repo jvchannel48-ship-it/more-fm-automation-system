@@ -4,8 +4,9 @@ import { getListenerCount } from './listeners'
 import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
+import { dedupeMusicQueue } from './queue-dedupe'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
-import { hasBlacklistedTitle, isAllowedTrack } from './track-filter'
+import { hasBlacklistedTitle, hasRejectedContent, isAllowedTrack } from './track-filter'
 import { selectSingleBreakAudio } from './break-rotation'
 import { incrementTopPlayed } from './radio-catalog'
 import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
@@ -166,7 +167,7 @@ async function searchMusicItems(query: string) {
 
 function isDisallowedSearchItem(item: SearchItem) {
   const liveFlag = [item.live, item.isLive].some((value) => value === true || value === 'true')
-  return liveFlag || hasBlacklistedTitle(item.title) || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
+  return liveFlag || hasBlacklistedTitle(item.title) || hasRejectedContent(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description) || REJECTED_TITLE_RULE.test(item.title) || hasRejectedRecordingLabel(item.title, item.url, item.channel, item.author, item.uploader, item.source, item.description)
 }
 
 async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<string> = new Set(), requireTagalog = false) {
@@ -963,18 +964,8 @@ async function loadState(now: number) {
         track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
       )
   })
-  const queuedSongKeys = new Set<string>()
   const beforeQueueDeduplication = state.tracks.length
-  state.tracks = state.tracks.filter((track) => {
-    if (track.kind !== 'music' && track.kind !== 'mor-sync') return true
-    const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
-    const key = repeatTitleKey(track.title ?? '', artist)
-    if (!key || !queuedSongKeys.has(key)) {
-      if (key) queuedSongKeys.add(key)
-      return true
-    }
-    return false
-  })
+  state.tracks = dedupeMusicQueue(state.tracks, (track) => state.history.find((entry) => entry.t === track.startAt)?.artist ?? track.artist ?? '')
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: dailyChanged || metadataChanged || state.tracks.length !== before || state.tracks.length !== beforeQueueDeduplication }
 }
