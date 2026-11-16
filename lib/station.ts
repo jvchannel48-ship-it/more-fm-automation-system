@@ -9,7 +9,7 @@ import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, hasRejectedContent, isAllowedTrack } from './track-filter'
 import { matchesRequestedSong } from './song-request-matching'
 import { incrementTopPlayed } from './radio-catalog'
-import { DAILY_PLAYLIST_URL, DITO_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, WEEKEND_PLAYLIST_URL, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
+import { DAILY_PLAYLIST_URL, DITO_PLAYLIST_URL, getPlaylistTracks, searchYouTube, WEEKEND_PLAYLIST_URL, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
 import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -443,13 +443,8 @@ function playlistArtist(title: string, channel?: string) {
 }
 
 async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>, playlistUrl: string, startAt: number) {
-  const playlist = playlistUrl === RJ_FM_PLAYLIST_URL
-    ? await getRjFmPlaylistTracks()
-    : await getPlaylistTracks(playlistUrl)
+  const playlist = await getPlaylistTracks(playlistUrl)
   if (playlist.length === 0) return null
-  if (playlistUrl === RJ_FM_PLAYLIST_URL && songCount > 0 && songCount % playlist.length === 0) {
-    await getRjFmPlaylistTracks({ refreshNow: true })
-  }
   const weeklyOffset = weeklyPlaylistOffset(startAt, playlist.length)
   for (let offset = 0; offset < playlist.length; offset++) {
     const item = playlist[(weeklyOffset + songCount + offset) % playlist.length]
@@ -468,29 +463,6 @@ async function findPlaylistSong(songCount: number, blockedTitleKeys: Set<string>
       sourcePlaylist: playlistUrl,
       sourceRefreshedAt: Date.now(),
       duration: item.duration,
-    }
-  }
-  if (playlistUrl === RJ_FM_PLAYLIST_URL) {
-    const refreshed = await getRjFmPlaylistTracks({ refreshNow: true })
-    if (refreshed.length > playlist.length) {
-      for (const item of refreshed) {
-        const artist = item.artist?.trim() || playlistArtist(item.title, item.channel)
-        if (item.live || blockedTitleKeys.has(repeatTitleKey(item.title, artist)) || blockedTitleKeys.has(`id:${item.id}`)) continue
-        const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 8_000)
-        if (!download?.downloadUrl) continue
-        return {
-          id: item.id,
-          key: songKey(item.title),
-          artist,
-          title: item.title,
-          src: playableSource(download.downloadUrl),
-          sourceUrl: item.url,
-          sourceChannel: item.channel,
-          sourcePlaylist: playlistUrl,
-          sourceRefreshedAt: Date.now(),
-          duration: item.duration,
-        }
-      }
     }
   }
   return null
@@ -804,11 +776,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         song = await findEmergencySong(state.songCount, blockedTitleKeys)
       }
       if (!song) {
-        playlistTracks = rotationProgram.id === 'night-love'
-          ? []
-          : playlistUrl === RJ_FM_PLAYLIST_URL
-            ? await getRjFmPlaylistTracks()
-            : await getPlaylistTracks(playlistUrl)
+        playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
         song = playlistTracks.length > 0
           ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
           : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
@@ -821,11 +789,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (isChristmasSong && christmasModeForManilaTime(songStart) === 'off') {
       isChristmasSong = false
       playlistUrl = playlistUrlForStart(songStart)
-      playlistTracks = rotationProgram.id === 'night-love'
-        ? []
-        : playlistUrl === RJ_FM_PLAYLIST_URL
-          ? await getRjFmPlaylistTracks()
-          : await getPlaylistTracks(playlistUrl)
+      playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
       song = playlistTracks.length > 0
         ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
         : await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)

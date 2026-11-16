@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getNowPlaying, submitSongRequest } from '@/lib/station'
-import { getRjFmPlaylistTracks, searchYouTube, type YouTubeSearchResult } from '@/lib/youtube-search'
+import { DITO_PLAYLIST_URL, getPlaylistTracks, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from '@/lib/youtube-search'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -20,10 +20,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ query, results }, { headers: { 'Cache-Control': 'no-store' } })
     }
 
-    const [playlist, now] = await Promise.all([getRjFmPlaylistTracks(), getNowPlaying()])
+    const [playlist, now] = await Promise.all([getPlaylistTracks(DITO_PLAYLIST_URL), getNowPlaying()])
     const nowMs = now.serverTime
-    const topSongs = playlist.filter((track) => track.playlistGroup === 'RJ TOP SONGS')
-    const playedSongs = playlist.filter((track) => track.playlistGroup === 'RJ PLAYED')
+    const topSongs: PlaylistTrackResult[] = playlist.filter((track) => track.playlistGroup === 'RJ TOP SONGS')
+    const playedSongs: PlaylistTrackResult[] = playlist.filter((track) => track.playlistGroup === 'RJ PLAYED')
     const hasDatabaseGroups = topSongs.length > 0 || playedSongs.length > 0
     const queue = now.tracks
       .filter((track) => track.startAt + track.duration * 1000 > nowMs)
