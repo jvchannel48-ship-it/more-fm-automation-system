@@ -79,7 +79,7 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
   try {
     const videos = await Promise.race([
       YouTube.search(query, { limit, type: 'video', safeSearch: true }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('YouTube search timed out')), 4_000)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('YouTube search timed out')), 10_000)),
     ])
     return videos.flatMap((video) => {
       if (!video.id || !video.url || !video.title || !video.durationFormatted) return []
