@@ -1205,11 +1205,16 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
   const needsFill = state.tracks.filter((track) => track.startAt > now).length < queueAheadTarget(state, now)
   if (settings.autoDjEnabled && needsFill) {
-    // Do not hold the live metadata/audio request open while searching. The
-    // station process persists the refill and the next poll picks it up.
-    void fillQueueIfNeeded(settings).catch((error) => {
-      console.error('[morefm] background AutoDJ refill failed', error)
-    })
+    // Vercel can serve consecutive polls from different serverless instances.
+    // Wait for the shared queue write before returning, otherwise every cold
+    // instance can observe the same stale queue and select the same song.
+    try {
+      await fillQueueIfNeeded(settings)
+      const refreshed = await loadState(Date.now())
+      state = refreshed.state
+    } catch (error) {
+      console.error('[morefm] AutoDJ refill failed', error)
+    }
   }
 
   const responseNow = Date.now()
