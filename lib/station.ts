@@ -313,7 +313,6 @@ function audioConfig(settings: Awaited<ReturnType<typeof getSettings>>) {
   return {
     masterVolume: settings.masterVolume,
     nightVolumePercent: settings.nightVolumePercent,
-    bassGainDb: settings.bassGainDb,
     crossfaderEnabled: settings.crossfaderEnabled,
     crossfaderCurve: settings.crossfaderCurve,
     crossfadeSeconds: settings.crossfadeSeconds,

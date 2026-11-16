@@ -81,7 +81,6 @@ export function AdminPanel() {
   const [listenerLimit, setListenerLimit] = useState('0')
   const [masterVolume, setMasterVolume] = useState('100')
   const [nightVolumePercent, setNightVolumePercent] = useState('72')
-  const [bassGainDb, setBassGainDb] = useState('0')
   const [crossfadeSeconds, setCrossfadeSeconds] = useState('8')
   const [replayGainTargetLufs, setReplayGainTargetLufs] = useState('-14')
   const [recordingKind, setRecordingKind] = useState<'dj-mic' | null>(null)
@@ -100,10 +99,9 @@ export function AdminPanel() {
     setListenerLimit(String(data.listenerLimit))
     setMasterVolume(String(data.masterVolume))
     setNightVolumePercent(String(data.nightVolumePercent))
-    setBassGainDb(String(data.bassGainDb))
     setCrossfadeSeconds(String(data.crossfadeSeconds))
     setReplayGainTargetLufs(String(data.replayGainTargetLufs))
-  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
+  }, [data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.rotationPoolSize, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     if (data?.persistenceConfigured === false) {
@@ -348,7 +346,6 @@ export function AdminPanel() {
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Master volume (%)<Input type="number" min={0} max={100} step={1} value={masterVolume} onChange={(event) => setMasterVolume(event.target.value)} disabled={!data || busy} /></label>
         <label className="flex flex-col gap-1 text-xs font-medium">Night volume (%)<Input type="number" min={0} max={100} step={1} value={nightVolumePercent} onChange={(event) => setNightVolumePercent(event.target.value)} disabled={!data || busy} /></label>
-        <label className="flex flex-col gap-1 text-xs font-medium">Bass gain (dB)<Input type="number" min={-12} max={12} step={0.5} value={bassGainDb} onChange={(event) => setBassGainDb(event.target.value)} disabled={!data || busy} /></label>
         <label className="flex flex-col gap-1 text-xs font-medium">Crossfade (0–30 sec)<Input type="number" min={0} max={30} step={0.1} value={crossfadeSeconds} onChange={(event) => setCrossfadeSeconds(event.target.value)} disabled={!data || busy} /></label>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -363,7 +360,7 @@ export function AdminPanel() {
         <div className="flex items-center gap-2"><Switch id="crossfader-enabled" checked={data?.crossfaderEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { crossfaderEnabled: checked })} /><Label htmlFor="crossfader-enabled">Crossfader ON</Label></div>
         <div className="flex items-center gap-2"><Switch id="replay-gain-enabled" checked={data?.replayGainEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { replayGainEnabled: checked })} /><Label htmlFor="replay-gain-enabled">Replay Gain ON</Label></div>
       </div>
-      <Button variant="secondary" disabled={!data || busy || Number(masterVolume) < 0 || Number(masterVolume) > 100 || Number(nightVolumePercent) < 0 || Number(nightVolumePercent) > 100 || Number(bassGainDb) < -12 || Number(bassGainDb) > 12 || Number(crossfadeSeconds) < 0 || Number(crossfadeSeconds) > 30 || Number(replayGainTargetLufs) < -24 || Number(replayGainTargetLufs) > -5} onClick={() => send('PUT', { masterVolume: Number(masterVolume), nightVolumePercent: Number(nightVolumePercent), bassGainDb: Number(bassGainDb), crossfadeSeconds: Number(crossfadeSeconds), replayGainTargetLufs: Number(replayGainTargetLufs) })}>Save audio controls</Button>
+      <Button variant="secondary" disabled={!data || busy || Number(masterVolume) < 0 || Number(masterVolume) > 100 || Number(nightVolumePercent) < 0 || Number(nightVolumePercent) > 100 || Number(crossfadeSeconds) < 0 || Number(crossfadeSeconds) > 30 || Number(replayGainTargetLufs) < -24 || Number(replayGainTargetLufs) > -5} onClick={() => send('PUT', { masterVolume: Number(masterVolume), nightVolumePercent: Number(nightVolumePercent), crossfadeSeconds: Number(crossfadeSeconds), replayGainTargetLufs: Number(replayGainTargetLufs) })}>Save audio controls</Button>
     </div>
 
     <div className="grid grid-cols-2 gap-2">

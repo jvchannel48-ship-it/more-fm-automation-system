@@ -327,7 +327,6 @@ export const DEFAULT_SETTINGS: StationSettings = {
   nightVolumeEndHour: 6,
   masterVolume: 80,
   nightVolumePercent: 70,
-  bassGainDb: 12,
   crossfaderEnabled: true,
   crossfaderCurve: 'constant-power',
   crossfadeSeconds: 8,
@@ -394,13 +393,12 @@ export async function getSettings(): Promise<StationSettings> {
     autoVoiceAnnouncement: saved.autoVoiceAnnouncement && typeof saved.autoVoiceAnnouncement.url === 'string' ? saved.autoVoiceAnnouncement : null,
     djMicEnabled: typeof saved.djMicEnabled === 'boolean' ? saved.djMicEnabled : false,
     newsEnabled: typeof saved.newsEnabled === 'boolean' ? saved.newsEnabled : true,
-    // Automatic audio profile: 80% daytime, 70% from 10 PM–6 AM, maximum bass.
+    // Automatic audio profile: 80% daytime, 70% from 10 PM–6 AM.
     nightVolumeEnabled: true,
     nightVolumeStartHour: 22,
     nightVolumeEndHour: 6,
     masterVolume: 80,
     nightVolumePercent: 70,
-    bassGainDb: 12,
     crossfaderEnabled: typeof saved.crossfaderEnabled === 'boolean' ? saved.crossfaderEnabled : true,
     crossfaderCurve: ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut'].includes(saved.crossfaderCurve as string) ? saved.crossfaderCurve as CrossfaderCurve : 'constant-power',
     crossfadeSeconds: typeof saved.crossfadeSeconds === 'number' ? Math.max(0, Math.min(30, saved.crossfadeSeconds)) : 8,

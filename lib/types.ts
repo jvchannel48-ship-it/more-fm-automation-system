@@ -50,7 +50,6 @@ export interface StationSettings {
   nightVolumeEndHour: number
   masterVolume: number
   nightVolumePercent: number
-  bassGainDb: number
   crossfaderEnabled: boolean
   crossfaderCurve: CrossfaderCurve
   crossfadeSeconds: number
@@ -81,7 +80,7 @@ export interface NowResponse {
   signOffAt: number | null
   tracks: Track[]
   nightVolumeActive: boolean
-  audioConfig: Pick<StationSettings, 'masterVolume' | 'nightVolumePercent' | 'bassGainDb' | 'crossfaderEnabled' | 'crossfaderCurve' | 'crossfadeSeconds' | 'replayGainEnabled' | 'replayGainTargetLufs'>
+  audioConfig: Pick<StationSettings, 'masterVolume' | 'nightVolumePercent' | 'crossfaderEnabled' | 'crossfaderCurve' | 'crossfadeSeconds' | 'replayGainEnabled' | 'replayGainTargetLufs'>
 }
 
 export interface PlaybackStats {

@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest) {
       signOffHour?: unknown; signOnHour?: unknown; discoStartHour?: unknown; discoEndHour?: unknown
       christmasEnabled?: unknown; autoVoiceEnabled?: unknown; djMicEnabled?: unknown; newsEnabled?: unknown; nightVolumeEnabled?: unknown
       nightVolumeStartHour?: unknown; nightVolumeEndHour?: unknown; jingleEnabled?: unknown; commercialEnabled?: unknown
-      masterVolume?: unknown; nightVolumePercent?: unknown; bassGainDb?: unknown; crossfaderEnabled?: unknown; crossfaderCurve?: unknown; crossfadeSeconds?: unknown; replayGainEnabled?: unknown; replayGainTargetLufs?: unknown
+      masterVolume?: unknown; nightVolumePercent?: unknown; crossfaderEnabled?: unknown; crossfaderCurve?: unknown; crossfadeSeconds?: unknown; replayGainEnabled?: unknown; replayGainTargetLufs?: unknown
     }
     const current = await getSettings()
     const hour = (value: unknown, fallback: number) => typeof value === 'number' && value >= 0 && value <= 23 ? value : fallback
@@ -40,7 +40,6 @@ export async function PUT(request: NextRequest) {
     const crossfaderCurves = ['transition', 'smooth', 'constant-power', 'dipped', 'slow-fade', 'slow-cut', 'fast-fade', 'fast-cut', 'full-cut', 'scratch-cut'] as const
     const masterVolume = 80
     const nightVolumePercent = 70
-    const bassGainDb = 12
     const crossfadeSeconds = bounded(body.crossfadeSeconds, current.crossfadeSeconds, 0, 30)
     const replayGainTargetLufs = bounded(body.replayGainTargetLufs, current.replayGainTargetLufs, -24, -5)
     const transmitterWatts: typeof current.transmitterWatts = typeof body.transmitterWatts === 'number' && [0, 5000, 20000, 100000].includes(body.transmitterWatts) ? body.transmitterWatts as typeof current.transmitterWatts : current.transmitterWatts
@@ -61,7 +60,7 @@ export async function PUT(request: NextRequest) {
       listenerLimit: 0,
       tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
       transmitterWatts, signOffHour, signOnHour, discoStartHour, discoEndHour,
-      masterVolume, nightVolumePercent, bassGainDb,
+      masterVolume, nightVolumePercent,
       crossfaderEnabled: typeof body.crossfaderEnabled === 'boolean' ? body.crossfaderEnabled : current.crossfaderEnabled,
       crossfaderCurve: crossfaderCurves.includes(body.crossfaderCurve as typeof crossfaderCurves[number]) ? body.crossfaderCurve as typeof crossfaderCurves[number] : current.crossfaderCurve,
       crossfadeSeconds, replayGainEnabled: typeof body.replayGainEnabled === 'boolean' ? body.replayGainEnabled : current.replayGainEnabled, replayGainTargetLufs,
