@@ -1,5 +1,6 @@
 import { FeedbackForm } from '@/components/station/feedback-form'
 import { RadioPlayer } from '@/components/station/radio-player'
+import { SongRequestPanel } from '@/components/station/song-request-panel'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-8">
         <h1 className="sr-only">RJ FM livestream</h1>
         <RadioPlayer />
+        <SongRequestPanel />
       </main>
 
       <footer className="mx-auto flex flex-col items-center gap-2 px-4 pb-8 text-center">

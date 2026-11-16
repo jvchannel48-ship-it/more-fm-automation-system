@@ -1,5 +1,5 @@
 import 'server-only'
-import { acquireStationLease, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, writeJson } from './storage'
+import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
 import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
@@ -137,6 +137,47 @@ async function findMorSong(title: string, artist: string, blockedTitleKeys: Set<
     }
   }))
   return downloads.find((song) => song !== null) ?? null
+}
+
+async function queuePendingSongRequest(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>, blockedTitleKeys: Set<string>) {
+  const request = (await getSongRequests()).find((item) => item.status === 'pending' && !state.tracks.some((track) => track.requestId === item.id))
+  if (!request) return false
+  const song = await findMorSong(request.title, request.artist, blockedTitleKeys, false)
+  if (!song) return false
+  state.tracks = state.tracks.filter((track) => track.startAt <= now)
+  const startAt = nextStart(state, now)
+  state.tracks.push({
+    uid: `request-${request.id}-${startAt}`,
+    requestId: request.id,
+    src: song.src,
+    youtubeId: song.id,
+    startAt,
+    duration: song.duration,
+    fadeIn: settings.crossfaderEnabled ? (state.tracks.at(-1)?.fadeOut ?? 0) : 0,
+    fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
+    sourceUrl: song.sourceUrl,
+    sourceChannel: song.sourceChannel,
+    sourceRefreshedAt: song.sourceRefreshedAt,
+    kind: 'music',
+    title: song.title,
+    artist: request.artist,
+  })
+  state.history.push({ id: song.id, key: song.key, artist: request.artist, title: song.title, t: startAt })
+  state.history = state.history.slice(-settings.rotationPoolSize)
+  if (settings.noRepeatEnabled) blockedTitleKeys.add(repeatTitleKey(song.title, request.artist))
+  await updateSongRequest(request.id, 'played')
+  return true
+}
+
+export async function submitSongRequest(title: string, artist: string, name = 'Listener') {
+  const request = await addSongRequest(title, artist, name)
+  await refreshQueue()
+  return {
+    accepted: true,
+    queued: true,
+    request,
+    message: 'Successful! Your song is queued and will play next after the current song. Please wait for the current song to finish; it will play automatically.',
+  }
 }
 
 async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean, blockedTitleKeys: Set<string>) {
@@ -390,6 +431,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     }
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
+    if (await queuePendingSongRequest(state, now, settings, blockedTitleKeys)) continue
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
     if (!settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
       const newsDate = manilaDateKey(startAt)

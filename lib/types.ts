@@ -3,7 +3,10 @@ export type CrossfaderCurve = 'transition' | 'smooth' | 'constant-power' | 'dipp
 
 export interface Track {
   uid: string
+  requestId?: string
   src: string
+  youtubeId?: string
+  artist?: string
   startAt: number
   duration: number
   fadeIn: number
@@ -69,6 +72,7 @@ export interface SongRequest {
   id: string
   title: string
   artist: string
+  name?: string
   requestedAt: number
   status: 'pending' | 'played' | 'skipped'
 }
