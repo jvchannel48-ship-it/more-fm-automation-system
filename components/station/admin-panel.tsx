@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
 
 const fetcher = (url: string) =>
-  fetch(url).then((r) => {
+  fetch(url, { cache: 'no-store' }).then((r) => {
     if (!r.ok) throw new Error('Unauthorized')
     return r.json() as Promise<AdminStatus>
   })
@@ -26,16 +26,31 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
-    const res = await fetch('/api/admin/settings', {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    setBusy(false)
-    if (res.ok) mutate((await res.json()) as AdminStatus, { revalidate: false })
+    setError('')
+    setMessage('')
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      const result = await res.json().catch(() => ({})) as Partial<AdminStatus> & { error?: string }
+      if (!res.ok) throw new Error(result.error ?? 'Hindi na-save ang admin setting.')
+      const status = result as AdminStatus
+      mutate(status, { revalidate: false })
+      setMessage(method === 'PUT'
+        ? status.persistenceConfigured ? 'Nai-save ang Broadcast setting sa Blob.' : 'Na-toggle ang Broadcast, pero pansamantala lang ito sa server memory.'
+        : 'Na-refresh ang music rotation.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -55,10 +70,19 @@ export function AdminPanel() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      {data?.persistenceConfigured === false && (
+        <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status">
+          Walang durable Blob storage. Broadcast changes at listener total ay pansamantala at maaaring mawala sa restart o magkaiba sa server instances. Ikonekta ang Vercel Blob o i-set ang BLOB_READ_WRITE_TOKEN.
+        </p>
+      )}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+      {message && <p className="text-xs text-emerald-300" role="status">{message}</p>}
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
+        <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
       </div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>

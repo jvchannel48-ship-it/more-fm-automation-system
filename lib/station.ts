@@ -1,5 +1,5 @@
 import 'server-only'
-import { getSettings, readJson, STATE_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
 
@@ -230,10 +230,12 @@ export async function getNowPlaying(): Promise<NowResponse> {
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [{ state }, settings] = await Promise.all([loadState(now), getSettings()])
+  const [{ state }, settings, listenersNow] = await Promise.all([loadState(now), getSettings(), getActiveListenerCount()])
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
   return {
     ...settings,
+    persistenceConfigured: isBlobStorageAvailable(),
+    listenersNow,
     songsThisWeek: state.history.length,
     artistsThisHour: hourArtists.size,
     queued: state.tracks.filter((t) => t.startAt > now).length,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,51 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
+  const listenerId = useRef<string | null>(null)
   const { data, error } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
   const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+
+  useEffect(() => {
+    if (!playing || data?.offAir) return
+    const getListenerId = () => {
+      if (listenerId.current) return listenerId.current
+      const storageKey = 'mor-935-listener-id'
+      let id: string | null = null
+      try {
+        id = window.localStorage.getItem(storageKey)
+      } catch {
+        // Continue with a session-only ID if local storage is unavailable.
+      }
+      if (!id) {
+        id = `listener-${window.crypto.randomUUID()}`
+        try {
+          window.localStorage.setItem(storageKey, id)
+        } catch {
+          // The ref keeps this ID stable until the player unmounts.
+        }
+      }
+      listenerId.current = id
+      return id
+    }
+    const heartbeat = (active: boolean) => {
+      void fetch('/api/listeners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: getListenerId(), active }),
+        cache: 'no-store',
+      }).catch(() => undefined)
+    }
+    heartbeat(true)
+    const interval = window.setInterval(() => heartbeat(true), 30_000)
+    return () => {
+      window.clearInterval(interval)
+      heartbeat(false)
+    }
+  }, [playing, data?.offAir])
 
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir

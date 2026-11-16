@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:listeners": "node --conditions=react-server --experimental-strip-types tests/listener-count.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
