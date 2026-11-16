@@ -264,7 +264,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="tagalog-only-enabled">Tagalog Songs: {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">When ON, the station plays consecutive quality Tagalog OPM songs and skips English tracks. The current song finishes; upcoming tracks are refreshed.</p></div>
+      <div><Label htmlFor="tagalog-only-enabled">Tagalog old songs · {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON: tuloy-tuloy ang magagandang Tagalog old songs at classic OPM artists tulad nina Imelda Papin, Victor Wood, Pilita Corrales, Basil Valdez, Rey Valera, Rico J. Puno, at APO Hiking Society. OFF: babalik sa regular English/Tagalog rotation. Ang kasalukuyang kanta ay tatapusin; ang mga susunod na kanta ay ire-refresh.</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-primary" role="status" aria-live="polite">{data?.tagalogOnlyEnabled ? 'ON · Tagalog old songs' : 'OFF · Regular rotation'}</p></div>
         <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
     </div>

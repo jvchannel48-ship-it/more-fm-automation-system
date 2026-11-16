@@ -453,7 +453,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const rotationProgram = manilaTime(startAt).day === 0
       ? program.id === 'sunday-english-oldies' ? PROGRAMS['sunday-english-oldies'] : PROGRAMS['sunday-oldies']
       : settings.tagalogOnlyEnabled
-        ? PROGRAMS['sunday-tagalog']
+        ? PROGRAMS['tagalog-oldies']
         : settings.goodVibesEnabled ? PROGRAMS['good-vibes']
         : program.id === 'news' ? PROGRAMS['love-mix'] : program
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0

@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'tagalog-oldies' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -299,6 +299,12 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     id: 'sunday-tagalog',
     pools: { english: [], tagalog: PINOY_LOVE },
     variants: { english: [], tagalog: OPM_VARIANTS },
+    tagalogOnly: true,
+  },
+  'tagalog-oldies': {
+    id: 'tagalog-oldies',
+    pools: { english: [], tagalog: PINOY_OLDIES },
+    variants: { english: [], tagalog: ['Tagalog old songs', 'classic OPM Tagalog', 'Filipino oldies', 'OPM classics 70s 80s 90s'] },
     tagalogOnly: true,
   },
   'english-love': {
