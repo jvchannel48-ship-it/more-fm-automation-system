@@ -7,10 +7,15 @@ import { Pool } from 'pg'
 import type { CrossfaderCurve, MorSyncRecord, SongRequest, StationSettings } from './types'
 import { hasSupabaseStorageConfig, readSupabaseJson, writeSupabaseJson } from './supabase-media.ts'
 
+// Accept the connection-variable names used by Render, Vercel/Neon,
+// Supabase integrations, and standard Node database deployments.
 const databaseUrl = process.env.POSTGRES_URL
   ?? process.env.POSTGRES_URL_NON_POOLING
   ?? process.env.DATABASE_URL
+  ?? process.env.DATABASE_URL_UNPOOLED
+  ?? process.env.NEON_DATABASE_URL
   ?? process.env.SUPABASE_DB_URL
+  ?? process.env.SUPABASE_DATABASE_URL
 // Render persistent disks survive clear-build-cache deploys. Do not advertise
 // filesystem persistence unless the configured mount is actually writable.
 const configuredFilesystemDataDir = process.env.MORE_FM_DATA_DIR?.trim() || ''
