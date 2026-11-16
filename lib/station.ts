@@ -643,6 +643,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
       .filter(Boolean),
     ...state.history.map((entry) => `id:${entry.id}`).filter(Boolean),
+    ...state.history.map((entry) => repeatTitleKey(entry.title ?? entry.key, '')).filter(Boolean),
     ...state.tracks
       .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
       .map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''))
@@ -650,6 +651,10 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     ...state.tracks
       .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
       .map((track) => track.youtubeId ? `id:${track.youtubeId}` : '')
+      .filter(Boolean),
+    ...state.tracks
+      .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
+      .map((track) => repeatTitleKey(track.title ?? '', ''))
       .filter(Boolean),
   ])
   const targetFutureTracks = queueAheadTarget(state, now)
@@ -706,7 +711,10 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const continuingChristmasBurst = state.christmasSongsRemaining > 0 && christmasModeForManilaTime(breakAt) !== 'off'
     const sundayGoldenBreak = !continuingChristmasBurst && sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
     const regularBreak = !continuingChristmasBurst && state.songCount > 0 && state.songCount % 3 === 0
-    if ((sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
+    const hasMusicAnchor = state.tracks.some((track) => track.kind === 'music' && trackEnd(track) > now)
+    // Never create a jingle-only queue: a break is allowed only when a real
+    // music track is already on air or queued to anchor it.
+    if (hasMusicAnchor && (sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
       state.lastBreakSongCount = state.songCount
       const spot = selectSingleBreakAudio({
         sundayGoldenBreak,
@@ -818,6 +826,12 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const playableDuration = playlistBoundary > songStart
       ? Math.min(song.duration, (playlistBoundary - songStart) / 1000)
       : song.duration
+    const resolvedTitleKey = repeatTitleKey(song.title, song.artist)
+    const resolvedTitleOnlyKey = repeatTitleKey(song.title, '')
+    if (blockedTitleKeys.has(resolvedTitleKey) || blockedTitleKeys.has(resolvedTitleOnlyKey) || blockedTitleKeys.has(`id:${song.id}`)) {
+      console.warn('[morefm] prevented duplicate AutoDJ song', { id: song.id, title: song.title })
+      break
+    }
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
@@ -835,11 +849,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       artist: song.artist,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, title: song.title, t: songStart })
-    if (blockedTitleKeys.has(repeatTitleKey(song.title, song.artist)) || blockedTitleKeys.has(`id:${song.id}`)) {
-      console.warn('[morefm] prevented duplicate AutoDJ song', { id: song.id, title: song.title })
-      break
-    }
-    blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
+    blockedTitleKeys.add(resolvedTitleKey)
+    blockedTitleKeys.add(resolvedTitleOnlyKey)
     blockedTitleKeys.add(`id:${song.id}`)
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
