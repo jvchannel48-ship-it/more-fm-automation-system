@@ -438,35 +438,13 @@ export function AdminPanel() {
       {data?.djMic && <p className="truncate text-xs text-muted-foreground">Last clip: {data.djMic.name}</p>}
     </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="jingle-enabled">Jingle</Label><p className="text-xs text-muted-foreground">The station jingle plays automatically after every 3 songs, then the next music track starts. Sunday may also use the golden jingle after every 5 songs from 6:00 AM. MP3 supported · max 4 MB.</p></div>
-        <Switch id="jingle-enabled" checked={data?.jingleEnabled ?? false} disabled={!data || busy}
-          onCheckedChange={(checked) => send('PUT', { jingleEnabled: checked })} /></div>
-      <label htmlFor="upload-jingle" className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm hover:bg-secondary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
-        <Upload className="size-4" aria-hidden="true" /> {data?.jingle ? 'Replace jingle audio' : 'Upload jingle audio'}</label>
-      <input id="upload-jingle" type="file" accept=".mp3,audio/mpeg,audio/mp3,audio/*" className="sr-only" disabled={busy}
-        onChange={(event) => { void upload('jingle', event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
-      {data?.jingle && <a href={data.jingle.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">Current: {data.jingle.name}</a>}
-    </div>
-
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="commercial-enabled">Commercials</Label><p className="text-xs text-muted-foreground">Play saved slots after the jingle only when Jingle is ON; commercials are suppressed all day Sunday. MP3 supported · max 4 MB per file.</p></div>
-        <Switch id="commercial-enabled" checked={data?.commercialEnabled ?? false} disabled={!data || busy}
-          onCheckedChange={(checked) => send('PUT', { commercialEnabled: checked })} /></div>
-      {[0, 1, 2].map((slot) => {
-        const asset = data?.commercials?.[slot]
-        return <div key={slot} className="flex flex-col gap-1 border-t border-border pt-2">
-          <label htmlFor={`upload-commercial-${slot}`} className={`flex cursor-pointer items-center gap-2 text-sm hover:text-primary ${busy ? 'pointer-events-none opacity-50' : ''}`}>
-            <Upload className="size-3.5" aria-hidden="true" /> {asset ? `Replace commercial ${slot + 1}` : `Upload commercial ${slot + 1}`}</label>
-          <input id={`upload-commercial-${slot}`} type="file" accept=".mp3,audio/mpeg,audio/mp3,audio/*" className="sr-only" disabled={busy}
-            onChange={(event) => { void upload('commercial', event.currentTarget.files?.[0], slot); event.currentTarget.value = '' }} />
-          {asset && <a href={asset.url} target="_blank" rel="noreferrer" className="truncate text-xs text-primary underline">{asset.name}</a>}
-        </div>
-      })}
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+      <Label>Music-only rotation</Label>
+      <p className="mt-1 text-xs text-muted-foreground">Jingles, commercials, and station break spots have been removed. The station continues directly to the next no-repeat song.</p>
     </div>
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">Every Sunday, Tagalog senior classics play continuously all day with no English songs, commercials, or news. The regular jingle plays after every three songs before the next music track; from 6:00 AM, the Sunday golden jingle may also play after every five songs.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">The station keeps the configured sign-on/sign-off schedule and listener limit while rotating songs continuously without jingle or commercial breaks.</p>
   </div>
 }

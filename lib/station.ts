@@ -8,7 +8,6 @@ import { dedupeMusicQueue } from './queue-dedupe'
 import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, hasRejectedContent, isAllowedTrack } from './track-filter'
 import { matchesRequestedSong } from './song-request-matching'
-import { selectSingleBreakAudio } from './break-rotation'
 import { incrementTopPlayed } from './radio-catalog'
 import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
@@ -731,43 +730,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         continue
       }
     }
-    const previousTrack = state.tracks.at(-1)
-    const breakAt = previousTrack ? trackEnd(previousTrack) : now
-    const breakTime = manilaTime(breakAt)
-    const sunday = breakTime.day === 0
-    const continuingChristmasBurst = state.christmasSongsRemaining > 0 && christmasModeForManilaTime(breakAt) !== 'off'
-    const sundayGoldenBreak = !continuingChristmasBurst && sunday && breakTime.hour >= 6 && state.songCount > 0 && state.songCount % 5 === 0
-    const regularBreak = !continuingChristmasBurst && state.songCount > 0 && state.songCount % 3 === 0
-    const hasMusicAnchor = state.tracks.some((track) => track.kind === 'music' && trackEnd(track) > now)
-    // Never create a jingle-only queue: a break is allowed only when a real
-    // music track is already on air or queued to anchor it.
-    if (hasMusicAnchor && (sundayGoldenBreak || regularBreak) && state.lastBreakSongCount !== state.songCount) {
-      state.lastBreakSongCount = state.songCount
-      const spot = selectSingleBreakAudio({
-        sundayGoldenBreak,
-        regularBreak,
-        jingleEnabled: settings.jingleEnabled,
-        goldenSunday: settings.goldenSunday,
-        jingle: settings.jingle,
-      })
-      if (spot) {
-        const previous = state.tracks.at(-1)
-        if (previous) previous.fadeOut = 0
-        const startAt = nextStart(state, now)
-        if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
-        state.tracks.push({
-          uid: `${spot.kind}-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
-          src: spot.asset.url,
-          startAt,
-          duration: spot.asset.duration,
-          fadeIn: 0,
-          fadeOut: 0,
-          kind: spot.kind,
-          title: spot.asset.name,
-        })
-        continue
-      }
-    }
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
@@ -970,14 +932,9 @@ async function loadState(now: number) {
     if (track.requestId) await updateSongRequest(track.requestId, 'played')
   }
   const before = state.tracks.length
-  const hasFutureMusicBeforeCleanup = state.tracks.some((track) =>
-    (track.kind === 'music' || track.kind === 'mor-sync') && trackEnd(track) > now,
-  )
-  // A previous failed refill could leave only jingles in persistent state.
-  // Remove those stale future breaks so the next fill can bootstrap music.
-  if (!hasFutureMusicBeforeCleanup) {
-    state.tracks = state.tracks.filter((track) => track.kind !== 'jingle' && track.kind !== 'golden-sunday')
-  }
+  // Jingles, commercials, and other break spots are retired. Remove both
+  // stale and already-persisted break tracks so rotation continues with music.
+  state.tracks = state.tracks.filter((track) => !['jingle', 'golden-sunday', 'commercial'].includes(track.kind ?? ''))
   state.tracks = state.tracks.filter((track) => {
     const isMusicTrack = track.kind === 'music' || track.kind === 'mor-sync'
     const isChristmasTrack = isChristmasTitle(track.title ?? '')
