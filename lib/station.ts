@@ -1,7 +1,7 @@
 import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
-import type { AdminStatus, NowResponse, Track } from './types'
+import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -22,9 +22,10 @@ interface StationState {
   songCount: number
   history: HistoryEntry[]
   fillingUntil: number
+  requestQueue: SongRequest[]
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0 }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [] }
 
 interface SearchItem {
   id: string
@@ -159,6 +160,43 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   return null
 }
 
+async function findRequestedSong(title: string, artist: string, history: HistoryEntry[]) {
+  const data = await fetchJson<{ items?: SearchItem[] }>(
+    betadashUrl({ search: `${title} ${artist}` }),
+    15_000,
+  )
+  const playedIds = new Set(history.map((entry) => entry.id))
+  const playedKeys = new Set(history.map((entry) => entry.key))
+  const titleNeedle = normalize(title)
+  const artistNeedle = normalize(artist)
+  const candidates = (data?.items ?? [])
+    .filter((item) => {
+      const seconds = parseDuration(item.duration ?? '')
+      return seconds >= 120 && seconds <= 420 && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title)
+        && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title)
+        && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    })
+    .map((item) => {
+      const normalizedTitle = normalize(item.title)
+      const score = (normalizedTitle.includes(titleNeedle) ? 2 : 0) + (normalizedTitle.includes(artistNeedle) ? 1 : 0)
+      return { item, score }
+    })
+    .sort((a, b) => b.score - a.score)
+  const item = candidates[0]?.item
+  if (!item) return null
+  const download = await fetchJson<{ downloadUrl?: string }>(
+    betadashUrl({ download: item.url, type: 'mp3' }),
+    30_000,
+  )
+  if (!download?.downloadUrl) return null
+  return {
+    id: item.id,
+    key: songKey(item.title),
+    src: download.downloadUrl,
+    duration: parseDuration(item.duration),
+  }
+}
+
 function trackEnd(track: Track) {
   return track.startAt + track.duration * 1000
 }
@@ -177,8 +215,12 @@ async function fill(state: StationState, now: number) {
     const program = programAt(startAt)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
-    const song = await findSong(program, state.songCount, state.history, startAt)
+    const request = state.requestQueue[0]
+    const song = request
+      ? { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
+      : await findSong(program, state.songCount, state.history, startAt)
     if (!song) break
+    if (request) state.requestQueue.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
@@ -195,11 +237,34 @@ async function fill(state: StationState, now: number) {
 }
 
 async function loadState(now: number) {
-  const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
+  const saved = await readJson<Partial<StationState>>(STATE_PATH, {})
+  const state: StationState = {
+    ...EMPTY_STATE,
+    ...saved,
+    requestQueue: Array.isArray(saved.requestQueue) ? saved.requestQueue : [],
+  }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
+}
+
+export async function enqueueSongRequest(title: string, artist: string) {
+  const now = Date.now()
+  const { state } = await loadState(now)
+  if (state.requestQueue.length >= 10) throw new Error('Puno muna ang song request queue. Subukan ulit mamaya.')
+  const resolved = await findRequestedSong(title, artist, state.history)
+  if (!resolved) throw new Error('Hindi mahanap ang kanta ngayon. Subukan ang ibang title o artist.')
+  const request: SongRequest = {
+    requestId: crypto.randomUUID(),
+    title,
+    artist,
+    submittedAt: now,
+    ...resolved,
+  }
+  state.requestQueue.push(request)
+  await writeJson(STATE_PATH, state)
+  return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
 }
 
 export async function getNowPlaying(): Promise<NowResponse> {

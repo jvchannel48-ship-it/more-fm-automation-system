@@ -7,6 +7,17 @@ export interface Track {
   fadeOut: number
 }
 
+export interface SongRequest {
+  requestId: string
+  title: string
+  artist: string
+  submittedAt: number
+  id: string
+  key: string
+  src: string
+  duration: number
+}
+
 export interface StationSettings {
   broadcastEnabled: boolean
 }
