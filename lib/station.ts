@@ -391,11 +391,11 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
     const items = await searchMusicItems(`${artist} ${title}`)
     const item = items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
-      return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
+      return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title) && !blockedTitleKeys.has(`id:${candidate.id}`)
     }) ?? items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
       const live = candidate.live === true || candidate.isLive === true
-      return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title)
+      return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title) && !blockedTitleKeys.has(`id:${candidate.id}`)
     })
     if (!item) continue
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 6_000)
@@ -460,7 +460,7 @@ async function findChristmasPlaylistSong(cursor: number, blockedTitleKeys: Set<s
     nextCursor = (index + 1) % tracks.length
     if (track.live) continue
     const artist = CHRISTMAS_CATALOG_ARTISTS.get(track.id) ?? playlistArtist(track.title, track.channel)
-    if (blockedTitleKeys.has(repeatTitleKey(track.title, artist))) continue
+    if (blockedTitleKeys.has(repeatTitleKey(track.title, artist)) || blockedTitleKeys.has(`id:${track.id}`)) continue
 
     const sourceUrl = track.url
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(sourceUrl)}&type=mp3`, 8_000)
@@ -632,23 +632,21 @@ function weeklyPlaylistOffset(ms: number, length: number) {
 }
 
 async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
-  const blockedTitleKeys = settings.noRepeatEnabled
-    ? new Set([
-        ...state.dailyPlayedTitles.map((entry) => entry.key),
-        ...state.history
-          .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
-          .filter(Boolean),
-        ...state.history.map((entry) => `id:${entry.id}`).filter(Boolean),
-        ...state.tracks
-          .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
-          .map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''))
-          .filter(Boolean),
-        ...state.tracks
-          .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
-          .map((track) => track.youtubeId ? `id:${track.youtubeId}` : '')
-          .filter(Boolean),
-      ])
-    : new Set<string>()
+  const blockedTitleKeys = new Set([
+    ...state.dailyPlayedTitles.map((entry) => entry.key),
+    ...state.history
+      .map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist))
+      .filter(Boolean),
+    ...state.history.map((entry) => `id:${entry.id}`).filter(Boolean),
+    ...state.tracks
+      .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
+      .map((track) => repeatTitleKey(track.title ?? '', state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''))
+      .filter(Boolean),
+    ...state.tracks
+      .filter((track) => track.kind === 'music' || track.kind === 'mor-sync')
+      .map((track) => track.youtubeId ? `id:${track.youtubeId}` : '')
+      .filter(Boolean),
+  ])
   const targetFutureTracks = queueAheadTarget(state, now)
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < targetFutureTracks && guard++ < FILL_BATCH_SIZE) {
@@ -682,10 +680,8 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
         })
         state.history.push({ id: requestedSong.id, key: requestedSong.key, artist: pendingRequest.artist, title: requestedSong.title, t: position.startAt })
         state.history = state.history.slice(-settings.rotationPoolSize)
-        if (settings.noRepeatEnabled) {
-          blockedTitleKeys.add(repeatTitleKey(requestedSong.title, pendingRequest.artist))
-          blockedTitleKeys.add(`id:${requestedSong.id}`)
-        }
+        blockedTitleKeys.add(repeatTitleKey(requestedSong.title, pendingRequest.artist))
+        blockedTitleKeys.add(`id:${requestedSong.id}`)
         state.songCount++
         const requestSeasonalPlan = planChristmasTrack(position.startAt, {
           regularTracksSinceChristmas: state.christmasRegularTrackCount,
@@ -834,10 +830,12 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       artist: song.artist,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, title: song.title, t: songStart })
-    if (settings.noRepeatEnabled) {
-      blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
-      blockedTitleKeys.add(`id:${song.id}`)
+    if (blockedTitleKeys.has(repeatTitleKey(song.title, song.artist)) || blockedTitleKeys.has(`id:${song.id}`)) {
+      console.warn('[morefm] prevented duplicate AutoDJ song', { id: song.id, title: song.title })
+      break
     }
+    blockedTitleKeys.add(repeatTitleKey(song.title, song.artist))
+    blockedTitleKeys.add(`id:${song.id}`)
     state.history = state.history.slice(-settings.rotationPoolSize)
     state.songCount++
     if (isChristmasSong && finalSeasonalPlan.playChristmas) {
