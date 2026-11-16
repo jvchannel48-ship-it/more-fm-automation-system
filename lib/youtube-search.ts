@@ -1,5 +1,8 @@
 import 'server-only'
 import { YouTube } from 'youtube-sr'
+import overnightCatalog from '../data/dito-playlist.json'
+import seniorCatalog from '../data/senior-classics-playlist.json'
+import morningCatalog from '../data/morning-pop-playlist.json'
 
 export interface YouTubeSearchResult {
   id: string
@@ -40,6 +43,19 @@ const PLAYLIST_FETCH_TIMEOUT_MS = 120_000
 const MP3JUICE_SEARCH_API = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
 let lastSearchWarningAt = 0
+
+function toPlaylistTracks(catalog: Array<Omit<PlaylistTrackResult, 'durationFormatted'>>): PlaylistTrackResult[] {
+  return catalog.map((track) => ({
+    ...track,
+    durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
+  }))
+}
+
+const PLAYLIST_FALLBACKS: Record<string, PlaylistTrackResult[]> = {
+  [WEEKEND_PLAYLIST_URL]: toPlaylistTracks(seniorCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>),
+  [DITO_PLAYLIST_URL]: toPlaylistTracks(overnightCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>),
+  [DAILY_PLAYLIST_URL]: toPlaylistTracks(morningCatalog as Array<Omit<PlaylistTrackResult, 'durationFormatted'>>),
+}
 
 export async function searchYouTube(query: string, limit = 12): Promise<YouTubeSearchResult[]> {
   try {
@@ -107,15 +123,15 @@ function artistFromSearchResult(item: YouTubeSearchResult) {
 
 export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = [], options: PlaylistFetchOptions = {}): Promise<PlaylistTrackResult[]> {
   const now = Date.now()
-  const cache = playlistCaches.get(playlistUrl) ?? { tracks: fallback, lastCheckedAt: 0, refresh: null }
+  const initialTracks = fallback.length > 0 ? fallback : PLAYLIST_FALLBACKS[playlistUrl] ?? []
+  const cache = playlistCaches.get(playlistUrl) ?? { tracks: initialTracks, lastCheckedAt: 0, refresh: null }
   if (!playlistCaches.has(playlistUrl)) playlistCaches.set(playlistUrl, cache)
   if (!cache.refresh && (options.refreshNow || now - cache.lastCheckedAt >= PLAYLIST_REFRESH_MS)) {
     cache.lastCheckedAt = now
     cache.refresh = refreshPlaylist(playlistUrl, cache).finally(() => { cache.refresh = null })
   }
-  // Static RJ FM has a fallback catalog. A new Sunday playlist has no safe
-  // fallback, so wait for its first refresh instead of selecting the wrong
-  // playlist during a cold start.
+  // Every user-supplied playlist has an offline fallback, so a failed refresh
+  // does not block the AutoDJ queue or switch it to an unrelated source.
   if ((cache.tracks.length === 0 || options.waitForRefresh) && cache.refresh) await cache.refresh
   return cache.tracks
 }

@@ -18,6 +18,14 @@ const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(async (r
   return data
 })
 
+function isSearchData(data: PlaylistData | SearchData | undefined): data is SearchData {
+  return Boolean(data && 'results' in data)
+}
+
+function isPlaylistData(data: PlaylistData | SearchData | undefined): data is PlaylistData {
+  return Boolean(data && 'sections' in data && 'queue' in data)
+}
+
 function formatDuration(duration?: string | number) {
   if (typeof duration === 'string') return duration
   if (!duration || duration < 1) return ''
@@ -67,7 +75,7 @@ export function PlaylistMenu() {
         </div>
         {isLoading && <p className="text-sm text-muted-foreground">Loading updated playlist…</p>}
         {error && <p className="text-sm text-destructive" role="alert">{error.message}</p>}
-        {'results' in (data ?? {}) ? <section className="space-y-2"><div className="flex items-center justify-between"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Search results</h3><span className="text-[10px] text-muted-foreground">{data.results.length} songs</span></div>{data.results.map((track, index) => <TrackRow key={track.id} track={track} rank={index + 1} />)}{data.results.length === 0 && <p className="text-sm text-muted-foreground">No playable songs found. Try another title or artist.</p>}</section> : <><div>{'queue' in (data ?? {}) && data.queue?.length ? <section className="space-y-2"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Current / Up next</h3>{data.queue.map((track) => <TrackRow key={track.uid} track={track} badge={track.active ? 'ON AIR' : 'NEXT'} />)}</section> : null}</div>{'sections' in (data ?? {}) && data.sections.map((section) => <section key={section.id} className="space-y-2"><div className="flex items-center justify-between"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{section.label}</h3><span className="text-[10px] text-muted-foreground">{section.tracks.length} songs</span></div>{section.tracks.map((track, index) => <TrackRow key={`${section.id}-${track.id ?? track.title}`} track={track} rank={index + 1} />)}</section>)}</>}
+        {isSearchData(data) ? <section className="space-y-2"><div className="flex items-center justify-between"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Search results</h3><span className="text-[10px] text-muted-foreground">{data.results.length} songs</span></div>{data.results.map((track, index) => <TrackRow key={track.id} track={track} rank={index + 1} />)}{data.results.length === 0 && <p className="text-sm text-muted-foreground">No playable songs found. Try another title or artist.</p>}</section> : isPlaylistData(data) ? <><div>{data.queue.length > 0 && <section className="space-y-2"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Current / Up next</h3>{data.queue.map((track) => <TrackRow key={track.uid} track={track} badge={track.active ? 'ON AIR' : 'NEXT'} />)}</section>}</div>{data.sections.map((section) => <section key={section.id} className="space-y-2"><div className="flex items-center justify-between"><h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{section.label}</h3><span className="text-[10px] text-muted-foreground">{section.tracks.length} songs</span></div>{section.tracks.map((track, index) => <TrackRow key={`${section.id}-${track.id ?? track.title}`} track={track} rank={index + 1} />)}</section>)}</> : null}
       </div>
     </SheetContent>
   </Sheet>

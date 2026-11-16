@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, sundayPlaylistAt } from '../lib/schedule.ts'
+import { isChristmasTitle, isOffAir, languageForSlot, MANILA_OFFSET_MS, manilaTime, nextPlaylistBoundary, playlistAt, PROGRAMS, programAt, rotationProgramFor } from '../lib/schedule.ts'
 
 function manilaTimeAt(year: number, month: number, day: number, hour = 12, minute = 0) {
   return Date.UTC(year, month - 1, day, hour, minute) - MANILA_OFFSET_MS
@@ -59,20 +59,20 @@ assert.deepEqual([0, 1, 2, 3].map((count) => languageForSlot(PROGRAMS['night-lov
 assert.equal(rotationProgramFor(PROGRAMS['night-love'], 1, true, false).id, 'night-love', 'night love overrides the daytime Tagalog-only setting')
 assert.equal(rotationProgramFor(PROGRAMS['love-mix'], 1, true, false).id, 'sunday-tagalog', 'daytime Tagalog-only preference remains in effect')
 
-for (const date of [14, 16, 17, 18, 19, 20]) {
-  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 1)), true, `weekday ${date} signs off at 1 AM`)
-  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 3)), true, `weekday ${date} remains off air before 4 AM`)
-  assert.equal(isOffAir(manilaTimeAt(2026, 11, date, 4)), false, `weekday ${date} signs on at 4 AM`)
+for (const date of [14, 15, 16, 17, 18, 19, 20]) {
+  for (const hour of [0, 1, 3, 4, 16, 23]) {
+    assert.equal(isOffAir(manilaTimeAt(2026, 11, date, hour)), false, `day ${date} hour ${hour} remains on air`)
+  }
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 0, 1)), 'senior-classics', 'senior playlist finishes through 12:01 AM')
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 0, 2)), 'overnight', '12:02 AM starts the overnight playlist')
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 3, 59)), 'overnight', 'overnight playlist runs until 4 AM')
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 4)), 'morning-pop', '4 AM starts the morning playlist')
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 15, 59)), 'morning-pop', 'morning playlist runs until 4 PM')
+  assert.equal(playlistAt(manilaTimeAt(2026, 11, date, 16)), 'senior-classics', '4 PM starts the senior classics playlist')
+  assert.equal(nextPlaylistBoundary(manilaTimeAt(2026, 11, date, 0, 1)), manilaTimeAt(2026, 11, date, 0, 2), '12:02 AM handoff is exact')
+  assert.equal(nextPlaylistBoundary(manilaTimeAt(2026, 11, date, 3, 59)), manilaTimeAt(2026, 11, date, 4), '4 AM handoff is exact')
+  assert.equal(nextPlaylistBoundary(manilaTimeAt(2026, 11, date, 15, 59)), manilaTimeAt(2026, 11, date, 16), '4 PM handoff is exact')
+  assert.equal(nextPlaylistBoundary(manilaTimeAt(2026, 11, date, 23, 59)), manilaTimeAt(2026, 11, date + 1, 0, 2), 'senior playlist handoff is exact at 12:02 AM')
 }
-assert.equal(isOffAir(manilaTimeAt(2026, 11, 15, 2)), false, 'Sunday stays on air overnight')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 3, 59)), 'rj-fm', 'Sunday before 4 AM uses RJ FM playlist')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 4)), 'golden-sunday', 'Sunday 4 AM starts Golden Sunday playlist')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 11, 59)), 'golden-sunday', 'Golden Sunday runs through 11:59 AM')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 12)), 'sunday-afternoon', 'Sunday noon switches to the afternoon playlist')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 22, 1)), 'sunday-afternoon', 'Sunday 10:01 PM remains on the afternoon playlist')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 15, 22, 2)), 'rj-fm', 'Sunday 10:02 PM switches to RJ FM playlist')
-assert.equal(nextSundayPlaylistBoundary(manilaTimeAt(2026, 11, 15, 11, 59)), manilaTimeAt(2026, 11, 15, 12), 'Golden Sunday tracks end at noon')
-assert.equal(nextSundayPlaylistBoundary(manilaTimeAt(2026, 11, 15, 22, 1)), manilaTimeAt(2026, 11, 15, 22, 2), 'Afternoon tracks end at 10:02 PM')
-assert.equal(sundayPlaylistAt(manilaTimeAt(2026, 11, 16, 12)), null, 'Weekday playlist selection is not Sunday-specific')
 
-console.log('station-schedule: Christmas disabled and all-day Tagalog Sunday oldies passed')
+console.log('station-schedule: continuous broadcasting and daily playlist rotation passed')

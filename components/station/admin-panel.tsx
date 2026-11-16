@@ -82,10 +82,6 @@ export function AdminPanel() {
   const [error, setError] = useState('')
   const [rjMakatiScheduleStartHour, setRjMakatiScheduleStartHour] = useState('0')
   const [rjMakatiScheduleEndHour, setRjMakatiScheduleEndHour] = useState('6')
-  const [signOffHour, setSignOffHour] = useState('1')
-  const [signOnHour, setSignOnHour] = useState('4')
-  const [discoStartHour, setDiscoStartHour] = useState('16')
-  const [discoEndHour, setDiscoEndHour] = useState('19')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
   const [nightVolumeEndHour, setNightVolumeEndHour] = useState('6')
   const [listenerLimit, setListenerLimit] = useState('2')
@@ -103,10 +99,6 @@ export function AdminPanel() {
     if (!data) return
     setRjMakatiScheduleStartHour(String(data.rjMakatiScheduleStartHour))
     setRjMakatiScheduleEndHour(String(data.rjMakatiScheduleEndHour))
-    setSignOffHour(String(data.signOffHour))
-    setSignOnHour(String(data.signOnHour))
-    setDiscoStartHour(String(data.discoStartHour))
-    setDiscoEndHour(String(data.discoEndHour))
     setNightVolumeStartHour(String(data.nightVolumeStartHour))
     setNightVolumeEndHour(String(data.nightVolumeEndHour))
     setListenerLimit(String(data.listenerLimit))
@@ -115,7 +107,7 @@ export function AdminPanel() {
     setBassGainDb(String(data.bassGainDb))
     setCrossfadeSeconds(String(data.crossfadeSeconds))
     setReplayGainTargetLufs(String(data.replayGainTargetLufs))
-  }, [data?.rjMakatiScheduleStartHour, data?.rjMakatiScheduleEndHour, data?.signOffHour, data?.signOnHour, data?.discoStartHour, data?.discoEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
+  }, [data?.rjMakatiScheduleStartHour, data?.rjMakatiScheduleEndHour, data?.nightVolumeStartHour, data?.nightVolumeEndHour, data?.listenerLimit, data?.masterVolume, data?.nightVolumePercent, data?.bassGainDb, data?.crossfadeSeconds, data?.replayGainTargetLufs])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -232,7 +224,7 @@ export function AdminPanel() {
     </section>
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
-        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
+        <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : 'Livestream · 24/7 continuous music'}</span></div>
       <div className="flex items-center gap-2">
         <Button type="button" variant="destructive" size="sm" disabled={!data || busy || data.broadcastEnabled === false}
           onClick={() => send('PUT', { broadcastEnabled: false })}>Sign off now</Button>
@@ -242,7 +234,7 @@ export function AdminPanel() {
     </div>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="autodj-enabled">Automatic song rotation</Label><p className="text-xs text-muted-foreground">Leave ON for automatic searching, no-repeat rotation, and the next song after each break. OFF stops it from choosing new songs after anything already queued.</p></div>
+      <div><Label htmlFor="autodj-enabled">Automatic song rotation</Label><p className="text-xs text-muted-foreground">Leave ON for continuous no-repeat rotation through the scheduled playlist. OFF stops it from choosing new songs after anything already queued.</p></div>
       <Switch id="autodj-enabled" checked={data?.autoDjEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { autoDjEnabled: checked })} />
     </div>
@@ -329,52 +321,15 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="news-enabled">4:00–4:50 PM news block</Label><p className="text-xs text-muted-foreground">Pause Disco during the news window; regular music plays if no bulletin is configured.</p></div>
-        <Switch id="news-enabled" checked={data?.newsEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { newsEnabled: checked })} /></div>
-      <div className="flex items-center justify-between gap-3"><div><Label htmlFor="dj-mic-enabled">DJ Mic</Label><p className="text-xs text-muted-foreground">Play a recorded microphone announcement to every listener after the current track.</p></div>
-        <Switch id="dj-mic-enabled" checked={data?.djMicEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djMicEnabled: checked })} /></div>
-    </div>
-
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>YouTube playlist rotation</Label><p className="text-xs text-muted-foreground">Playlist contents refresh automatically. Saturday and Sunday use Golden Sunday; weekdays use Afternoon plus the DITO playlist.</p></div>
+      <div><Label>YouTube playlist rotation · Manila time</Label><p className="text-xs text-muted-foreground">All three playlists rotate every day: senior classics 4:00 PM–12:02 AM, overnight 12:02–4:00 AM, and morning pop 4:00 AM–4:00 PM. Cached track catalogs keep AutoDJ moving if YouTube refresh fails.</p></div>
       <div className="grid gap-1 text-xs">
-        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLd469-e1TkbM" target="_blank" rel="noreferrer">DITO / RJ FM — editable playlist</a>
-        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLZxu4AZwv5H0" target="_blank" rel="noreferrer">Saturday–Sunday — Golden Sunday</a>
-        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M" target="_blank" rel="noreferrer">Weekdays — Afternoon / daily playlist</a>
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLZxu4AZwv5H0" target="_blank" rel="noreferrer">Senior classics · 4:00 PM–12:02 AM</a>
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLd469-e1TkbM" target="_blank" rel="noreferrer">Overnight playlist · 12:02–4:00 AM</a>
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M" target="_blank" rel="noreferrer">Morning pop · 4:00 AM–4:00 PM</a>
       </div>
     </div>
 
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose the regular schedule in Manila time. Sunday broadcasts continuously with no sign-off.</p></div></div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium">Sign off
-          <select value={signOffHour} onChange={(event) => setSignOffHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
-            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">Sign on
-          <select value={signOnHour} onChange={(event) => setSignOnHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
-            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
-          </select>
-        </label>
-      </div>
-      <Button variant="secondary" disabled={!data || busy || signOffHour === signOnHour} onClick={() => send('PUT', { signOffHour: Number(signOffHour), signOnHour: Number(signOnHour) })}>Save schedule</Button>
-      {signOffHour === signOnHour && <p className="text-xs text-destructive">Sign-off and sign-on must be different.</p>}
-    </div>
-
-    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label>Weekday afternoon and evening schedule</Label><p className="text-xs text-muted-foreground">Disco runs through 6:59 PM, then RJ FM switches at 7:00 PM, 9:00 PM, 10:00 PM, and midnight, Manila time.</p></div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium">Disco start
-          <select value={discoStartHour} onChange={(event) => setDiscoStartHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">Disco end
-          <select value={discoEndHour} onChange={(event) => setDiscoEndHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select>
-        </label>
-      </div>
-      <Button variant="secondary" disabled={!data || busy || discoStartHour === discoEndHour} onClick={() => send('PUT', { discoStartHour: Number(discoStartHour), discoEndHour: Number(discoEndHour) })}>Save afternoon schedule</Button>
-      {discoStartHour === discoEndHour && <p className="text-xs text-destructive">Disco start and end must be different.</p>}
-    </div>
+    <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Continuous music · no scheduled breaks</Label><p className="text-xs text-muted-foreground">Automatic sign-off, scheduled news, jingles, commercials, and scheduled DJ announcements are disabled so playlists can play continuously.</p></div></div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-3"><div><Label htmlFor="night-volume-enabled">Night volume</Label><p className="text-xs text-muted-foreground">Lower the full broadcast mix during late hours, then return to normal automatically.</p></div>
@@ -454,6 +409,6 @@ export function AdminPanel() {
     <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
       <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" /> Refresh rotation
     </Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">The station keeps the configured sign-on/sign-off schedule and listener limit while rotating songs continuously without jingle or commercial breaks.</p>
+    <p className="text-xs leading-relaxed text-muted-foreground">The station plays continuously from the configured playlist rotation without automatic sign-off, scheduled news, jingle, or commercial breaks.</p>
   </div>
 }

@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type SundayPlaylistId = 'golden-sunday' | 'sunday-afternoon' | 'rj-fm'
+export type PlaylistId = 'senior-classics' | 'overnight' | 'morning-pop'
 export type ProgramId = 'sunday-oldies' | 'sunday-english-oldies' | 'sunday-tagalog' | 'english-love' | 'good-vibes' | 'disco' | 'news' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
@@ -379,35 +379,32 @@ export function manilaTime(ms: number): ManilaTime {
   return { hour: d.getUTCHours(), minute: d.getUTCMinutes(), day: d.getUTCDay() }
 }
 
-/** Sunday playlist windows in Manila time. Other days return null. */
-export function sundayPlaylistAt(ms: number): SundayPlaylistId | null {
-  const { hour, minute, day } = manilaTime(ms)
-  if (day !== 0) return null
+/** Daily playlist windows in Manila time; the station stays on air continuously. */
+export function playlistAt(ms: number): PlaylistId {
+  const { hour, minute } = manilaTime(ms)
   const minutes = hour * 60 + minute
-  if (minutes >= 4 * 60 && minutes < 12 * 60) return 'golden-sunday'
-  if (minutes >= 12 * 60 && minutes < 22 * 60 + 2) return 'sunday-afternoon'
-  return 'rj-fm'
+  if (minutes >= 16 * 60 || minutes < 2) return 'senior-classics'
+  if (minutes < 4 * 60) return 'overnight'
+  return 'morning-pop'
 }
 
-/** Return the next Sunday playlist boundary for a track that starts on Sunday. */
-export function nextSundayPlaylistBoundary(ms: number): number | null {
-  const playlist = sundayPlaylistAt(ms)
-  if (!playlist) return null
-  const boundaryHour = playlist === 'golden-sunday' ? 12 : playlist === 'sunday-afternoon' ? 22 : null
-  const boundaryMinute = playlist === 'sunday-afternoon' ? 2 : 0
-  if (boundaryHour === null) return null
+/** Return the next daily playlist handoff in Manila time. */
+export function nextPlaylistBoundary(ms: number): number {
   const date = new Date(ms + MANILA_OFFSET_MS)
-  date.setUTCHours(boundaryHour, boundaryMinute, 0, 0)
-  const boundary = date.getTime() - MANILA_OFFSET_MS
-  return boundary > ms ? boundary : null
+  const { hour, minute } = manilaTime(ms)
+  if (hour === 0 && minute < 2) date.setUTCHours(0, 2, 0, 0)
+  else if (hour < 4) date.setUTCHours(4, 0, 0, 0)
+  else if (hour < 16) date.setUTCHours(16, 0, 0, 0)
+  else date.setUTCHours(24, 2, 0, 0)
+  return date.getTime() - MANILA_OFFSET_MS
 }
 
 export function isOffAir(ms: number, signOffHour = SIGN_OFF_HOUR, signOnHour = SIGN_ON_HOUR): boolean {
-  const { hour, day } = manilaTime(ms)
-  if (day === 0) return false
-  return signOffHour < signOnHour
-    ? hour >= signOffHour && hour < signOnHour
-    : hour >= signOffHour || hour < signOnHour
+  // Scheduled sign-offs are disabled while AutoDJ plays continuously.
+  void ms
+  void signOffHour
+  void signOnHour
+  return false
 }
 
 export function nextSignOn(ms: number, signOnHour = SIGN_ON_HOUR): number {

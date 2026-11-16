@@ -177,6 +177,7 @@ export function RadioPlayer() {
           RJ <span className="text-primary">FM</span> <StationVerifiedBadge />
         </h2>
         <p className="-mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">No. 1 Bicol Region</p>
+        <p className="text-xs font-semibold tracking-wide text-primary">Romantic &amp; Contemporary Pop Hits Throwback</p>
         <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
           <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />RJ FM</span>
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />

@@ -1,7 +1,7 @@
 import 'server-only'
 import { acquireStationLease, addSongRequest, EMPTY_MOR_SYNC_RECORD, getRatings, getSettings, getSongRequests, hasPostgresPersistence, hasQueuePersistence, MOR_SYNC_PATH, QUEUE_LOCK_PATH, readJson, releaseStationLease, renewStationLease, STATE_PATH, updateSongRequest, writeJson } from './storage'
 import { getListenerCount } from './listeners'
-import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, nextSignOff, nextSignOn, nextSundayPlaylistBoundary, PROGRAMS, programAt, rotationProgramFor, type Artist, type Program } from './schedule'
+import { isChristmasTitle, isNightVolumeWindow, isOffAir, languageForSlot, manilaDateKey, MANILA_OFFSET_MS, manilaTime, playlistAt, PROGRAMS, programAt, rotationProgramFor, type Artist, type Program } from './schedule'
 import type { AdminStatus, MorSyncRecord, NowResponse, Track } from './types'
 import { appendCompletedSong, createRepeatBlocklist, isCompletedDailyMusicTrack, isInPlaybackQueue, repeatTitleKey, rollDailyPlayedLog } from './song-repeat'
 import { dedupeMusicQueue } from './queue-dedupe'
@@ -654,10 +654,10 @@ function insertRequestPosition(state: StationState, now: number, duration: numbe
 }
 
 function playlistUrlForStart(ms: number) {
-  const { day, hour } = manilaTime(ms)
-  if (day === 0 || day === 6) return WEEKEND_PLAYLIST_URL
-  if (hour >= 10 && hour < 15) return DAILY_PLAYLIST_URL
-  return DITO_PLAYLIST_URL
+  const playlist = playlistAt(ms)
+  if (playlist === 'senior-classics') return WEEKEND_PLAYLIST_URL
+  if (playlist === 'overnight') return DITO_PLAYLIST_URL
+  return DAILY_PLAYLIST_URL
 }
 
 function weeklyPlaylistOffset(ms: number, length: number) {
@@ -731,23 +731,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const startAt = nextStart(state, now)
     if (isOffAir(startAt, settings.signOffHour, settings.signOnHour)) break
     const program = programAt(startAt, settings.signOffHour, settings.signOnHour, settings.discoStartHour, settings.discoEndHour, settings.newsEnabled)
-    if (state.christmasSongsRemaining === 0 && !settings.tagalogOnlyEnabled && program.id === 'news' && settings.news) {
-      const newsDate = manilaDateKey(startAt)
-      if (state.lastNewsDate !== newsDate) {
-        state.lastNewsDate = newsDate
-        state.tracks.push({
-          uid: `news-${startAt}-${Math.random().toString(36).slice(2, 8)}`,
-          src: settings.news.url,
-          startAt,
-          duration: settings.news.duration,
-          fadeIn: 0,
-          fadeOut: 0,
-          kind: 'news',
-          title: settings.news.name,
-        })
-        continue
-      }
-    }
     const rotationProgram = rotationProgramFor(program, manilaTime(startAt).day, settings.tagalogOnlyEnabled, settings.goodVibesEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const seasonalState = {
@@ -757,9 +740,6 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     const seasonalPlan = planChristmasTrack(startAt, seasonalState)
     let song: ResolvedSong | null = null
     let isChristmasSong = false
-    if (rotationProgram.id === 'night-love' && state.songCount % 8 === 2) {
-      song = await findMorSong('Dahil Minahal Mo Ako', 'Sarah Geronimo', blockedTitleKeys, true)
-    }
     if (seasonalPlan.playChristmas) {
       const christmasSelection = await findChristmasPlaylistSong(state.christmasPlaylistCursor, blockedTitleKeys)
       state.christmasPlaylistCursor = christmasSelection.nextCursor
@@ -770,14 +750,11 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     let playlistUrl = playlistUrlForStart(startAt)
     let playlistTracks: PlaylistTrackResult[] = []
     if (!song) {
-      if (!song) {
-        playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
-        song = playlistTracks.length > 0
-          ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
-          : rotationProgram.id === 'night-love'
-            ? await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-            : null
-      }
+      playlistTracks = await getPlaylistTracks(playlistUrl)
+      song = playlistTracks.length > 0
+        ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
+        : null
+      if (!song) song = await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
     }
     if (!song) break
     // Song lookup can take several seconds; never schedule a fresh start in the past.
@@ -785,23 +762,25 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     if (isChristmasSong && christmasModeForManilaTime(songStart) === 'off') {
       isChristmasSong = false
       playlistUrl = playlistUrlForStart(songStart)
-      playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
+      playlistTracks = await getPlaylistTracks(playlistUrl)
       song = playlistTracks.length > 0
         ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
-        : rotationProgram.id === 'night-love'
-          ? await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
-          : null
+        : null
+      if (!song) song = await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
+      if (!song) break
+      songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    }
+    if (!isChristmasSong && playlistUrlForStart(songStart) !== playlistUrl) {
+      playlistUrl = playlistUrlForStart(songStart)
+      playlistTracks = await getPlaylistTracks(playlistUrl)
+      song = playlistTracks.length > 0
+        ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
+        : null
+      if (!song) song = await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
       if (!song) break
       songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     }
     const finalSeasonalPlan = planChristmasTrack(songStart, seasonalState)
-    const sundayPlaylistBoundary = isChristmasSong ? Number.POSITIVE_INFINITY : nextSundayPlaylistBoundary(songStart) ?? Number.POSITIVE_INFINITY
-    const playlistBoundary = sundayPlaylistBoundary
-    // A slow lookup can cross a Sunday playlist boundary. Do not let a track
-    // selected from the previous window continue into the next playlist.
-    const playableDuration = playlistBoundary > songStart
-      ? Math.min(song.duration, (playlistBoundary - songStart) / 1000)
-      : song.duration
     const resolvedTitleKey = repeatTitleKey(song.title, song.artist)
     const resolvedTitleOnlyKey = repeatTitleKey(song.title, '')
     if (blockedTitleKeys.has(resolvedTitleKey) || blockedTitleKeys.has(resolvedTitleOnlyKey) || blockedTitleKeys.has(`id:${song.id}`)) {
@@ -813,7 +792,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       src: song.src,
       youtubeId: song.id,
       startAt: songStart,
-      duration: Math.max(1, playableDuration),
+      duration: Math.max(1, song.duration),
       fadeIn: settings.crossfaderEnabled ? fadeIn : 0,
       fadeOut: settings.crossfaderEnabled ? settings.crossfadeSeconds : 0,
       sourceUrl: song.sourceUrl,
@@ -884,10 +863,6 @@ async function loadState(now: number) {
   const dailyKeys = new Set(state.dailyPlayedTitles.map((entry) => entry.key))
   for (const track of state.tracks) {
     if (!track.title) continue
-    const endAt = nextSundayPlaylistBoundary(track.startAt)
-    if (endAt && track.sourcePlaylist !== CHRISTMAS_PLAYLIST_URL) {
-      if (trackEnd(track) > endAt) track.duration = Math.max(1, (endAt - track.startAt) / 1000)
-    }
     if (!isCompletedDailyMusicTrack({
       kind: track.kind,
       title: track.title,
@@ -919,43 +894,22 @@ async function loadState(now: number) {
     if (track.requestId) await updateSongRequest(track.requestId, 'played')
   }
   const before = state.tracks.length
-  // Jingles, commercials, and other break spots are retired. Remove both
-  // stale and already-persisted break tracks so rotation continues with music.
-  state.tracks = state.tracks.filter((track) => !['jingle', 'golden-sunday', 'commercial'].includes(track.kind ?? ''))
+  // Remove old scheduled inserts so the queue continues with music only.
+  state.tracks = state.tracks.filter((track) => !['jingle', 'golden-sunday', 'commercial', 'news', 'dj-mic', 'brigada-news'].includes(track.kind ?? ''))
   state.tracks = state.tracks.filter((track) => {
     const isMusicTrack = track.kind === 'music' || track.kind === 'mor-sync'
     const isChristmasTrack = isChristmasTitle(track.title ?? '')
     const isFutureTrack = track.startAt > now
     const staleRequest = isMusicTrack && isFutureTrack && track.title?.startsWith('Song request:')
     const removeChristmas = isMusicTrack && isChristmasTrack && track.sourcePlaylist !== CHRISTMAS_PLAYLIST_URL
-    const removeBrigada = track.kind === 'brigada-news'
-    const sunday = manilaTime(now).day === 0
     const artist = state.history.find((entry) => entry.t === track.startAt)?.artist ?? ''
     const removeFilteredTrack = isMusicTrack && !track.sourcePlaylist && !isAllowedTrack({ title: track.title, channel: track.sourceChannel }, artist)
-    const trackManila = manilaTime(track.startAt)
-    const sundayProgram = trackManila.day === 0
-      ? programAt(track.startAt)
-      : null
-    const validSundayEnglishOldies = sundayProgram?.id === 'sunday-english-oldies' && SUNDAY_ENGLISH_OLDIES_ARTISTS.has(normalizeMorMatchText(artist))
-    const validSundayOldies = sundayProgram?.id === 'sunday-oldies' && isSundayOldiesArtist(artist) && TAGALOG_TITLE_RULE.test(track.title ?? '')
-    const validSundayTagalogLove = sundayProgram?.id === 'sunday-tagalog' && sundayProgram.pools.tagalog.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
-    const validSundayEnglishLove = sundayProgram?.id === 'english-love' && sundayProgram.pools.english.some((entry) => normalizeMorMatchText(entry.name) === normalizeMorMatchText(artist))
-    const removeSundayBreak = sunday && (
-      ['commercial', 'news', 'dj-mic'].includes(track.kind ?? '')
-      || (track.kind === 'golden-sunday' && manilaTime(track.startAt).hour < 6)
-    )
-    const removeSundayMusic = sunday && isMusicTrack && !track.sourcePlaylist && (
-      manilaTime(track.startAt).day !== 0 || (!validSundayOldies && !validSundayEnglishOldies && !validSundayTagalogLove && !validSundayEnglishLove)
-    )
     return isInPlaybackQueue(trackEnd(track), now)
       && !staleRequest
       && !removeFilteredTrack
       && !removeChristmas
-      && !removeBrigada
-      && !removeSundayBreak
-      && !removeSundayMusic
       && (
-        track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
+        track.startAt <= now || (track.kind !== 'music' && track.kind !== undefined) || Boolean(track.sourcePlaylist) || (!REJECTED_TITLE_RULE.test(track.title ?? '') && !hasRejectedRecordingLabel(track.title, track.src))
       )
   })
   const beforeQueueDeduplication = state.tracks.length
@@ -1153,7 +1107,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       serverTime: Date.now(),
       offAir: true,
       boardOperatorEnabled: settings.boardOperatorEnabled,
-      nextOnAir: settings.broadcastEnabled ? nextSignOn(now, settings.signOnHour) : null,
+      nextOnAir: null,
       signOffAt: settings.broadcastEnabled ? null : now,
       tracks: [],
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(now, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
@@ -1201,7 +1155,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       serverTime: responseNow,
       offAir: true,
       boardOperatorEnabled: settings.boardOperatorEnabled,
-      nextOnAir: settings.broadcastEnabled ? nextSignOn(responseNow, settings.signOnHour) : null,
+      nextOnAir: null,
       signOffAt: settings.broadcastEnabled ? null : responseNow,
       tracks: [],
       nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour),
@@ -1224,7 +1178,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   }
 
   const tracks = state.tracks.map((track) => track.kind === 'music' || track.kind === 'mor-sync' ? { ...track, src: playableSource(track.src) } : track)
-  return { serverTime: responseNow, offAir: false, boardOperatorEnabled: settings.boardOperatorEnabled, nextOnAir: null, signOffAt: nextSignOff(responseNow, settings.signOffHour), tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
+  return { serverTime: responseNow, offAir: false, boardOperatorEnabled: settings.boardOperatorEnabled, nextOnAir: null, signOffAt: null, tracks, nightVolumeActive: settings.nightVolumeEnabled && isNightVolumeWindow(responseNow, settings.nightVolumeStartHour, settings.nightVolumeEndHour), audioConfig: audioConfig(settings) }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {

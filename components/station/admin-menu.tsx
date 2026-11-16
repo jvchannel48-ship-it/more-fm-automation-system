@@ -88,9 +88,9 @@ export function AdminMenu() {
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">RJ FM</p>
-              <p className="text-muted-foreground">Your current songs and next track</p>
-              <p className="text-muted-foreground">Schedule is managed in the Admin Panel.</p>
+              <p className="font-medium">RJ FM · Romantic &amp; Contemporary Pop Hits Throwback</p>
+              <p className="text-muted-foreground">Your current song and next track</p>
+              <p className="text-muted-foreground">Continuous daily playlist rotation · 24/7</p>
               <p className="mt-2 text-muted-foreground">Tune in, relax, and enjoy the music.</p>
             </div>
           </section>
