@@ -3,7 +3,7 @@ import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, 
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track } from './types'
 
-const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
+const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
@@ -98,6 +98,12 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
   }
 }
 
+function betadashUrl(params: Record<string, string>) {
+  const url = new URL(BETADASH_API_BASE)
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
+  return url.toString()
+}
+
 function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const unique = [...new Map(pool.map((a) => [a.name, a])).values()]
   const lastArtist = history.at(-1)?.artist
@@ -124,7 +130,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   for (const artist of candidatesArtists.slice(0, 5)) {
     const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
-      `${API_BASE}?search=${encodeURIComponent(`${artist.name} ${variant}`.trim())}`,
+      betadashUrl({ search: `${artist.name} ${variant}`.trim() }),
       15_000,
     )
     const candidates = (data?.items ?? []).filter((item) => {
@@ -136,7 +142,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
     for (const item of shuffle(candidates.slice(0, 10)).slice(0, 2)) {
       const dl = await fetchJson<{ downloadUrl?: string }>(
-        `${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`,
+        betadashUrl({ download: item.url, type: 'mp3' }),
         30_000,
       )
       if (dl?.downloadUrl) {
