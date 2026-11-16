@@ -14,8 +14,8 @@ assert.ok(PROGRAMS['night-love'].pools.english.length > 0, 'night rotation inclu
 assert.ok(PROGRAMS['night-love'].pools.tagalog.length > 0, 'night rotation includes Tagalog songs')
 assert.equal(programAt(manilaTime(sunday, 23, 59)).id, 'night-love', 'night love continues before midnight')
 assert.equal(programAt(manilaTime(sunday, 0, 59)).id, 'night-love', 'night love continues until the 1:00 AM sign-off')
-assert.equal(programAt(manilaTime(sunday, 1)).id, 'off-air', 'station signs off at 1:00 AM')
-assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station stays off air until 4:00 AM')
+assert.equal(programAt(manilaTime(sunday, 1)).id, 'love-mix', 'love songs continue at 1:00 AM')
+assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'station stays on air before 4:00 AM')
 assert.equal(programAt(manilaTime(sunday, 4)).id, 'sunday-oldies', 'the existing Sunday daytime schedule remains unchanged')
 
 console.log('schedule: Manila-time disco, night-love, sign-off, and daytime checks passed')
