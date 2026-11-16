@@ -1,0 +1,3 @@
+
+
+10. Live metadata API probe (Nov. 13, 2026): `GET https://api.zeno.fm/mounts/metadata/subscribe/0ha8ftewqp8uv` returned HTTP 200 with `Content-Type: text/event-stream;charset=UTF-8` without credentials from the sandbox. The SSE stream delivered JSON messages with `mount` and `streamTitle`, including `CF1 BINI - No Fear.mp3` and `ARF1 Lokal Brown - This Is Not America MP3`. This confirms the Zeno station-metadata endpoint can provide current track text for the MOR-labeled listing at the time tested. The official help page itself omits the mount suffix format; the suffix was verified against Zeno's own public station profile `streamName` and a live successful response. The station listing links to MOR's social accounts, but that is not formal proof of MOR ownership.

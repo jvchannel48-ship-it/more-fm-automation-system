@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, MapPin, Moon, Pause, Play, Radio, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
-import { Equalizer } from './equalizer'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -15,22 +14,66 @@ const fetcher = (url: string) =>
     return r.json() as Promise<NowResponse>
   })
 
+function StationVerifiedBadge() {
+  return (
+    <svg
+      aria-label="RJ FM station badge"
+      role="img"
+      viewBox="0 0 24 24"
+      className="inline-block size-6 shrink-0 align-middle drop-shadow-[0_2px_8px_rgba(24,119,242,0.35)]"
+    >
+      <circle cx="12" cy="12" r="10" fill="#1877F2" />
+      <path d="m7.3 12.1 3.05 3.05 6.45-6.4" fill="none" stroke="white" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+      <title>RJ FM station badge</title>
+    </svg>
+  )
+}
+
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
+  const [nowPlayingIssue, setNowPlayingIssue] = useState('')
   const [volume, setVolume] = useState(0.9)
   const [muted, setMuted] = useState(false)
-  const { data, error } = useSWR('/api/now', fetcher, {
-    refreshInterval: playing ? 8000 : 30000,
+  const { data, error, mutate } = useSWR('/api/now', fetcher, {
+    refreshInterval: 8000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  const recoverStream = useCallback((uid: string) => {
+    void fetch('/api/now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    }).then(() => mutate()).catch(() => undefined)
+  }, [mutate])
+  const { buffering, playbackIssue, unlock, offAir: scheduledOffAir } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream)
+  useEffect(() => {
+    if (!playbackIssue) return
+    void mutate()
+  }, [playbackIssue, mutate])
+  useEffect(() => {
+    if (!playing || data) {
+      setNowPlayingIssue('')
+      return
+    }
+    const timeout = window.setTimeout(() => setNowPlayingIssue('Reconnecting to the station automatically…'), 25_000)
+    return () => window.clearTimeout(timeout)
+  }, [playing, data])
+  useEffect(() => {
+    if (!nowPlayingIssue) return
+    void mutate()
+  }, [nowPlayingIssue, mutate])
+  const offAir = (data?.offAir ?? false) || scheduledOffAir
+  const live = playing && !buffering && !offAir && !playbackIssue
 
-  const offAir = data?.offAir ?? false
-  const live = playing && !buffering && !offAir
-  const togglePlay = () => {
+  const togglePlay = async () => {
+    if (playing) {
+      setPlaying(false)
+      return
+    }
     unlock()
-    setPlaying((p) => !p)
+    setNowPlayingIssue('')
+    setPlaying(true)
   }
 
   const onAirAgain = data?.nextOnAir
@@ -42,7 +85,7 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MOR 93.5 Naga live player" className="flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label="RJ FM live player" className="studio-deck flex w-full flex-col items-center gap-8 px-4 py-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -70,9 +113,9 @@ export function RadioPlayer() {
 
         <Button
           size="icon"
-          onClick={togglePlay}
+          onClick={() => void togglePlay()}
           disabled={offAir}
-          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
+          aria-label={playing ? 'Pause RJ FM' : 'Play RJ FM'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -89,24 +132,31 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          MOR <span className="text-primary">93.5</span> Naga
+          RJ <span className="text-primary">FM</span> <StationVerifiedBadge />
         </h2>
-        <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          MOR 93.5 NAGA LIVESTREAM ONLY
-        </p>
-        <div className="mt-2">
-          <Equalizer active={live} />
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-border/70 bg-background/45 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm">
+          <span className="inline-flex items-center gap-1.5"><Radio className="size-3.5 text-primary" aria-hidden="true" />RJ FM</span>
+          <span className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-primary" aria-hidden="true" />STARTCOPE BETA TEAM</span>
         </div>
+        {data?.boardOperatorEnabled && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200" role="status" aria-label="Board Operator Active">
+            <span className="size-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden="true" />
+            Board Operator Active
+          </div>
+        )}
         {offAir && (
           <p className="text-sm text-muted-foreground">
-            {onAirAgain ? `Signed off. Babalik kami ng ${onAirAgain}.` : 'Signed off.'}
+            {onAirAgain ? `Signed off. We will be back at ${onAirAgain}.` : 'Signed off.'}
           </p>
         )}
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
-            Hindi ma-connect sa station. Sinusubukan ulit...
+            Could not connect to the station. Retrying...
           </p>
         )}
+        {playbackIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{playbackIssue}</p>}
+        {nowPlayingIssue && <p className="max-w-sm text-sm font-semibold text-amber-300" role="alert" aria-live="assertive">{nowPlayingIssue}</p>}
       </div>
 
       <div className="flex w-full max-w-xs items-center gap-3">
