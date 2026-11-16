@@ -120,6 +120,30 @@ const SUNDAY_TAGALOG_OLDIES = [
   ...PINOY_OLDIES,
 ]
 
+const OPM_ACOUSTIC = artists('tagalog', [
+  'MYMP',
+  'Freestyle',
+  'Nina',
+  'Aiza Seguerra',
+  'Guitarist Manila',
+  'South Border',
+  'Side A',
+  'Kyla',
+])
+
+const SYNTH_POP_80S = artists('english', [
+  'a-ha',
+  'Tears for Fears',
+  'Duran Duran',
+  'The Human League',
+  'Depeche Mode',
+  'Pet Shop Boys',
+  'Alphaville',
+  'Eurythmics',
+  'OMD',
+  'Simple Minds',
+])
+
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
   'Air Supply',
@@ -306,8 +330,8 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'english-love': {
     id: 'english-love',
-    pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+    pools: { english: [...ENGLISH_LOVE, ...SYNTH_POP_80S], tagalog: [...PINOY_LOVE, ...OPM_ACOUSTIC] },
+    variants: { english: [...LOVE_VARIANTS, '80s synth-pop', '80s synth pop love songs'], tagalog: [...OPM_VARIANTS, 'OPM acoustic', 'Tagalog acoustic love songs'] },
   },
   'good-vibes': {
     id: 'good-vibes',
@@ -334,8 +358,8 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...SYNTH_POP_80S], tagalog: [...PINOY_LOVE, ...OPM_ACOUSTIC] },
+    variants: { english: [...LOVE_VARIANTS, '80s synth-pop'], tagalog: [...OPM_VARIANTS, 'OPM acoustic'] },
   },
   'off-air': {
     id: 'off-air',
