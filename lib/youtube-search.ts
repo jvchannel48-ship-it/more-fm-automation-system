@@ -105,25 +105,9 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
   }
 }
 
-/** Load the station's curated playlist in its original order. */
+/** Legacy saved playlist retired; AutoDJ uses the keyless search rotation. */
 export async function getRjFmPlaylistTracks(): Promise<PlaylistTrackResult[]> {
-  const databaseSongs = await getRadioCatalogSongs()
-  if (databaseSongs?.length) {
-    return databaseSongs.map((song) => ({
-      id: song.youtube_id,
-      title: song.title,
-      artist: song.artist,
-      url: `https://www.youtube.com/watch?v=${encodeURIComponent(song.youtube_id)}`,
-      duration: song.duration_seconds,
-      durationFormatted: `${Math.floor(song.duration_seconds / 60)}:${String(song.duration_seconds % 60).padStart(2, '0')}`,
-      channel: song.artist,
-      category: song.category,
-      picture: song.picture,
-      playlistGroup: song.playlist_group,
-      live: false,
-    }))
-  }
-  return OWN_PLAYLIST.length > 0 ? OWN_PLAYLIST : LEGACY_PLAYLIST
+  return []
 }
 
 export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = [], options: PlaylistFetchOptions = {}): Promise<PlaylistTrackResult[]> {
