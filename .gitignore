@@ -18,9 +18,11 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
+.morefm-storage/
 
 # typescript
 *.tsbuildinfo
