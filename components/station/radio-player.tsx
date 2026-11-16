@@ -16,17 +16,28 @@ const fetcher = (url: string) =>
     return r.json() as Promise<NowResponse>
   })
 
+function getManilaHour() {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', hour12: false }).format(new Date()))
+}
+
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.7)
   const [muted, setMuted] = useState(false)
+  const [manilaHour, setManilaHour] = useState(getManilaHour)
   const listenerId = useRef<string | null>(null)
   const { data, error } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
+  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume)
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!playing || data?.offAir) return
@@ -160,7 +171,7 @@ export function RadioPlayer() {
           {muted || volume === 0 ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
         </Button>
         <Slider
-          value={[muted ? 0 : volume * 100]}
+          value={[muted ? 0 : nightVolume * 100]}
           onValueChange={(v) => {
             const next = Array.isArray(v) ? v[0] : v
             setVolume(next / 100)

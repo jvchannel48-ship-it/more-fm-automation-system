@@ -160,13 +160,13 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   return null
 }
 
-async function findRequestedSong(title: string, artist: string, history: HistoryEntry[]) {
+async function findRequestedSong(title: string, artist: string, history: HistoryEntry[], requestQueue: SongRequest[]) {
   const data = await fetchJson<{ items?: SearchItem[] }>(
     betadashUrl({ search: `${title} ${artist}` }),
     15_000,
   )
-  const playedIds = new Set(history.map((entry) => entry.id))
-  const playedKeys = new Set(history.map((entry) => entry.key))
+  const playedIds = new Set([...history.map((entry) => entry.id), ...requestQueue.map((request) => request.id)])
+  const playedKeys = new Set([...history.map((entry) => entry.key), ...requestQueue.map((request) => request.key)])
   const titleNeedle = normalize(title)
   const artistNeedle = normalize(artist)
   const candidates = (data?.items ?? [])
@@ -253,7 +253,7 @@ export async function enqueueSongRequest(title: string, artist: string) {
   const now = Date.now()
   const { state } = await loadState(now)
   if (state.requestQueue.length >= 10) throw new Error('Puno muna ang song request queue. Subukan ulit mamaya.')
-  const resolved = await findRequestedSong(title, artist, state.history)
+  const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue)
   if (!resolved) throw new Error('Hindi mahanap ang kanta ngayon. Subukan ang ibang title o artist.')
   const request: SongRequest = {
     requestId: crypto.randomUUID(),
