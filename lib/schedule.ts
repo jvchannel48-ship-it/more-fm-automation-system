@@ -234,11 +234,12 @@ export const PROGRAMS: Record<ProgramId, Program> = {
 export interface ManilaTime {
   hour: number
   day: number
+  minute: number
 }
 
 export function manilaTime(ms: number): ManilaTime {
   const d = new Date(ms + MANILA_OFFSET_MS)
-  return { hour: d.getUTCHours(), day: d.getUTCDay() }
+  return { hour: d.getUTCHours(), day: d.getUTCDay(), minute: d.getUTCMinutes() }
 }
 
 export function isOffAir(ms: number): boolean {
@@ -254,18 +255,14 @@ export function nextSignOn(ms: number): number {
   return target
 }
 
-/**
- * Sunday 4–9 AM: old OPM for seniors. 10 AM–3 PM: English love songs.
- * 4–7 PM (incl. the 7 o'clock hour): disco hits. 8 PM–12 AM: English & Tagalog love songs.
- * Every other on-air hour: English love songs mixed with Tagalog.
- */
+/** 4:00–5:00 PM: disco; 5:01 PM–1:00 AM: Tagalog and English love songs. */
 export function programAt(ms: number): Program {
-  const { hour, day } = manilaTime(ms)
+  const { hour, day, minute } = manilaTime(ms)
   if (hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR) return PROGRAMS['off-air']
+  if (hour === 16 || (hour === 17 && minute === 0)) return PROGRAMS.disco
+  if (hour >= 18 || hour === 0 || (hour === 17 && minute >= 1)) return PROGRAMS['night-love']
   if (day === 0 && hour >= 4 && hour < 9) return PROGRAMS['sunday-oldies']
   if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
-  if (hour >= 16 && hour < 20) return PROGRAMS.disco
-  if (hour >= 20) return PROGRAMS['night-love']
   return PROGRAMS['love-mix']
 }
 
