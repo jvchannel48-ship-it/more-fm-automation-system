@@ -85,6 +85,11 @@ export function AdminPanel() {
         <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
       </div>
 
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <div><Label htmlFor="tagalog-only-enabled">Tagalog old songs · {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON: tuloy-tuloy ang magagandang Tagalog old songs at classic OPM artists. OFF: babalik sa regular English/Tagalog rotation. Ang kasalukuyang kanta ay tatapusin; ang mga susunod na kanta ay ire-refresh.</p></div>
+        <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
+      </div>
+
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
         <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
         Refresh rotation

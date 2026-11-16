@@ -12,10 +12,11 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, ...noStore })
-  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; tagalogOnlyEnabled?: unknown }
   const current = await getSettings()
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
+    tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
   }
   await writeJson(SETTINGS_PATH, next)
   return NextResponse.json(await getAdminStatus(), noStore)

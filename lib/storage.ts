@@ -157,11 +157,13 @@ export const STATE_PATH = 'station/state-v2.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
+  tagalogOnlyEnabled: true,
 }
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+    tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
   }
 }

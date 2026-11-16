@@ -1,6 +1,6 @@
 import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
-import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
+import { isOffAir, languageForSlot, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -207,12 +207,12 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 
-async function fill(state: StationState, now: number) {
+async function fill(state: StationState, now: number, settings: Awaited<ReturnType<typeof getSettings>>) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
     if (isOffAir(startAt)) break
-    const program = programAt(startAt)
+    const program = settings.tagalogOnlyEnabled ? PROGRAMS['sunday-oldies'] : programAt(startAt)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     const request = state.requestQueue[0]
@@ -289,7 +289,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now)
+    await fill(state, now, settings)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {

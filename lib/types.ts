@@ -20,6 +20,7 @@ export interface SongRequest {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  tagalogOnlyEnabled: boolean
 }
 
 export interface NowResponse {
