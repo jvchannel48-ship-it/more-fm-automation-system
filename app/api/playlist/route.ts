@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getNowPlaying, submitSongRequest } from '@/lib/station'
-import { DITO_PLAYLIST_URL, getPlaylistTracks, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from '@/lib/youtube-search'
+import { DAILY_PLAYLIST_URL, DITO_PLAYLIST_URL, getPlaylistTracks, searchYouTube, WEEKEND_PLAYLIST_URL, type YouTubeSearchResult } from '@/lib/youtube-search'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -20,21 +20,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ query, results }, { headers: { 'Cache-Control': 'no-store' } })
     }
 
-    const [playlist, now] = await Promise.all([getPlaylistTracks(DITO_PLAYLIST_URL), getNowPlaying()])
+    const [dito, weekend, daily, now] = await Promise.all([
+      getPlaylistTracks(DITO_PLAYLIST_URL),
+      getPlaylistTracks(WEEKEND_PLAYLIST_URL),
+      getPlaylistTracks(DAILY_PLAYLIST_URL),
+      getNowPlaying(),
+    ])
     const nowMs = now.serverTime
-    const topSongs: PlaylistTrackResult[] = playlist.filter((track) => track.playlistGroup === 'RJ TOP SONGS')
-    const playedSongs: PlaylistTrackResult[] = playlist.filter((track) => track.playlistGroup === 'RJ PLAYED')
-    const hasDatabaseGroups = topSongs.length > 0 || playedSongs.length > 0
     const queue = now.tracks
       .filter((track) => track.startAt + track.duration * 1000 > nowMs)
       .sort((a, b) => a.startAt - b.startAt)
       .slice(0, 12)
       .map((track) => ({ uid: track.uid, title: track.title ?? 'Untitled track', artist: track.artist ?? track.sourceChannel ?? 'RJ FM', startAt: track.startAt, active: track.startAt <= nowMs }))
     return NextResponse.json({
-      name: 'RJ SONGS',
+      name: 'YouTube Playlists',
       sections: [
-        { id: 'top-songs', label: 'RJ TOP SONGS', tracks: hasDatabaseGroups ? topSongs : playlist.slice(0, 30) },
-        { id: 'played', label: 'RJ PLAYED', tracks: hasDatabaseGroups ? playedSongs : playlist.slice(30) },
+        { id: 'dito', label: 'DITO — Updated Playlist', tracks: dito },
+        { id: 'weekend', label: 'Saturday–Sunday Playlist', tracks: weekend },
+        { id: 'daily', label: 'Daily Playlist', tracks: daily },
       ],
       queue,
       fetchedAt: Date.now(),

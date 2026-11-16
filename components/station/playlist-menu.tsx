@@ -52,8 +52,8 @@ export function PlaylistMenu() {
     </SheetTrigger>
     <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
       <SheetHeader>
-        <SheetTitle className="flex items-center gap-2"><ListMusic className="size-5 text-primary" /> RJ SONGS</SheetTitle>
-        <SheetDescription>Sequential YouTube rotation · 60s · 70s · 80s · 90s · 2000s · 2020s</SheetDescription>
+      <SheetTitle className="flex items-center gap-2"><ListMusic className="size-5 text-primary" /> YouTube Playlists</SheetTitle>
+      <SheetDescription>DITO updates · Saturday–Sunday playlist · Daily playlist</SheetDescription>
       </SheetHeader>
       <div className="flex flex-col gap-5 px-4 pb-8">
         <form onSubmit={submitSearch} className="flex items-center gap-2" role="search">
@@ -62,7 +62,7 @@ export function PlaylistMenu() {
         </form>
         {submittedQuery && <div className="flex items-center justify-between rounded-lg border border-border bg-card/60 px-3 py-2 text-xs"><span>Search results for <strong>{submittedQuery}</strong></span><Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={clearSearch}><X className="size-3.5" /> Clear</Button></div>}
         <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-xs text-muted-foreground">
-          <span>Automatic next song is active. Songs play in order and are blocked from repeating.</span>
+          <span>Automatic next song is active. New playlist additions refresh automatically and repeated songs are blocked.</span>
           <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => void mutate()} aria-label="Refresh playlist"><RefreshCw className="size-3.5" /></Button>
         </div>
         {isLoading && <p className="text-sm text-muted-foreground">Loading updated playlist…</p>}

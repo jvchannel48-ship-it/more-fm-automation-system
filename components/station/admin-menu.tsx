@@ -81,7 +81,7 @@ export function AdminMenu() {
           <SheetTitle>
             RJ <span className="text-primary">FM</span>
           </SheetTitle>
-          <SheetDescription>RJ SONGS</SheetDescription>
+          <SheetDescription>YouTube Playlists</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
