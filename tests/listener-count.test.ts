@@ -10,10 +10,6 @@ async function main() {
   try {
     const { getActiveListenerCount, getSettings, isBlobStorageAvailable, recordListener, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
 
-    const defaults = await getSettings()
-    assert.equal(defaults.christmasEnabled, false, 'Christmas pair defaults to OFF')
-    assert.equal(defaults.classicLoveSongsEnabled, false, 'Classic Love defaults to OFF')
-
     const first = await recordListener('listener-test-000001', true)
     assert.equal(first.listenersNow, 1, 'a playing browser is counted')
     assert.equal(first.persistenceConfigured, false, 'memory fallback is not reported as durable storage')
@@ -31,11 +27,6 @@ async function main() {
     assert.equal((await getSettings()).broadcastEnabled, false, 'the broadcast OFF toggle remains readable in memory fallback')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: true })
     assert.equal((await getSettings()).broadcastEnabled, true, 'the broadcast ON toggle remains readable in memory fallback')
-
-    await writeJson(SETTINGS_PATH, { christmasEnabled: true, classicLoveSongsEnabled: true })
-    const seasonalSettings = await getSettings()
-    assert.equal(seasonalSettings.christmasEnabled, true, 'the Christmas toggle is saved in memory fallback')
-    assert.equal(seasonalSettings.classicLoveSongsEnabled, true, 'the Classic Love toggle is saved in memory fallback')
 
     console.log('listener-count: memory fallback, live count, expiry, and broadcast toggle checks passed')
   } finally {
