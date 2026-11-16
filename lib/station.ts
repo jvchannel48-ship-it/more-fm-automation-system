@@ -256,7 +256,14 @@ export async function queueSongRequest(requestId: string) {
 
 export async function submitSongRequest(title: string, artist: string, name = 'Listener') {
   const request = await addSongRequest(title, artist, name)
-  const result = await queueSongRequest(request.id)
+  // Save first and do not make the listener wait for a provider search. The
+  // queue attempt continues server-side and the next refill retries pending
+  // requests, so temporary YouTube delays never become a request timeout.
+  const queueAttempt = queueSongRequest(request.id)
+  const timeout = new Promise<{ queued: false; reason: string }>((resolve) => {
+    setTimeout(() => resolve({ queued: false, reason: 'Request received by the Board Operator. It will be searched and queued automatically.' }), 3_000)
+  })
+  const result = await Promise.race([queueAttempt, timeout])
   return { accepted: true, request, ...result }
 }
 

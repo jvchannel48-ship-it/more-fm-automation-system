@@ -40,7 +40,7 @@ export function PlaylistMenu() {
     if (!cleanName || !cleanTitle || !cleanArtist) return
 
     setSubmitting(true)
-    setMessage('Searching for your song and preparing your request…')
+    setMessage('Sending your request to the Board Operator…')
     setMessageTone('info')
     try {
       const response = await fetch('/api/requests', {
@@ -95,7 +95,7 @@ export function PlaylistMenu() {
         </label>
         {message && <p className={`rounded-xl border px-3 py-3 text-sm leading-relaxed ${messageTone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/25 bg-primary/5 text-primary'}`} role="status" aria-live="polite">{message}</p>}
         <Button type="submit" disabled={submitting || !name.trim() || !title.trim() || !artist.trim()}>
-          {submitting ? <><Loader2 className="animate-spin" /> Searching and submitting…</> : <><Send /> Submit song request</>}
+          {submitting ? <><Loader2 className="animate-spin" /> Sending to Board Operator…</> : <><Send /> Submit song request</>}
         </Button>
         <p className="text-center text-xs text-muted-foreground">Your request is read by the station queue. It may play after one or several songs.</p>
       </form>
