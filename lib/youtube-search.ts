@@ -106,9 +106,9 @@ export async function searchYouTube(query: string, limit = 12): Promise<YouTubeS
   }
 }
 
-/** Legacy saved playlist retired; AutoDJ uses the keyless search rotation. */
+/** Own RJ FM YouTube catalog. It uses public video URLs and needs no YouTube API key. */
 export async function getRjFmPlaylistTracks(): Promise<PlaylistTrackResult[]> {
-  return []
+  return OWN_PLAYLIST
 }
 
 export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistTrackResult[] = [], options: PlaylistFetchOptions = {}): Promise<PlaylistTrackResult[]> {
