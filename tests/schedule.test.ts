@@ -6,16 +6,15 @@ function manilaTime(day: number, hour: number, minute = 0, second = 0) {
 }
 
 const sunday = 15
-assert.equal(programAt(manilaTime(sunday, 16)).id, 'disco', 'disco starts at 4:00 PM Manila time')
-assert.equal(programAt(manilaTime(sunday, 17)).id, 'disco', 'disco continues through the 5:00 PM minute')
-assert.equal(programAt(manilaTime(sunday, 17, 0, 59)).id, 'disco', 'disco continues through 5:00:59 PM')
-assert.equal(programAt(manilaTime(sunday, 17, 1)).id, 'night-love', 'Tagalog/English love songs start at 5:01 PM')
-assert.ok(PROGRAMS['night-love'].pools.english.length > 0, 'night rotation includes English songs')
-assert.ok(PROGRAMS['night-love'].pools.tagalog.length > 0, 'night rotation includes Tagalog songs')
-assert.equal(programAt(manilaTime(sunday, 23, 59)).id, 'night-love', 'night love continues before midnight')
-assert.equal(programAt(manilaTime(sunday, 0, 59)).id, 'night-love', 'night love continues until the 1:00 AM sign-off')
-assert.equal(programAt(manilaTime(sunday, 1)).id, 'love-mix', 'love songs continue at 1:00 AM')
-assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'station stays on air before 4:00 AM')
-assert.equal(programAt(manilaTime(sunday, 4)).id, 'sunday-oldies', 'the existing Sunday daytime schedule remains unchanged')
+for (const hour of Array.from({ length: 24 }, (_, index) => index)) {
+  assert.equal(programAt(manilaTime(sunday, hour)).id, 'love-mix', `Sunday ${hour}:00 uses the mellow mix`)
+  assert.equal(programAt(manilaTime(16, hour)).id, 'love-mix', `Monday ${hour}:00 uses the mellow mix`)
+}
+assert.ok(PROGRAMS['love-mix'].pools.english.length > 0, 'mellow rotation includes English songs')
+assert.ok(PROGRAMS['love-mix'].pools.tagalog.length > 0, 'mellow rotation includes Tagalog songs')
+assert.ok(PROGRAMS['love-mix'].variants.english.includes('soft ballad'), 'English searches prioritize soft ballads')
+assert.ok(PROGRAMS['love-mix'].variants.english.includes('easy listening'), 'English searches prioritize easy listening')
+assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('soft OPM ballad'), 'Tagalog searches prioritize soft OPM ballads')
+assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'station stays on air overnight')
 
-console.log('schedule: Manila-time disco, night-love, sign-off, and daytime checks passed')
+console.log('schedule: mellow English/Tagalog love mix is selected all day every day')

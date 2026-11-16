@@ -194,8 +194,8 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Rico J. Puno|rico j',
 ])
 
-const LOVE_VARIANTS = ['', 'official audio', 'lyrics', 'greatest hits', 'love song']
-const OPM_VARIANTS = ['', 'official audio', 'lyrics', 'OPM', 'greatest hits']
+const LOVE_VARIANTS = ['soft ballad', 'easy listening', 'love song', 'official audio', 'greatest hits']
+const OPM_VARIANTS = ['soft OPM ballad', 'OPM love song', 'easy listening OPM', 'official audio', 'greatest hits']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
@@ -257,13 +257,9 @@ export function nextSignOn(ms: number): number {
   return target
 }
 
-/** 4:00–5:00 PM: disco; 5:01 PM–1:00 AM: Tagalog and English love songs. */
+/** All-day mellow easy-listening mix: classic English love songs and soft OPM. */
 export function programAt(ms: number): Program {
-  const { hour, day, minute } = manilaTime(ms)
-  if (hour === 16 || (hour === 17 && minute === 0)) return PROGRAMS.disco
-  if (hour >= 18 || hour === 0 || (hour === 17 && minute >= 1)) return PROGRAMS['night-love']
-  if (day === 0 && hour >= 4 && hour < 9) return PROGRAMS['sunday-oldies']
-  if (hour >= 10 && hour < 15) return PROGRAMS['english-love']
+  void ms
   return PROGRAMS['love-mix']
 }
 

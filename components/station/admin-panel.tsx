@@ -59,7 +59,7 @@ export function AdminPanel() {
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="broadcast">Broadcast</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.broadcastEnabled === false ? 'Naka-off ang livestream' : 'Auto on 4:00 AM · auto off 1:00 AM'}
+            {data?.broadcastEnabled === false ? 'Naka-off ang livestream' : 'Mellow easy-listening buong araw · English at OPM'}
           </span>
         </div>
         <Switch
@@ -91,8 +91,8 @@ export function AdminPanel() {
       </Button>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Automated songs only. Strict rules: no AI, no covers, no rock, English &amp; Tagalog only, no repeat song
-        within 7 days, max 2 plays per artist per hour.
+        Mellow classic love songs at soft OPM buong araw. Walang disco block; English at Tagalog ang rotation.
+        Walang AI, covers, o rock; iwas-ulit ng kanta sa loob ng 7 araw.
       </p>
     </div>
   )
