@@ -72,7 +72,6 @@ export function AdminPanel() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [signOffHour, setSignOffHour] = useState('1')
-  const [signOnHour, setSignOnHour] = useState('4')
   const [discoStartHour, setDiscoStartHour] = useState('16')
   const [discoEndHour, setDiscoEndHour] = useState('19')
   const [nightVolumeStartHour, setNightVolumeStartHour] = useState('22')
@@ -90,7 +89,6 @@ export function AdminPanel() {
   useEffect(() => {
     if (!data) return
     setSignOffHour(String(data.signOffHour))
-    setSignOnHour(String(data.signOnHour))
     setDiscoStartHour(String(data.discoStartHour))
     setDiscoEndHour(String(data.discoEndHour))
     setNightVolumeStartHour(String(data.nightVolumeStartHour))
@@ -264,7 +262,7 @@ export function AdminPanel() {
     </div>
 
     <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div><Label htmlFor="tagalog-only-enabled">Tagalog-only love-song mode</Label><p className="text-xs text-muted-foreground">Default ON: randomly rotates Tagalog OPM love songs and blocks titles already played that Manila day. English MOR matches are skipped while this mode is ON. The current song finishes; upcoming tracks are refreshed.</p></div>
+      <div><Label htmlFor="tagalog-only-enabled">Tagalog Songs: {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">When ON, the station plays consecutive quality Tagalog OPM songs and skips English tracks. The current song finishes; upcoming tracks are refreshed.</p></div>
         <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy}
         onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
     </div>
@@ -295,21 +293,16 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose the regular schedule in Manila time. Sunday broadcasts continuously with no sign-off.</p></div></div>
+      <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">The station signs on automatically at 4:00 AM and signs off at the selected time in Manila time. Sunday broadcasts continuously.</p></div></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Sign off
           <select value={signOffHour} onChange={(event) => setSignOffHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
             {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium">Sign on
-          <select value={signOnHour} onChange={(event) => setSignOnHour(event.target.value)} disabled={!data || busy} className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-none focus:ring-2 focus:ring-ring">
-            {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
-          </select>
-        </label>
       </div>
-      <Button variant="secondary" disabled={!data || busy || signOffHour === signOnHour} onClick={() => send('PUT', { signOffHour: Number(signOffHour), signOnHour: Number(signOnHour) })}>Save schedule</Button>
-      {signOffHour === signOnHour && <p className="text-xs text-destructive">Sign-off and sign-on must be different.</p>}
+      <Button variant="secondary" disabled={!data || busy || signOffHour === '4'} onClick={() => send('PUT', { signOffHour: Number(signOffHour) })}>Save sign-off schedule</Button>
+      {signOffHour === '4' && <p className="text-xs text-destructive">Sign-off must be different from the fixed 4:00 AM sign-on time.</p>}
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">

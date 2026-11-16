@@ -447,12 +447,13 @@ export async function getSongRequests() {
   if (activeRequests.length !== requests.length) await writeJson(REQUESTS_PATH, activeRequests)
   return activeRequests
 }
-export async function addSongRequest(title: string, artist: string) {
+export async function addSongRequest(title: string, artist: string, name?: string) {
   const requests = await getSongRequests()
   const request: SongRequest = {
     id: `request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title,
     artist,
+    name,
     requestedAt: Date.now(),
     status: 'pending',
   }
