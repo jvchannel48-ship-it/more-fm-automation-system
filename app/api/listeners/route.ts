@@ -1,25 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { updateListener } from '@/lib/listeners'
-import { getSettings } from '@/lib/storage'
+import { type NextRequest, NextResponse } from 'next/server'
+import { recordListener } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 
+const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+
 export async function POST(request: NextRequest) {
+  const body = (await request.json().catch(() => ({}))) as { id?: unknown; active?: unknown }
+  const id = typeof body.id === 'string' ? body.id : ''
+  if (!/^[a-zA-Z0-9-]{16,80}$/.test(id) || typeof body.active !== 'boolean') {
+    return NextResponse.json({ error: 'Invalid listener heartbeat.' }, { status: 400, ...noStore })
+  }
+
   try {
-    const body = (await request.json().catch(() => ({}))) as { id?: unknown; active?: unknown }
-    if (typeof body.id !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(body.id) || typeof body.active !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid listener heartbeat' }, { status: 400 })
-    }
-    const settings = await getSettings()
-    const result = await updateListener(body.id, body.active, settings.listenerLimit)
-    return NextResponse.json({
-      accepted: result.accepted,
-      listenersNow: result.listenersNow,
-      listenerLimit: settings.listenerLimit,
-      message: result.accepted ? undefined : 'THIS STATION IS LIMITED LISTENER. Please try again later.',
-    }, { headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json(await recordListener(id, body.active), noStore)
   } catch (error) {
     console.error('[morefm] listener heartbeat failed', error)
-    return NextResponse.json({ error: 'Could not check station listener capacity.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+    return NextResponse.json({ error: 'Could not update listener count.' }, { status: 503, ...noStore })
   }
 }
