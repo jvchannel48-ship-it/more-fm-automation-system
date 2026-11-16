@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, Loader2, MessageCircle, X } from 'lucide-react'
+import { CheckCircle2, MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,7 +25,7 @@ export function SongRequest() {
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setStatus('submitting')
-    setMessage('Hinahanap at inihahanda ang kanta...')
+    setMessage('')
     try {
       const response = await fetch('/api/requests', {
         method: 'POST',
@@ -70,7 +70,8 @@ export function SongRequest() {
             {status === 'success' ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-live/30 bg-live/10 p-5 text-center">
                 <CheckCircle2 className="size-9 text-live" aria-hidden="true" />
-                <p className="text-sm font-medium">{message}</p>
+                <p className="text-sm font-semibold">Song request successful</p>
+                <p className="text-xs text-muted-foreground">{message}</p>
                 <p className="text-xs text-muted-foreground">Hintayin matapos ang kasalukuyang kanta; automatic itong susunod.</p>
                 <Button type="button" className="mt-2" onClick={close}>Done</Button>
               </div>
@@ -84,9 +85,14 @@ export function SongRequest() {
                   <Label htmlFor="request-artist">Artist</Label>
                   <Input id="request-artist" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Hal. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} />
                 </div>
-                {message && <p className="text-sm text-destructive" role="alert">{message}</p>}
+                {status === 'submitting' && (
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="Submitting song request" aria-busy="true">
+                    <div className="h-full w-1/3 rounded-full bg-primary" style={{ animation: 'request-progress 1.2s ease-in-out infinite' }} />
+                  </div>
+                )}
+                {status === 'error' && message && <p className="text-sm text-destructive" role="alert">{message}</p>}
                 <Button type="submit" disabled={status === 'submitting' || !title.trim() || !artist.trim()}>
-                  {status === 'submitting' ? <><Loader2 className="animate-spin" aria-hidden="true" /> Submitting...</> : <><MessageCircle aria-hidden="true" /> Submit request</>}
+                  <MessageCircle aria-hidden="true" /> Submit request
                 </Button>
               </form>
             )}
