@@ -12,11 +12,17 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, ...noStore })
-  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; tagalogOnlyEnabled?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; tagalogOnlyEnabled?: unknown; christmasEnabled?: unknown; classicLoveSongsEnabled?: unknown }
   const current = await getSettings()
+  const requestedTagalogOnly = typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled
+  const requestedClassicLove = typeof body.classicLoveSongsEnabled === 'boolean' ? body.classicLoveSongsEnabled : current.classicLoveSongsEnabled
+  const tagalogOnlyEnabled = body.classicLoveSongsEnabled === true && body.tagalogOnlyEnabled !== true ? false : requestedTagalogOnly
+  const classicLoveSongsEnabled = body.tagalogOnlyEnabled === true ? false : requestedClassicLove
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
-    tagalogOnlyEnabled: typeof body.tagalogOnlyEnabled === 'boolean' ? body.tagalogOnlyEnabled : current.tagalogOnlyEnabled,
+    tagalogOnlyEnabled,
+    christmasEnabled: typeof body.christmasEnabled === 'boolean' ? body.christmasEnabled : current.christmasEnabled,
+    classicLoveSongsEnabled,
   }
   await writeJson(SETTINGS_PATH, next)
   return NextResponse.json(await getAdminStatus(), noStore)

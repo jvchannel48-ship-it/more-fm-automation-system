@@ -158,6 +158,8 @@ export const STATE_PATH = 'station/state-v2.json'
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   tagalogOnlyEnabled: true,
+  christmasEnabled: false,
+  classicLoveSongsEnabled: false,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -165,5 +167,7 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     tagalogOnlyEnabled: typeof saved.tagalogOnlyEnabled === 'boolean' ? saved.tagalogOnlyEnabled : true,
+    christmasEnabled: typeof saved.christmasEnabled === 'boolean' ? saved.christmasEnabled : false,
+    classicLoveSongsEnabled: typeof saved.classicLoveSongsEnabled === 'boolean' ? saved.classicLoveSongsEnabled : false,
   }
 }

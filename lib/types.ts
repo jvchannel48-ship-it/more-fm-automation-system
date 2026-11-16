@@ -5,6 +5,7 @@ export interface Track {
   duration: number
   fadeIn: number
   fadeOut: number
+  christmasLanguage?: 'english' | 'tagalog'
 }
 
 export interface SongRequest {
@@ -21,6 +22,8 @@ export interface SongRequest {
 export interface StationSettings {
   broadcastEnabled: boolean
   tagalogOnlyEnabled: boolean
+  christmasEnabled: boolean
+  classicLoveSongsEnabled: boolean
 }
 
 export interface NowResponse {

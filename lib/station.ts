@@ -1,6 +1,6 @@
 import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
-import { isOffAir, languageForSlot, nextSignOn, PROGRAMS, programAt, type Artist, type Program } from './schedule'
+import { CHRISTMAS_ARTISTS, isChristmasSlot, isOffAir, languageForSlot, nextSignOn, PROGRAMS, programAt, type Artist, type Language, type Program } from './schedule'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -45,6 +45,8 @@ const QUALITY_RULE =
 const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
+const TAGALOG_TITLE_RULE = /\b(?:pasko|maligayang|himig ng pasko|araw ng pasko|sinta ko|sa araw ng pasko)\b/i
+const CHRISTMAS_TITLE_RULE = /\bchristmas\b|\bxmas\b|\bpasko\b|\bsanta claus\b|\bsilent night\b|\bjingle bells?\b|\bholly\b|\bwinter wonderland\b|\bdeck the halls\b|\bo holy night\b|\bjoy to the world\b|\bwe wish you\b|\blet it snow\b|\bwhite christmas\b|\brudolph\b|\bsleigh ride\b|\bfirst noel\b|\bfeliz navidad\b|\bmost wonderful time\b/i
 const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
 
 function parseDuration(value: string): number {
@@ -73,10 +75,11 @@ function songKey(title: string) {
 }
 
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
-function isAllowed(title: string, artist: Artist) {
+function isAllowed(title: string, artist: Artist, requireTagalog = false) {
   if (NON_LATIN.test(title)) return false
   if (AI_RULE.test(title) || ROCK_RULE.test(title)) return false
   if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
+  if (requireTagalog && !TAGALOG_TITLE_RULE.test(title)) return false
   return ` ${normalize(title)} `.includes(` ${normalize(artist.match)} `)
 }
 
@@ -121,15 +124,18 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   return shuffle(fresh.length >= 3 ? fresh : allowed)
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number) {
-  const language = languageForSlot(program, songCount)
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, christmas = false, languageOverride?: Language) {
+  const language = languageOverride ?? languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const candidatesArtists = eligibleArtists(program.pools[language], history, now)
-  const variants = program.variants[language]
+  const candidatesArtists = eligibleArtists(christmas ? CHRISTMAS_ARTISTS[language] : program.pools[language], history, now)
+  const variants = christmas
+    ? language === 'english' ? ['Christmas song', 'Christmas classic'] : ['Tagalog Christmas song', 'Pasko OPM']
+    : program.variants[language]
 
   for (const artist of candidatesArtists.slice(0, 5)) {
-    const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
+    const artistVariants = program.id === 'classic-love' && artist.name !== 'James Ingram' ? variants.filter((variant) => variant !== 'Just Once') : variants
+    const variant = artistVariants[Math.floor(Math.random() * artistVariants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       betadashUrl({ search: `${artist.name} ${variant}`.trim() }),
       15_000,
@@ -137,7 +143,10 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      if (!isAllowed(item.title, artist)) return false
+      const requireTagalog = christmas ? language === 'tagalog' : program.tagalogOnly
+      if (!isAllowed(item.title, artist, requireTagalog)) return false
+      if (christmas && !CHRISTMAS_TITLE_RULE.test(item.title)) return false
+      if (christmas && language === 'english' && TAGALOG_TITLE_RULE.test(item.title)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
 
@@ -212,15 +221,32 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
     if (isOffAir(startAt)) break
-    const program = settings.tagalogOnlyEnabled ? PROGRAMS['sunday-oldies'] : programAt(startAt)
+    const previousTrack = state.tracks.at(-1)
+    const continuingChristmasPair = settings.christmasEnabled && !settings.tagalogOnlyEnabled && !settings.classicLoveSongsEnabled && previousTrack?.christmasLanguage === 'tagalog'
+    const program = settings.tagalogOnlyEnabled
+      ? PROGRAMS['sunday-oldies']
+      : settings.classicLoveSongsEnabled ? PROGRAMS['classic-love'] : programAt(startAt)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
-    const request = state.requestQueue[0]
-    const song = request
-      ? { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt)
+    let song = null
+    let christmasLanguage: Language | undefined
+    if (continuingChristmasPair) {
+      song = await findSong(program, state.songCount, state.history, startAt, true, 'english')
+      if (song) christmasLanguage = 'english'
+    }
+    const request = settings.tagalogOnlyEnabled || settings.classicLoveSongsEnabled || continuingChristmasPair
+      ? undefined
+      : state.requestQueue[0]
+    if (!song && request) {
+      song = { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
+    }
+    if (!song && !continuingChristmasPair && !settings.tagalogOnlyEnabled && !settings.classicLoveSongsEnabled && settings.christmasEnabled && isChristmasSlot(state.songCount, startAt)) {
+      song = await findSong(program, state.songCount, state.history, startAt, true, 'tagalog')
+      if (song) christmasLanguage = 'tagalog'
+    }
+    if (!song && !request) song = await findSong(program, state.songCount, state.history, startAt)
     if (!song) break
-    if (request) state.requestQueue.shift()
+    if (request && song.id === request.id) state.requestQueue.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
@@ -230,6 +256,7 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       duration: song.duration,
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
+      christmasLanguage,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++

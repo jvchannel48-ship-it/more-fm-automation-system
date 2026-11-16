@@ -86,8 +86,15 @@ export function AdminPanel() {
       </div>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
-        <div><Label htmlFor="tagalog-only-enabled">Tagalog old songs · {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON: tuloy-tuloy ang magagandang Tagalog old songs at classic OPM artists. OFF: babalik sa regular English/Tagalog rotation. Ang kasalukuyang kanta ay tatapusin; ang mga susunod na kanta ay ire-refresh.</p></div>
+        <div><Label htmlFor="tagalog-only-enabled">Tagalog old songs · {data?.tagalogOnlyEnabled ? 'ON' : 'OFF'}</Label><p className="text-xs text-muted-foreground">ON: tuloy-tuloy ang magagandang Tagalog old songs at classic OPM artists. OFF: babalik sa regular English/Tagalog rotation. Kapag ON, ino-off nito ang Classic Love mode. Tatapusin muna ang current at already queued na kanta/request bago magpalit ng rotation.</p></div>
         <Switch id="tagalog-only-enabled" checked={data?.tagalogOnlyEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { tagalogOnlyEnabled: checked })} />
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <div className="flex items-center justify-between gap-3"><div><Label htmlFor="christmas-enabled">Christmas song pair</Label><p className="text-xs text-muted-foreground">During Sep–Dec, ON adds two back-to-back songs to the seasonal rotation: Tagalog first, then English. The pair pauses in Tagalog-only or Classic Love mode; current and already queued songs finish first.</p></div>
+          <Switch id="christmas-enabled" checked={data?.christmasEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { christmasEnabled: checked })} /></div>
+        <div className="flex items-center justify-between gap-3"><div><Label htmlFor="classic-love-enabled">Classic Love Songs</Label><p className="text-xs text-muted-foreground">ON plays English classic love songs continuously, with James Ingram and a “Just Once” search, instead of the regular schedule. Christmas pairs and pending song requests wait. Turning this ON disables Tagalog-only; turning Tagalog-only ON later disables this mode. Current and already queued songs finish first.</p></div>
+          <Switch id="classic-love-enabled" checked={data?.classicLoveSongsEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { classicLoveSongsEnabled: checked })} /></div>
       </div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>

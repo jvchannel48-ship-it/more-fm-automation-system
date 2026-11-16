@@ -3,7 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId = 'sunday-oldies' | 'english-love' | 'classic-love' | 'disco' | 'night-love' | 'love-mix' | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -150,6 +150,25 @@ const NIGHT_LOVE = artists('english', [
   'Dan Hill',
 ])
 
+const CLASSIC_ENGLISH_LOVE = artists('english', [
+  'James Ingram', 'Air Supply', 'Lionel Richie', 'Bread', 'Dan Hill', 'Peabo Bryson',
+  'Luther Vandross', 'Anita Baker', 'Roberta Flack', 'George Benson', 'Michael Bolton',
+  'Richard Marx', 'Christopher Cross', 'Kenny Rogers', 'Dionne Warwick', 'Barry Manilow',
+  'Carpenters', 'Natalie Cole', 'Atlantic Starr', 'Deniece Williams', 'Smokey Robinson',
+  'Engelbert Humperdinck|engelbert', 'Peter Cetera', 'Phil Collins', 'Boyz II Men',
+])
+
+export const CHRISTMAS_ARTISTS: Record<Language, Artist[]> = {
+  english: artists('english', [
+    'Andy Williams', 'Nat King Cole', 'Bing Crosby', 'Brenda Lee', 'Frank Sinatra',
+    'Carpenters', 'Elvis Presley', 'Perry Como', 'Jose Mari Chan',
+  ]),
+  tagalog: artists('tagalog', [
+    'Jose Mari Chan', 'APO Hiking Society|apo hiking', 'Gary Valenciano',
+    'Sharon Cuneta', 'Regine Velasquez|regine', 'Kuh Ledesma', 'Imelda Papin',
+  ]),
+}
+
 const ENGLISH_DISCO = artists('english', [
   'Bee Gees',
   'Donna Summer',
@@ -208,6 +227,11 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     id: 'english-love',
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+  },
+  'classic-love': {
+    id: 'classic-love',
+    pools: { english: CLASSIC_ENGLISH_LOVE, tagalog: [] },
+    variants: { english: ['classic love song', 'classic love songs', 'Just Once', 'oldies love song'], tagalog: [] },
   },
   disco: {
     id: 'disco',
@@ -269,6 +293,16 @@ export function programAt(ms: number): Program {
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
 export function languageForSlot(program: Program, songCount: number): Language {
+  if (program.id === 'classic-love') return 'english'
   if (program.tagalogOnly) return 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
+}
+
+/** Start a two-song Tagalog/English Christmas pair about once per 10 songs in Sep–Oct, 7 in Nov, and 4 in Dec. */
+export function isChristmasSlot(songCount: number, ms: number): boolean {
+  const month = new Date(ms + MANILA_OFFSET_MS).getUTCMonth() + 1
+  if (month === 9 || month === 10) return songCount % 10 === 0
+  if (month === 11) return songCount % 7 === 0
+  if (month === 12) return songCount % 4 === 0
+  return false
 }

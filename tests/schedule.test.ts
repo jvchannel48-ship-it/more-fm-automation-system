@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isOffAir, PROGRAMS, programAt } from '../lib/schedule.ts'
+import { CHRISTMAS_ARTISTS, isChristmasSlot, isOffAir, languageForSlot, PROGRAMS, programAt } from '../lib/schedule.ts'
 
 function manilaTime(day: number, hour: number, minute = 0, second = 0) {
   return Date.UTC(2026, 10, day, hour - 8, minute, second)
@@ -17,5 +17,19 @@ assert.equal(programAt(manilaTime(sunday, 0, 59)).id, 'night-love', 'night love 
 assert.equal(programAt(manilaTime(sunday, 1)).id, 'love-mix', 'love songs continue at 1:00 AM')
 assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'station stays on air before 4:00 AM')
 assert.equal(programAt(manilaTime(sunday, 4)).id, 'sunday-oldies', 'the existing Sunday daytime schedule remains unchanged')
+assert.equal(languageForSlot(PROGRAMS['classic-love'], 0), 'english', 'Classic Love always selects English')
+assert.equal(languageForSlot(PROGRAMS['classic-love'], 7), 'english', 'Classic Love does not alternate back to Tagalog')
+assert.ok(PROGRAMS['classic-love'].pools.english.some((artist) => artist.name === 'James Ingram'), 'Classic Love includes James Ingram')
+assert.ok(PROGRAMS['classic-love'].pools.tagalog.length === 0, 'Classic Love has no Tagalog song pool')
+assert.ok(CHRISTMAS_ARTISTS.english.length > 0 && CHRISTMAS_ARTISTS.tagalog.length > 0, 'Christmas sources cover both languages')
 
-console.log('schedule: Manila-time disco, night-love, sign-off, and daytime checks passed')
+const nov = manilaTime(sunday, 9)
+assert.equal(isChristmasSlot(0, nov), true, 'November Christmas pair starts at its cadence boundary')
+assert.equal(isChristmasSlot(1, nov), false, 'November cadence does not start a second pair immediately')
+assert.equal(isChristmasSlot(7, nov), true, 'November Christmas pair repeats about every seven songs')
+const dec = Date.UTC(2026, 11, 15, 12)
+assert.equal(isChristmasSlot(4, dec), true, 'December Christmas pair repeats about every four songs')
+assert.equal(isChristmasSlot(5, dec), false, 'December cadence waits until its next boundary')
+assert.equal(isChristmasSlot(0, Date.UTC(2027, 0, 15, 12)), false, 'Christmas pairs do not run outside Sep–Dec')
+
+console.log('schedule: Manila-time programming, Classic Love, and Christmas cadence checks passed')
