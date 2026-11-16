@@ -101,6 +101,20 @@ export async function upsertRadioCatalogSong(input: {
   return result.rows[0]
 }
 
+export async function clearRadioCatalogSongs() {
+  const pool = getPostgresPool()
+  if (!pool) {
+    await writeJson(CATALOG_PATH, [])
+    catalogCache = null
+    return true
+  }
+  await ensureDatabaseTables()
+  await pool.query('DELETE FROM public.top_played')
+  await pool.query('UPDATE public.songs SET is_active = false, updated_at = now() WHERE is_active = true')
+  catalogCache = null
+  return true
+}
+
 export async function deactivateRadioCatalogSong(youtubeId: string) {
   const pool = getPostgresPool()
   if (!pool) {

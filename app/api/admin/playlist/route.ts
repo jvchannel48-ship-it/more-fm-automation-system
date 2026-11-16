@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
-import { deactivateRadioCatalogSong, getRadioCatalogSongs, upsertRadioCatalogSong, type RadioCatalogSong } from '@/lib/radio-catalog'
+import { clearRadioCatalogSongs, deactivateRadioCatalogSong, getRadioCatalogSongs, upsertRadioCatalogSong, type RadioCatalogSong } from '@/lib/radio-catalog'
 import { searchYouTube } from '@/lib/youtube-search'
 
 export const dynamic = 'force-dynamic'
@@ -101,7 +101,11 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     if (!(await isAdmin())) return jsonError('Unauthorized', 401)
-    const body = await request.json().catch(() => ({})) as { youtubeId?: unknown }
+    const body = await request.json().catch(() => ({})) as { youtubeId?: unknown; clearAll?: unknown }
+    if (body.clearAll === true) {
+      await clearRadioCatalogSongs()
+      return NextResponse.json({ removed: true, cleared: 'saved song catalog and top-played history' }, { headers: { 'Cache-Control': 'no-store' } })
+    }
     const youtubeId = typeof body.youtubeId === 'string' ? body.youtubeId.trim() : ''
     if (!/^[\w-]{6,32}$/.test(youtubeId)) return jsonError('Invalid YouTube song.', 400)
     const removed = await deactivateRadioCatalogSong(youtubeId)
