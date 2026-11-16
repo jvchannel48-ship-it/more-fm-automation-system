@@ -155,7 +155,7 @@ function asSearchItems(items: YouTubeSearchResult[]): SearchItem[] {
 }
 
 async function searchMusicItems(query: string) {
-  const merged = asSearchItems(await searchYouTube(`${query} official audio`, 12))
+  const merged = asSearchItems(await searchYouTube(`${query} official audio`, 20))
   const seen = new Set<string>()
   return merged.filter((item) => {
     const key = item.id || item.url
@@ -392,11 +392,15 @@ async function findEmergencySong(songCount: number, blockedTitleKeys: Set<string
     const items = await searchMusicItems(`${artist} ${title}`)
     const item = items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
-      return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title) && !blockedTitleKeys.has(`id:${candidate.id}`)
+      const resolvedKey = repeatTitleKey(displayTitle(candidate.title, artist), artist)
+      return seconds >= 90 && seconds <= 540 && !isDisallowedSearchItem(candidate) && !isChristmasTitle(candidate.title)
+        && !blockedTitleKeys.has(`id:${candidate.id}`) && !blockedTitleKeys.has(resolvedKey)
     }) ?? items.find((candidate) => {
       const seconds = parseDuration(candidate.duration ?? '')
       const live = candidate.live === true || candidate.isLive === true
-      return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title) && !blockedTitleKeys.has(`id:${candidate.id}`)
+      const resolvedKey = repeatTitleKey(displayTitle(candidate.title, artist), artist)
+      return seconds >= 90 && seconds <= 540 && !live && !isChristmasTitle(candidate.title)
+        && !blockedTitleKeys.has(`id:${candidate.id}`) && !blockedTitleKeys.has(resolvedKey)
     })
     if (!item) continue
     const download = await fetchJsonOnce<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 6_000)

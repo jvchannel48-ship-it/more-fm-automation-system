@@ -280,10 +280,11 @@ const GOOD_VIBES_ENGLISH = artists('english', [
   'Ellie Goulding',
 ])
 
-// Decade tags help YouTube search land on 60s–2000s studio recordings.
-const LOVE_VARIANTS = ['', 'official audio', 'love song', 'classic love song', '80s 90s', '70s 80s', '2000s']
-const GOOD_VIBES_VARIANTS = ['', 'official audio', 'pop hits', 'feel good hits', 'greatest hits']
-const OPM_VARIANTS = ['', 'official audio', 'OPM', 'Tagalog love song', '80s 90s OPM', 'classic OPM']
+// Decade tags help YouTube search land on classic and modern studio recordings.
+const DECADE_VARIANTS = ['1960s classic love song', '1970s classic love song', '1980s classic love song', '1990s love song', '2000s love song', '2010s love song', '2020s love song']
+const LOVE_VARIANTS = ['', 'official audio', 'love song', 'classic love song', '80s 90s', '70s 80s', '2000s', ...DECADE_VARIANTS]
+const GOOD_VIBES_VARIANTS = ['', 'official audio', 'pop hits', 'feel good hits', 'greatest hits', ...DECADE_VARIANTS]
+const OPM_VARIANTS = ['', 'official audio', 'OPM', 'Tagalog love song', '80s 90s OPM', 'classic OPM', ...DECADE_VARIANTS]
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
