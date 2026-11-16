@@ -222,7 +222,9 @@ export async function queueSongRequest(requestId: string) {
           ...state.dailyPlayedTitles.map((entry) => entry.key),
           ...state.history.map((entry) => repeatTitleKey(entry.title ?? entry.key, entry.artist)).filter(Boolean),
           ...state.history.map((entry) => `id:${entry.id}`).filter(Boolean),
+          ...state.history.map((entry) => repeatTitleKey(entry.title ?? entry.key, '')).filter(Boolean),
           ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', track.artist ?? '')).filter(Boolean),
+          ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => repeatTitleKey(track.title ?? '', '')).filter(Boolean),
           ...state.tracks.filter((track) => track.kind === 'music' || track.kind === 'mor-sync').map((track) => track.youtubeId ? `id:${track.youtubeId}` : '').filter(Boolean),
         ])
       : new Set<string>()
@@ -264,7 +266,14 @@ export async function submitSongRequest(title: string, artist: string, name = 'L
     setTimeout(() => resolve({ queued: false, reason: 'Request received by the Board Operator. It will be searched and queued automatically.' }), 3_000)
   })
   const result = await Promise.race([queueAttempt, timeout])
-  return { accepted: true, request, ...result }
+  return {
+    accepted: true,
+    request,
+    ...result,
+    reason: result.queued
+      ? 'Request accepted. It will play automatically after the current song.'
+      : result.reason,
+  }
 }
 
 async function findMorFallback(program: Program, songCount: number, history: HistoryEntry[], now: number, shuffleEnabled: boolean, blockedTitleKeys: Set<string>) {

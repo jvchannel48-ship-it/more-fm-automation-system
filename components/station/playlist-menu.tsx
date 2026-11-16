@@ -52,9 +52,9 @@ export function PlaylistMenu() {
       if (!response.ok) throw new Error(result.error ?? 'Hindi naisumite ang request. Subukan muli.')
 
       if (result.queued) {
-        setMessage('Your song request submitted. It will play after the current song queue.')
+        setMessage('Request accepted. AutoDJ will play it automatically after the current song.')
       } else if (result.accepted) {
-        setMessage(result.reason ?? 'Your song request was saved. It will be added to the station queue automatically.')
+        setMessage(result.reason ?? 'Request saved. AutoDJ will search it automatically and play it after the current song.')
       } else {
         setMessage(result.reason ?? 'Your song request submitted. Please wait for play.')
       }
@@ -97,7 +97,7 @@ export function PlaylistMenu() {
         <Button type="submit" disabled={submitting || !name.trim() || !title.trim() || !artist.trim()}>
           {submitting ? <><Loader2 className="animate-spin" /> Sending to Board Operator…</> : <><Send /> Submit song request</>}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">Your request is read by the station queue. It may play after one or several songs.</p>
+        <p className="text-center text-xs text-muted-foreground">AutoDJ reads the request, searches it automatically, and places it after the current song when found.</p>
       </form>
     </SheetContent>
   </Sheet>
