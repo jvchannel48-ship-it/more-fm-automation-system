@@ -943,6 +943,14 @@ async function loadState(now: number) {
     if (track.requestId) await updateSongRequest(track.requestId, 'played')
   }
   const before = state.tracks.length
+  const hasFutureMusicBeforeCleanup = state.tracks.some((track) =>
+    (track.kind === 'music' || track.kind === 'mor-sync') && trackEnd(track) > now,
+  )
+  // A previous failed refill could leave only jingles in persistent state.
+  // Remove those stale future breaks so the next fill can bootstrap music.
+  if (!hasFutureMusicBeforeCleanup) {
+    state.tracks = state.tracks.filter((track) => track.kind !== 'jingle' && track.kind !== 'golden-sunday')
+  }
   state.tracks = state.tracks.filter((track) => {
     const isMusicTrack = track.kind === 'music' || track.kind === 'mor-sync'
     const isChristmasTrack = isChristmasTitle(track.title ?? '')
