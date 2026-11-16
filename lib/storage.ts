@@ -47,7 +47,9 @@ const memoryListeners = new Map<string, { lastSeenAt: number }>()
 const memoryRequests: SongRequest[] = []
 let listenerMutationQueue = Promise.resolve()
 const settingsObjectCache = new Map<string, { value: unknown; expiresAt: number }>()
-const STATION_STATE_PATH = 'station/state-v2.json'
+const STATION_STATE_PATH = 'station/state-v3-playlists.json'
+const LEGACY_STATION_STATE_PATH = 'station/state-v2.json'
+let legacyStateRemovalPromise: Promise<void> | null = null
 export const hasFilesystemPersistence = Boolean(filesystemDataDir)
 export const hasPostgresPersistence = Boolean(databaseUrl)
 export const hasPersistentStorage = Boolean(databaseUrl) || hasFilesystemPersistence
@@ -189,6 +191,11 @@ export async function ensureDatabaseTables() {
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   const pool = getPool()
   if (!pool) {
+    if (pathname === STATION_STATE_PATH) {
+      memoryState.delete(LEGACY_STATION_STATE_PATH)
+      const legacyFile = filesystemPath(LEGACY_STATION_STATE_PATH)
+      if (legacyFile) await unlink(legacyFile).catch(() => undefined)
+    }
     if (hasSupabaseStorageConfig()) {
       const cached = settingsObjectCache.get(pathname)
       if (isPersistentSettingsPath(pathname) && cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as T
@@ -215,6 +222,10 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     return fallback
   }
   await ensureStateTable()
+  if (pathname === STATION_STATE_PATH) {
+    legacyStateRemovalPromise ??= pool.query('DELETE FROM public.morefm_state WHERE storage_key = $1', [LEGACY_STATION_STATE_PATH]).then(() => undefined)
+    await legacyStateRemovalPromise
+  }
   const result = await pool.query<{ value: T }>(
     'SELECT value FROM public.morefm_state WHERE storage_key = $1 LIMIT 1',
     [pathname],

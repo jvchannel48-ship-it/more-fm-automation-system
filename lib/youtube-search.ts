@@ -47,6 +47,9 @@ const OWN_PLAYLIST: PlaylistTrackResult[] = [
   durationFormatted: `${Math.floor(track.duration / 60)}:${String(track.duration % 60).padStart(2, '0')}`,
 }))
 export const RJ_FM_PLAYLIST_URL = 'rj://original-playlists'
+export const DITO_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLd469-e1TkbM'
+export const WEEKEND_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLZxu4AZwv5H0'
+export const DAILY_PLAYLIST_URL = 'https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M'
 const PLAYLIST_REFRESH_MS = 60_000
 const PLAYLIST_FETCH_TIMEOUT_MS = 120_000
 const MP3JUICE_SEARCH_API = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'

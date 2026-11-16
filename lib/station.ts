@@ -9,7 +9,7 @@ import { fetchMorNowPlaying, normalizeMorMatchText } from './mor-sync'
 import { hasBlacklistedTitle, hasRejectedContent, isAllowedTrack } from './track-filter'
 import { matchesRequestedSong } from './song-request-matching'
 import { incrementTopPlayed } from './radio-catalog'
-import { getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
+import { DAILY_PLAYLIST_URL, DITO_PLAYLIST_URL, getPlaylistTracks, getRjFmPlaylistTracks, RJ_FM_PLAYLIST_URL, searchYouTube, WEEKEND_PLAYLIST_URL, type PlaylistTrackResult, type YouTubeSearchResult } from './youtube-search'
 import christmasCatalog from './christmas-playlist-catalog.json'
 import { christmasModeForManilaTime, planChristmasTrack } from './seasonal-rotation'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -682,10 +682,10 @@ function insertRequestPosition(state: StationState, now: number, duration: numbe
 }
 
 function playlistUrlForStart(ms: number) {
-  // Keep every day on the station's own deterministic RJ TOP SONGS → RJ PLAYED rotation.
-  // The argument is retained so callers do not need a separate schedule branch.
-  void ms
-  return RJ_FM_PLAYLIST_URL
+  const { day, hour } = manilaTime(ms)
+  if (day === 0 || day === 6) return WEEKEND_PLAYLIST_URL
+  if (hour >= 10 && hour < 15) return DAILY_PLAYLIST_URL
+  return DITO_PLAYLIST_URL
 }
 
 function weeklyPlaylistOffset(ms: number, length: number) {

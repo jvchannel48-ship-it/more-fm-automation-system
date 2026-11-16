@@ -11,7 +11,6 @@ const DRIFT_TOLERANCE_S = 15
 
 interface Slot {
   el: HTMLAudioElement
-  bassFilter: BiquadFilterNode | null
   uid: string | null
   src: string | null
   synced: boolean
@@ -76,7 +75,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   // Keep the last known on-air track available until its scheduled end so the
   // browser audio element is not stopped during that deploy window.
   const knownTracks = useRef(new Map<string, Track>())
-  const audioContext = useRef<AudioContext | null>(null)
   const failedUids = useRef(new Set<string>())
   const forcedNextUid = useRef<string | null>(null)
   const offset = useRef(0)
@@ -104,34 +102,13 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         const slot = slots.current.find((candidate) => candidate.el === el)
         if (slot) slot.ended = true
       }
-      return { el, bassFilter: null, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
+      return { el, uid: null, src: null, synced: false, lastPlayAttemptAt: 0, activeWaitSince: null, reloadAttempts: 0, ended: false }
     })
   }, [])
 
   const unlock = useCallback(() => {
     setPlaybackIssue(null)
     ensureSlots()
-    try {
-      const context = audioContext.current ?? new AudioContext()
-      audioContext.current = context
-      for (const slot of slots.current) {
-        if (slot.bassFilter) continue
-        try {
-          const source = context.createMediaElementSource(slot.el)
-          const bassFilter = context.createBiquadFilter()
-          bassFilter.type = 'lowshelf'
-          bassFilter.frequency.value = 180
-          bassFilter.gain.value = data?.audioConfig.bassGainDb ?? 12
-          source.connect(bassFilter).connect(context.destination)
-          slot.bassFilter = bassFilter
-        } catch {
-          slot.bassFilter = null
-        }
-      }
-      if (context.state === 'suspended') void context.resume().catch(() => undefined)
-    } catch {
-      audioContext.current = null
-    }
     const now = Date.now() + offset.current
     for (const slot of slots.current) {
       const track = data?.tracks.find((candidate) => candidate.uid === slot.uid)
@@ -330,7 +307,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         const duckGain = voiceActive && track.kind === 'music' ? 0.18 : 1
         const crossfadeGainValue = trackGain(track, now, config?.crossfaderEnabled ?? true, config?.crossfaderCurve ?? 'constant-power')
         const outputGain = clamp01(volume * stationGain * replayGain * duckGain * (isActive ? crossfadeGainValue : 0))
-        if (slot.bassFilter) slot.bassFilter.gain.value = config?.bassGainDb ?? 12
         el.volume = outputGain
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
@@ -368,11 +344,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       for (const slot of slots.current) {
         slot.el.pause()
         slot.el.removeAttribute('src')
-        slot.bassFilter?.disconnect()
       }
       slots.current = []
-      void audioContext.current?.close().catch(() => undefined)
-      audioContext.current = null
     },
     [],
   )

@@ -336,6 +336,15 @@ export function AdminPanel() {
     </div>
 
     <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div><Label>YouTube playlist rotation</Label><p className="text-xs text-muted-foreground">Playlist contents refresh automatically. Saturday and Sunday use Golden Sunday; weekdays use Afternoon plus the DITO playlist.</p></div>
+      <div className="grid gap-1 text-xs">
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLd469-e1TkbM" target="_blank" rel="noreferrer">DITO / RJ FM — editable playlist</a>
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLZxu4AZwv5H0" target="_blank" rel="noreferrer">Saturday–Sunday — Golden Sunday</a>
+        <a className="truncate text-primary underline" href="https://music.youtube.com/playlist?list=PLWrP0D7Qkd-M" target="_blank" rel="noreferrer">Weekdays — Afternoon / daily playlist</a>
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-start gap-2"><Clock3 className="mt-0.5 size-4 text-primary" aria-hidden="true" /><div><Label>Broadcast schedule</Label><p className="text-xs text-muted-foreground">Choose the regular schedule in Manila time. Sunday broadcasts continuously with no sign-off.</p></div></div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium">Sign off
