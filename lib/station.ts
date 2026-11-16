@@ -770,17 +770,13 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
     let playlistUrl = playlistUrlForStart(startAt)
     let playlistTracks: PlaylistTrackResult[] = []
     if (!song) {
-      // Once audio is already on air, resolve the next track from the fast
-      // OPM fallback first. Playlist refreshes must never create an audio gap.
-      if (rotationProgram.id !== 'night-love' && state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)) {
-        song = await findEmergencySong(state.songCount, blockedTitleKeys)
-      }
       if (!song) {
         playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
         song = playlistTracks.length > 0
           ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, startAt)
-          : await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
-        if (!song && rotationProgram.id !== 'night-love') song = await findEmergencySong(state.songCount, blockedTitleKeys)
+          : rotationProgram.id === 'night-love'
+            ? await findSong(rotationProgram, state.songCount, state.history, startAt, settings.shuffleEnabled, blockedTitleKeys)
+            : null
       }
     }
     if (!song) break
@@ -792,8 +788,9 @@ async function fill(state: StationState, now: number, settings: Awaited<ReturnTy
       playlistTracks = rotationProgram.id === 'night-love' ? [] : await getPlaylistTracks(playlistUrl)
       song = playlistTracks.length > 0
         ? await findPlaylistSong(state.songCount, blockedTitleKeys, playlistUrl, songStart)
-        : await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
-      if (!song && rotationProgram.id !== 'night-love') song = await findEmergencySong(state.songCount, blockedTitleKeys)
+        : rotationProgram.id === 'night-love'
+          ? await findSong(rotationProgram, state.songCount, state.history, songStart, settings.shuffleEnabled, blockedTitleKeys)
+          : null
       if (!song) break
       songStart = Math.max(nextStart(state, now), Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     }
