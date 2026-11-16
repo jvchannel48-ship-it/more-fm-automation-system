@@ -48,6 +48,7 @@ const OWN_PLAYLIST: PlaylistTrackResult[] = [
 }))
 export const RJ_FM_PLAYLIST_URL = 'rj://original-playlists'
 const PLAYLIST_REFRESH_MS = 60_000
+const PLAYLIST_FETCH_TIMEOUT_MS = 120_000
 const MP3JUICE_SEARCH_API = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const playlistCaches = new Map<string, { tracks: PlaylistTrackResult[]; lastCheckedAt: number; refresh: Promise<void> | null }>()
 let lastSearchWarningAt = 0
@@ -127,21 +128,27 @@ export async function getPlaylistTracks(playlistUrl: string, fallback: PlaylistT
 
 async function refreshPlaylist(playlistUrl: string, cache: { tracks: PlaylistTrackResult[] }) {
   try {
-    const playlist = await Promise.race([
-      YouTube.getPlaylist(playlistUrl, {
-        // Fetch the full current playlist so additions after the first 100 songs
-        // are also available to AutoDJ after the next background refresh.
-      limit: 500,
-        fetchAll: true,
-        requestOptions: {
-          headers: {
-            'Accept-Language': 'en-US,en;q=0.9',
-            'User-Agent': 'Mozilla/5.0 (compatible; RJFM-AutoDJ/1.0)',
-          },
+    const playlistPromise = YouTube.getPlaylist(playlistUrl, {
+      // fetchAll follows continuation pages until YouTube has no more tracks.
+      // Omitting limit avoids imposing a total playlist-size ceiling.
+      fetchAll: true,
+      requestOptions: {
+        signal: AbortSignal.timeout(PLAYLIST_FETCH_TIMEOUT_MS),
+        headers: {
+          'Accept-Language': 'en-US,en;q=0.9',
+          'User-Agent': 'Mozilla/5.0 (compatible; RJFM-AutoDJ/1.0)',
         },
+      },
+    })
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const playlist = await Promise.race([
+      playlistPromise,
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), PLAYLIST_FETCH_TIMEOUT_MS)
       }),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
-    ])
+    ]).finally(() => {
+      if (timeout) clearTimeout(timeout)
+    })
     const tracks = (playlist?.videos ?? []).flatMap((video) => {
       if (!video.id || !video.title || !video.url || !video.duration || video.duration < 60) return []
       return [{
