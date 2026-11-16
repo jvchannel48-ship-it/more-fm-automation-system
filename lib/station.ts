@@ -1,6 +1,7 @@
 import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
+import { isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -34,19 +35,6 @@ interface SearchItem {
   duration: string
 }
 
-const AI_RULE =
-  /\bai\b|a\.i\.|artificial intelligence|suno|udio|voice ?clon|cloned|\bclone\b|deepfake|synthetic|generated|remake|re-?imagined|\bcover\b|covered by|tribute|version|parody|impersonat|soundalike/i
-
-const ROCK_RULE = /rock|metal|punk|grunge|emo\b|screamo|hardcore|headbang/i
-
-const QUALITY_RULE =
-  /karaoke|instrumental|minus one|full album|nonstop|non-stop|medley|reaction|tutorial|remix|sped ?up|slowed|nightcore|8d|reverb|bass ?boost|mashup|playlist|compilation|1 hour|loop|ringtone|lesson|chords|piano|guitar|violin|saxophone|acoustic|sing-?along|with lyrics in/i
-
-const FOREIGN_RULE =
-  /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
-
-const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
-
 function parseDuration(value: string): number {
   const parts = value.split(':').map(Number)
   if (parts.some(Number.isNaN)) return 0
@@ -70,14 +58,6 @@ function songKey(title: string) {
     .filter(Boolean)
     .sort()
     .join(' ')
-}
-
-/** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
-function isAllowed(title: string, artist: Artist) {
-  if (NON_LATIN.test(title)) return false
-  if (AI_RULE.test(title) || ROCK_RULE.test(title)) return false
-  if (QUALITY_RULE.test(title) || FOREIGN_RULE.test(title)) return false
-  return ` ${normalize(title)} `.includes(` ${normalize(artist.match)} `)
 }
 
 function shuffle<T>(list: T[]): T[] {
@@ -137,7 +117,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      if (!isAllowed(item.title, artist)) return false
+      if (!isOriginalArtistTrack(item.title, artist)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
 
@@ -172,8 +152,7 @@ async function findRequestedSong(title: string, artist: string, history: History
   const candidates = (data?.items ?? [])
     .filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
-      return seconds >= 120 && seconds <= 420 && !NON_LATIN.test(item.title) && !AI_RULE.test(item.title)
-        && !QUALITY_RULE.test(item.title) && !FOREIGN_RULE.test(item.title)
+      return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist })
         && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
     .map((item) => {

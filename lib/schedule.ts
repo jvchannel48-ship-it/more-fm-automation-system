@@ -243,10 +243,8 @@ export function manilaTime(ms: number): ManilaTime {
 }
 
 export function isOffAir(ms: number): boolean {
-  // RJ FM now runs continuously overnight. Keep the legacy constants for
-  // compatibility with saved settings, but never schedule a sign-off.
-  void ms
-  return false
+  const { hour } = manilaTime(ms)
+  return hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
 }
 
 export function nextSignOn(ms: number): number {

@@ -6,6 +6,7 @@ import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import type { AdminStatus } from '@/lib/types'
 
 const fetcher = (url: string) =>
@@ -59,7 +60,9 @@ export function AdminPanel() {
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="broadcast">Broadcast</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.broadcastEnabled === false ? 'Naka-off ang livestream' : 'Mellow easy-listening buong araw · English at OPM'}
+            {data?.broadcastEnabled === false
+              ? `Naka-off ang livestream · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`
+              : `Mellow easy-listening · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`}
           </span>
         </div>
         <Switch
