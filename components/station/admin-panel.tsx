@@ -237,8 +237,12 @@ export function AdminPanel() {
     <div className="flex items-center justify-between gap-3">
       <div className="flex flex-col gap-0.5"><Label htmlFor="broadcast">Broadcast</Label>
         <span className="text-xs text-muted-foreground">{data?.broadcastEnabled === false ? 'Livestream is off' : `Auto on ${hourLabel(data?.signOnHour ?? 4)} · auto off ${hourLabel(data?.signOffHour ?? 1)} · Sundays: 24/7, no sign-off`}</span></div>
-      <Switch id="broadcast" checked={data?.broadcastEnabled ?? true} disabled={!data || busy}
-        onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="destructive" size="sm" disabled={!data || busy || data.broadcastEnabled === false}
+          onClick={() => send('PUT', { broadcastEnabled: false })}>Sign off now</Button>
+        <Switch id="broadcast" checked={data?.broadcastEnabled ?? true} disabled={!data || busy}
+          onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })} />
+      </div>
     </div>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
