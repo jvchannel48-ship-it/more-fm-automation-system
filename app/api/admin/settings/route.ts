@@ -15,7 +15,7 @@ export async function PUT(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as {
     broadcastEnabled?: unknown
     sundayScheduleEnabled?: unknown
-    newTagalogNext?: unknown
+    newTagalogOpmEnabled?: unknown
   }
   const current = await getSettings()
   const next = {
@@ -23,18 +23,20 @@ export async function PUT(request: NextRequest) {
     sundayScheduleEnabled: typeof body.sundayScheduleEnabled === 'boolean'
       ? body.sundayScheduleEnabled
       : current.sundayScheduleEnabled,
+    newTagalogOpmEnabled: typeof body.newTagalogOpmEnabled === 'boolean'
+      ? body.newTagalogOpmEnabled
+      : current.newTagalogOpmEnabled,
   }
   await writeJson(SETTINGS_PATH, next)
-  if (typeof body.newTagalogNext === 'boolean') {
-    await refreshQueue(body.newTagalogNext ? 'new-tagalog' : 'rotation')
+  if (typeof body.newTagalogOpmEnabled === 'boolean'
+    && body.newTagalogOpmEnabled !== current.newTagalogOpmEnabled) {
+    await refreshQueue()
   }
   return NextResponse.json(await getAdminStatus(), noStore)
 }
 
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, ...noStore })
-  const body = (await request.json().catch(() => ({}))) as { mode?: unknown }
-  const mode = body.mode === 'new-tagalog' ? 'new-tagalog' : 'rotation'
-  await refreshQueue(mode)
+  await refreshQueue()
   return NextResponse.json(await getAdminStatus(), noStore)
 }

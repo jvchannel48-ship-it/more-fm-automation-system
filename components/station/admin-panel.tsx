@@ -47,21 +47,20 @@ export function AdminPanel() {
       const values = body as {
         broadcastEnabled?: boolean
         sundayScheduleEnabled?: boolean
-        newTagalogNext?: boolean
-        mode?: string
+        newTagalogOpmEnabled?: boolean
       } | undefined
       if (method === 'POST') {
-        setMessage(values?.mode === 'new-tagalog'
-          ? 'Na-update ang queue: susunod na automatic song ay bagong Tagalog OPM; prioritized ang “Marilag” ni Dionela.'
-          : 'Na-refresh ang music rotation.')
+        setMessage('Na-refresh ang music rotation.')
       } else if (typeof values?.sundayScheduleEnabled === 'boolean') {
         setMessage(status.persistenceConfigured
           ? values.sundayScheduleEnabled ? 'Naka-save ang Sunday schedule setting.' : 'Naka-OFF ang Sunday special; normal mellow rotation ang susunod.'
           : 'Na-toggle ang Sunday schedule, pero pansamantala lang ito sa server memory.')
-      } else if (typeof values?.newTagalogNext === 'boolean') {
-        setMessage(values.newTagalogNext
-          ? 'Naka-ON: susunod na automatic song ay bagong Tagalog OPM; uunahin ang “Marilag” ni Dionela.'
-          : 'Naka-OFF ang bagong Tagalog OPM next; nakansela ang pending preference.')
+      } else if (typeof values?.newTagalogOpmEnabled === 'boolean') {
+        setMessage(status.persistenceConfigured
+          ? values.newTagalogOpmEnabled
+            ? 'Naka-ON ang modern Tagalog OPM mode at mananatili ito hanggang i-OFF mo.'
+            : 'Naka-OFF ang modern Tagalog OPM mode; normal rotation na ang kasunod.'
+          : 'Na-toggle ang OPM mode, pero pansamantala lang ito sa server memory.')
       } else if (typeof values?.broadcastEnabled === 'boolean') {
         setMessage(status.persistenceConfigured
           ? 'Nai-save ang Broadcast setting sa Blob.'
@@ -112,18 +111,18 @@ export function AdminPanel() {
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
-          <Label htmlFor="new-tagalog-next">Play new Tagalog OPM next</Label>
+          <Label htmlFor="new-tagalog-opm">New Tagalog OPM mode</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.newTagalogNext
-              ? 'Naka-ON · uunahin ang “Marilag” ni Dionela o ibang bagong Tagalog OPM'
+            {data?.newTagalogOpmEnabled
+              ? 'Naka-ON · bagong Tagalog OPM bawat automatic song; hanggang i-OFF mo'
               : 'Naka-OFF · normal song rotation'}
           </span>
         </div>
         <Switch
-          id="new-tagalog-next"
-          checked={data?.newTagalogNext ?? false}
+          id="new-tagalog-opm"
+          checked={data?.newTagalogOpmEnabled ?? false}
           disabled={!data || busy}
-          onCheckedChange={(checked) => send('PUT', { newTagalogNext: checked })}
+          onCheckedChange={(checked) => send('PUT', { newTagalogOpmEnabled: checked })}
         />
       </div>
 
