@@ -1,5 +1,5 @@
 import 'server-only'
-import { EdgeTTS } from 'edge-tts-universal'
+import { Communicate } from 'edge-tts-universal'
 
 export const EDGE_TTS_VOICE = 'en-US-ChristopherNeural'
 export const EDGE_TTS_DURATION_SECONDS = 56
@@ -42,14 +42,23 @@ export function buildRequestDjText(title: string, artist: string) {
 export async function synthesizeEdgeTts(text: string) {
   const cleanText = text.trim().slice(0, 1800)
   if (!cleanText) throw new Error('Speech text is empty.')
-  const synthesis = new EdgeTTS(cleanText, EDGE_TTS_VOICE, {
-    rate: '-4%',
-    pitch: '-2Hz',
-    volume: '+0%',
-  }).synthesize()
+  const synthesis = (async () => {
+    const communicate = new Communicate(cleanText, {
+      voice: EDGE_TTS_VOICE,
+      rate: '-4%',
+      pitch: '-2Hz',
+      volume: '+0%',
+      connectionTimeout: 12_000,
+    })
+    const chunks: Buffer[] = []
+    for await (const chunk of communicate.stream()) {
+      if (chunk.type === 'audio' && chunk.data) chunks.push(chunk.data)
+    }
+    if (chunks.length === 0) throw new Error('Edge TTS returned no audio.')
+    return Buffer.concat(chunks)
+  })()
   const timeout = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Edge TTS synthesis timed out.')), 12_000)
   })
-  const result = await Promise.race([synthesis, timeout])
-  return Buffer.from(await result.audio.arrayBuffer())
+  return Promise.race([synthesis, timeout])
 }

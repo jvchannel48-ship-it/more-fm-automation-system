@@ -248,10 +248,10 @@ async function fill(
       : await findSong(program, state.songCount, state.history, startAt, randomTagalogOpm)
     if (!song) break
     if (request) state.requestQueue.shift()
-    // Every second station break is an English guess-the-song challenge. The
+    // Every fourth song is an English guess-the-song challenge. The
     // reveal is queued after the song, so the answer is heard even if nobody
     // sends a guess.
-    const stationBreak = !request && edgeTtsEnabled && state.songCount > 0 && state.songCount % 2 === 0 && !hasQueuedDjAnnouncement(state, now)
+    const stationBreak = !request && edgeTtsEnabled && state.songCount > 0 && !hasQueuedDjAnnouncement(state, now)
     const guessingChallenge = stationBreak && state.songCount % 4 === 0
     const introText = guessingChallenge
       ? buildGuessChallengeText(song.title, song.artist)
