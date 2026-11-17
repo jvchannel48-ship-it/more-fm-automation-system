@@ -12,7 +12,6 @@ import {
 } from './schedule'
 import { isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
-import { buildGenericDjText, buildGuessChallengeText, buildRequestDjText, buildRevealText, EDGE_TTS_DURATION_SECONDS } from './edge-tts'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -205,19 +204,11 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
-function edgeTtsSource(text: string) {
-  return `/api/tts?text=${encodeURIComponent(text)}`
-}
-function hasQueuedDjAnnouncement(state: StationState, now: number) {
-  return state.tracks.some((track) => track.kind === 'dj-mic' && trackEnd(track) > now)
-}
-
 async function fill(
   state: StationState,
   now: number,
   sundayScheduleEnabled: boolean,
   newTagalogOpmEnabled: boolean,
-  edgeTtsEnabled: boolean,
 ) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
@@ -227,50 +218,13 @@ async function fill(
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     const request = state.requestQueue[0]
-    if (request && edgeTtsEnabled && !hasQueuedDjAnnouncement(state, now)) {
-      const text = buildRequestDjText(request.title, request.artist)
-      state.tracks.push({
-        uid: `dj-request-${request.requestId}-${startAt}`,
-        src: edgeTtsSource(text),
-        startAt,
-        duration: EDGE_TTS_DURATION_SECONDS,
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'dj-mic',
-        title: 'RJ FM DJ request announcement',
-        artist: 'Christopher · Edge TTS',
-      })
-      continue
-    }
     const randomTagalogOpm = Math.random() < 0.5
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
       : await findSong(program, state.songCount, state.history, startAt, randomTagalogOpm)
     if (!song) break
     if (request) state.requestQueue.shift()
-    // Every fourth song is an English guess-the-song challenge. The
-    // reveal is queued after the song, so the answer is heard even if nobody
-    // sends a guess.
-    const stationBreak = !request && edgeTtsEnabled && state.songCount > 0 && !hasQueuedDjAnnouncement(state, now)
-    const guessingChallenge = stationBreak && state.songCount % 4 === 0
-    const introText = guessingChallenge
-      ? buildGuessChallengeText(song.title, song.artist)
-      : stationBreak ? buildGenericDjText() : null
-    const baseStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    const songStart = baseStart + (introText ? EDGE_TTS_DURATION_SECONDS * 1000 : 0)
-    if (introText) {
-      state.tracks.push({
-        uid: `dj-break-${state.songCount}-${baseStart}`,
-        src: edgeTtsSource(introText),
-        startAt: baseStart,
-        duration: EDGE_TTS_DURATION_SECONDS,
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'dj-mic',
-        title: guessingChallenge ? 'RJ FM guess-the-song challenge' : 'RJ FM Bicol DJ announcement',
-        artist: 'Christopher · Edge TTS',
-      })
-    }
+    const songStart = startAt
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
@@ -282,20 +236,6 @@ async function fill(
       title: song.title,
       artist: song.artist,
     })
-    if (guessingChallenge) {
-      const revealStart = songStart + song.duration * 1000
-      state.tracks.push({
-        uid: `dj-reveal-${song.id}-${revealStart}`,
-        src: edgeTtsSource(buildRevealText(song.title, song.artist)),
-        startAt: revealStart,
-        duration: EDGE_TTS_DURATION_SECONDS,
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'dj-mic',
-        title: 'RJ FM song answer reveal',
-        artist: 'Christopher · Edge TTS',
-      })
-    }
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
   }
@@ -309,7 +249,9 @@ async function loadState(now: number) {
     requestQueue: Array.isArray(saved.requestQueue) ? saved.requestQueue : [],
   }
   const before = state.tracks.length
-  state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
+  // Purge announcements created by prior versions so they cannot interrupt
+  // playback after this update is deployed.
+  state.tracks = state.tracks.filter((t) => t.kind !== 'dj-mic' && trackEnd(t) >= now - 1000)
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
 }
@@ -355,7 +297,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, settings.newTagalogOpmEnabled, settings.edgeTtsEnabled)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.newTagalogOpmEnabled)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
@@ -368,7 +310,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     nextOnAir: null,
     tracks: state.tracks.map((track) => ({
       ...track,
-      src: track.kind === 'dj-mic' ? track.src : `/api/audio?src=${encodeURIComponent(track.src)}`,
+      src: `/api/audio?src=${encodeURIComponent(track.src)}`,
     })),
     bassBoostDb: settings.bassBoostDb,
   }
