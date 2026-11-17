@@ -1,4 +1,5 @@
 import 'server-only'
+import { after } from 'next/server'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import {
   isOffAir,
@@ -19,7 +20,7 @@ const CROSSFADE_SECONDS = 8
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
-const FILL_LOCK_MS = 45_000
+const FILL_LOCK_MS = 120_000
 
 interface HistoryEntry {
   id: string
@@ -34,10 +35,11 @@ interface StationState {
   history: HistoryEntry[]
   fillingUntil: number
   requestQueue: SongRequest[]
+  failedDzmmWindowStart: number | null
 }
 
 const EMPTY_STATE: StationState = {
-  tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [],
+  tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [], failedDzmmWindowStart: null,
 }
 
 interface SearchItem {
@@ -303,6 +305,7 @@ async function loadState(now: number) {
   const state: StationState = {
     ...EMPTY_STATE,
     ...saved,
+    failedDzmmWindowStart: typeof saved.failedDzmmWindowStart === 'number' ? saved.failedDzmmWindowStart : null,
     requestQueue: Array.isArray(saved.requestQueue) ? saved.requestQueue : [],
   }
   const before = state.tracks.length
@@ -329,7 +332,7 @@ export async function enqueueSongRequest(title: string, artist: string) {
   return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
 }
 
-export async function getNowPlaying(): Promise<NowResponse> {
+export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promise<NowResponse> {
   const now = Date.now()
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
   const offAir = isOffAir(now) || !settings.broadcastEnabled
@@ -349,28 +352,97 @@ export async function getNowPlaying(): Promise<NowResponse> {
   }
 
   const dzmmWindow = dzmmWindowAt(now)
-  if (dzmmWindow) {
+  if (dzmmWindow && state.failedDzmmWindowStart !== dzmmWindow.startAt) {
+    const liveUid = `dzmm-${dzmmWindow.startAt}`
+    const transitionStartAt = dzmmWindow.endAt - CROSSFADE_SECONDS * 1000
+    const handoffRetryDelay = () => Math.min(FILL_LOCK_MS, Math.max(5_000, transitionStartAt - Date.now()))
+    const liveTrack: Track = {
+      uid: liveUid,
+      src: DZMM_STREAM_URL,
+      startAt: dzmmWindow.startAt,
+      duration: (dzmmWindow.endAt - dzmmWindow.startAt) / 1000,
+      fadeIn: 0,
+      fadeOut: CROSSFADE_SECONDS,
+      kind: 'live',
+      title: 'DZMM Radyo Patrol 630',
+      artist: 'DZMM live broadcast',
+    }
+    const transitionMusic = state.tracks.filter((track) =>
+      track.kind === 'music' && track.startAt >= transitionStartAt && track.startAt < dzmmWindow.endAt,
+    )
+    const nextTracks = [liveTrack, ...transitionMusic].sort((a, b) => a.startAt - b.startAt)
+    const tracksChanged = nextTracks.length !== state.tracks.length || nextTracks.some((track, index) => {
+      const current = state.tracks[index]
+      return current?.uid !== track.uid || current?.src !== track.src || current?.fadeOut !== track.fadeOut
+        || current?.startAt !== track.startAt
+    })
+    if (tracksChanged) state.tracks = nextTracks
+
+    const hasTransitionMusic = state.tracks.some((track) =>
+      track.kind === 'music' && track.startAt >= transitionStartAt,
+    )
+    if (!hasTransitionMusic && state.fillingUntil < now) {
+      const fillLock = now + FILL_LOCK_MS
+      state.fillingUntil = fillLock
+      await writeJson(STATE_PATH, state)
+      after(async () => {
+        try {
+          const { state: latest } = await loadState(Date.now())
+          if (latest.fillingUntil !== fillLock) return
+
+          if (latest.failedDzmmWindowStart !== dzmmWindow.startAt
+            && latest.tracks.some((track) => track.uid === liveUid)
+            && !latest.tracks.some((track) => track.kind === 'music' && track.startAt >= transitionStartAt)) {
+            const requests = latest.requestQueue
+            latest.requestQueue = []
+            try {
+              // Start music at the live fade-out point, not after the stream ends.
+              await fill(latest, transitionStartAt, settings.sundayScheduleEnabled, false)
+            } finally {
+              latest.requestQueue = requests
+            }
+          }
+
+          const { state: current } = await loadState(Date.now())
+          if (current.fillingUntil !== fillLock || current.failedDzmmWindowStart === dzmmWindow.startAt) return
+          latest.requestQueue = current.requestQueue
+
+          const ready = latest.tracks.some((track) =>
+            track.kind === 'music' && track.startAt >= transitionStartAt,
+          )
+          latest.fillingUntil = ready ? 0 : Date.now() + handoffRetryDelay()
+          await writeJson(STATE_PATH, latest)
+        } catch (error) {
+          console.error('[rjfm] DZMM handoff queue fill failed', error)
+          try {
+            const { state: retryState } = await loadState(Date.now())
+            if (retryState.fillingUntil === fillLock) {
+              retryState.fillingUntil = Date.now() + handoffRetryDelay()
+              await writeJson(STATE_PATH, retryState)
+            }
+          } catch (saveError) {
+            console.error('[rjfm] could not save DZMM handoff retry state', saveError)
+          }
+        }
+      })
+    } else if (tracksChanged) {
+      await writeJson(STATE_PATH, state)
+    }
+
     return {
       serverTime: Date.now(),
       offAir: false,
       nextOnAir: null,
-      tracks: [{
-        uid: `dzmm-${dzmmWindow.startAt}`,
-        src: DZMM_STREAM_URL,
-        startAt: dzmmWindow.startAt,
-        duration: (dzmmWindow.endAt - dzmmWindow.startAt) / 1000,
-        fadeIn: 0,
-        fadeOut: 0,
-        kind: 'live',
-        title: 'DZMM Radyo Patrol 630',
-        artist: 'DZMM live broadcast',
-      }],
+      tracks: state.tracks.map((track) => ({
+        ...track,
+        src: `/api/audio?src=${encodeURIComponent(track.src)}`,
+      })),
       bassBoostDb: settings.bassBoostDb,
     }
   }
 
   const needsFill = state.tracks.filter((t) => t.startAt > now).length < 1
-  if (needsFill && state.fillingUntil < now) {
+  if (needsFill && state.fillingUntil < now && !options.skipFill) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
     await fill(state, now, settings.sundayScheduleEnabled, settings.edgeTtsEnabled)
@@ -413,4 +485,42 @@ export async function refreshQueue() {
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
+}
+
+export async function recoverFailedTrack(uid: string): Promise<NowResponse> {
+  const now = Date.now()
+  const [{ state }, settings] = await Promise.all([loadState(now), getSettings()])
+  const failed = state.tracks.find((track) => track.uid === uid)
+  if (!failed) return getNowPlaying()
+
+  const activeTracks = state.tracks.filter(
+    (track) => track.uid !== uid && track.startAt <= now && trackEnd(track) > now,
+  )
+  const currentWindow = dzmmWindowAt(now)
+  const failedLiveWindow = failed.kind === 'live' && currentWindow
+    && uid === `dzmm-${currentWindow.startAt}`
+  const fallback = state.tracks
+    .filter((track) => track.uid !== uid && track.kind === 'music' && track.startAt > now)
+    .sort((a, b) => a.startAt - b.startAt)[0]
+
+  if (failedLiveWindow && currentWindow) {
+    state.failedDzmmWindowStart = currentWindow.startAt
+  }
+
+  state.tracks = activeTracks.filter((track) => !failedLiveWindow || track.kind !== 'live')
+  if (state.tracks.length === 0 && fallback) {
+    state.tracks.push({ ...fallback, startAt: now, fadeIn: 1 })
+  }
+  state.fillingUntil = 0
+
+  const hasCurrentMusic = state.tracks.some(
+    (track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now,
+  )
+  const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
+  if (!hasCurrentMusic && !hasUpcomingMusic) {
+    await fill(state, now, settings.sundayScheduleEnabled, failedLiveWindow ? false : settings.edgeTtsEnabled)
+  }
+
+  await writeJson(STATE_PATH, state)
+  return getNowPlaying({ skipFill: true })
 }

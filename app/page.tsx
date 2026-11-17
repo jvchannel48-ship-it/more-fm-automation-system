@@ -10,13 +10,13 @@ export default function Home() {
       />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4">
         <span className="font-mono text-sm font-bold tracking-widest">
-          MOR <span className="text-primary">93.5</span>
+          RJ <span className="text-primary">FM</span>
         </span>
         <AdminMenu />
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
-        <h1 className="sr-only">MOR 93.5 Naga livestream</h1>
+        <h1 className="sr-only">RJ FM — No. 1 Bicol Region livestream from ABS-CBN Complex</h1>
         <RadioPlayer />
       </main>
 

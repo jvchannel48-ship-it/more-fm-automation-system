@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,14 +25,36 @@ export function RadioPlayer() {
   const [volume, setVolume] = useState(0.7)
   const [muted, setMuted] = useState(false)
   const [manilaHour, setManilaHour] = useState(getManilaHour)
+  const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const listenerId = useRef<string | null>(null)
-  const { data, error } = useSWR('/api/now', fetcher, {
+  const { data, error, mutate } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
+  const recoverStream = useCallback((uid: string) => {
+    setRecoveryIssue('May aberya sa audio; sinusubukan ang susunod na source...')
+    void fetch('/api/now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Could not recover the station queue')
+        return response.json() as Promise<NowResponse>
+      })
+      .then((updated) => {
+        setRecoveryIssue(null)
+        void mutate(updated, { revalidate: false })
+      })
+      .catch(() => {
+        setRecoveryIssue('Hindi ma-recover ang source sa ngayon. Sinusubukan ulit ang station...')
+        void mutate()
+      })
+  }, [mutate])
   const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
-  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume)
+  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume, recoverStream)
 
   useEffect(() => {
     const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
@@ -93,7 +115,7 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MOR 93.5 Naga live player" className="flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label="RJ FM live player" className="flex w-full flex-col items-center gap-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -123,7 +145,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={togglePlay}
           disabled={offAir}
-          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
+          aria-label={playing ? 'Pause RJ FM' : 'Play RJ FM'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -140,10 +162,10 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          MOR <span className="text-primary">93.5</span> Naga
+          RJ <span className="text-primary">FM</span>
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          MOR 93.5 NAGA LIVESTREAM ONLY
+          No. 1 Bicol Region · ABS-CBN Complex
         </p>
         <div className="mt-2">
           <Equalizer active={live} />
@@ -151,6 +173,11 @@ export function RadioPlayer() {
         {offAir && (
           <p className="text-sm text-muted-foreground">
             {onAirAgain ? `Signed off. Babalik kami ng ${onAirAgain}.` : 'Signed off.'}
+          </p>
+        )}
+        {(recoveryIssue || playbackIssue) && (
+          <p className="text-sm text-muted-foreground" role="status">
+            {recoveryIssue ?? playbackIssue}
           </p>
         )}
         {error && !data && (

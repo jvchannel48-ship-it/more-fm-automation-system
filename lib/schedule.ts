@@ -346,6 +346,10 @@ export function dzmmWindowAt(ms: number): DzmmWindow | null {
     return { startAt: dayStart + 330 * 60_000, endAt: dayStart + 420 * 60_000 }
   }
 
+  if (day >= 1 && day <= 6 && minuteOfDay >= 840 && minuteOfDay < 901) {
+    return { startAt: dayStart + 840 * 60_000, endAt: dayStart + 901 * 60_000 }
+  }
+
   if (day >= 1 && day <= 5 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
     return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1200 * 60_000 }
   }

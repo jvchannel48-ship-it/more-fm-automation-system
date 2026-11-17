@@ -85,5 +85,13 @@ assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'weekday evening music 
 assert.equal(dzmmWindowAt(manilaTime(16, 22))?.startAt, manilaTime(16, 22), 'weekday DZMM starts at 10:00 PM')
 assert.equal(dzmmWindowAt(manilaTime(17, 2, 59))?.endAt, manilaTime(17, 3), 'overnight DZMM ends at 3:00 AM')
 assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only')
+assert.equal(dzmmWindowAt(manilaTime(15, 14)), null, 'Sunday afternoon remains music-only')
+
+const mondayAfternoonDzmm = dzmmWindowAt(manilaTime(16, 14))
+assert.equal(mondayAfternoonDzmm?.startAt, manilaTime(16, 14), 'Monday afternoon DZMM starts at 2:00 PM')
+assert.equal(mondayAfternoonDzmm?.endAt, manilaTime(16, 15, 1), 'Monday afternoon DZMM runs until the 3:01 PM music return')
+assert.equal(dzmmWindowAt(manilaTime(16, 15, 0))?.endAt, manilaTime(16, 15, 1), 'DZMM remains on through 3:00 PM')
+assert.equal(dzmmWindowAt(manilaTime(16, 15, 1)), null, 'RJ FM music resumes at 3:01 PM')
+assert.equal(dzmmWindowAt(manilaTime(21, 14))?.startAt, manilaTime(21, 14), 'Saturday afternoon also starts DZMM at 2:00 PM')
 
 console.log('schedule: Sunday blocks, Sunday toggle fallback, and 1 AM sign-off / 4 AM sign-on all pass')

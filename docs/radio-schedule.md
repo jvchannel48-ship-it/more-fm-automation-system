@@ -1,10 +1,10 @@
-# MORE FM radio schedule
+# RJ FM — No. 1 Bicol Region schedule
 
-All times are Manila time (UTC+8).
+All times are Manila time (UTC+8). RJ FM broadcasts from the ABS-CBN Complex in Naga City.
 
-- **4:00 PM–5:00:59 PM:** Disco rotation.
-- **5:01 PM–12:59 AM:** Tagalog and English night-love rotation.
-- **1:00 AM–3:59 AM:** Continuous Tagalog and English love-song rotation; no sign-off.
-- **From 4:00 AM:** Continuous daytime schedule resumes, including the Sunday oldies slot.
+## Afternoon DZMM window
 
-The selected program applies when a track is scheduled to start. A song already playing is not cut off at a program boundary; the next scheduled song follows the new time slot.
+- **Monday–Saturday, 2:00 PM–3:00 PM:** DZMM live. The handoff window runs through 3:00:59 PM, with RJ FM music automatically resuming at **3:01 PM**.
+- **Sunday:** Music-only; the DZMM live window is disabled.
+
+The RJ FM music track is preloaded and fades up during the final eight seconds; it is at full level by 3:01 PM, when the DZMM window ends. Other program rotations and DZMM windows are defined in `lib/schedule.ts`. The station's regular off-air period remains 1:00 AM–4:00 AM Manila time.

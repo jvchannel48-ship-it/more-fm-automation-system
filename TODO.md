@@ -1,0 +1,4 @@
+# TODO
+
+- [x] **DZMM schedule and automatic RJ FM return:** In Manila time, DZMM live is on from 2:00 PM to 3:00 PM; by 3:01 PM the station automatically switches back to the next RJ FM music track. Keep the existing Sunday music-only schedule and existing RJ FM branding/location.
+- [x] **Continuous playback and failure recovery:** Audio must not stop between songs. Preload the upcoming track and keep the existing smooth crossfade behavior. If a source stalls, errors, or ends early, retry it with bounded backoff and then recover/advance to another queued track instead of leaving playback stuck. If the DZMM live source cannot recover, continue with RJ FM music for the rest of that scheduled window.

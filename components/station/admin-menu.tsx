@@ -68,18 +68,18 @@ export function AdminMenu() {
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>
-            MOR <span className="text-primary">93.5</span> Naga
+            RJ <span className="text-primary">FM</span>
           </SheetTitle>
-          <SheetDescription>MOR 93.5 NAGA LIVESTREAM ONLY</SheetDescription>
+          <SheetDescription>No. 1 Bicol Region · ABS-CBN Complex</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">MOR 93.5 Naga</p>
-              <p className="text-muted-foreground">Livestream only · 24/7 automated music</p>
-              <p className="text-muted-foreground">Sign off 1:00 AM · Sign on 4:00 AM</p>
+              <p className="font-medium">RJ FM — No. 1 Bicol Region</p>
+              <p className="text-muted-foreground">ABS-CBN Complex, Naga City · Live and automated music</p>
+              <p className="text-muted-foreground">DZMM live (Mon–Sat, Manila time): 2:00 PM–3:00 PM · RJ FM music resumes at 3:01 PM</p>
               <p className="mt-2 text-muted-foreground">created by DWLC · this app enjoy the music</p>
             </div>
           </section>
