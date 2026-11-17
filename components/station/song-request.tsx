@@ -34,16 +34,16 @@ export function SongRequest() {
         cache: 'no-store',
       })
       const data = (await response.json().catch(() => ({}))) as { error?: string; position?: number }
-      if (!response.ok) throw new Error(data.error || "We couldn't submit your song request.")
+      if (!response.ok) throw new Error(data.error || 'Hindi ma-submit ang song request.')
       setStatus('success')
       setMessage(
         data.position && data.position > 1
-          ? `You're in the queue at #${data.position}. Your song will play after the earlier requests.`
-          : 'Your song is queued and will play after the current song.',
+          ? `Successful! Naka-queue ka sa #${data.position}. Ipe-play pagkatapos ng mga naunang request.`
+          : 'Successful! Naka-queue na ang kanta at ipe-play sa susunod pagkatapos ng kasalukuyang kanta.',
       )
     } catch (error) {
       setStatus('error')
-      setMessage(error instanceof Error ? error.message : "We couldn't submit your song request.")
+      setMessage(error instanceof Error ? error.message : 'Hindi ma-submit ang song request.')
     }
   }
 
@@ -67,7 +67,7 @@ export function SongRequest() {
                   <div>
                     <p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">On-air request line</p>
                     <h2 id="song-request-title" className="text-xl font-semibold tracking-tight">Choose your next song</h2>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Enter a song title and artist. Your request will be queued to play after the current song.</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Ilagay ang title at artist. Ihahanda ng AutoDJ mula sa Betadash at ipi-play sa susunod na slot.</p>
                   </div>
                 </div>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="Close song request" onClick={close}>
@@ -81,10 +81,10 @@ export function SongRequest() {
                     <CheckCircle2 className="size-8 text-live" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold">Request successful</p>
+                    <p className="text-base font-semibold">Song request successful</p>
                     <p className="mt-1 text-sm text-muted-foreground">{message}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Please let the current song finish; your request will play automatically next.</p>
+                  <p className="text-xs text-muted-foreground">Hintayin matapos ang kasalukuyang kanta; automatic itong susunod.</p>
                   <Button type="button" className="mt-1 h-10 w-full" onClick={close}>Done</Button>
                 </div>
               ) : (
@@ -92,11 +92,11 @@ export function SongRequest() {
                   <div className="rounded-2xl border border-border/80 bg-background/40 p-4">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="request-title">Song title</Label>
-                      <Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g., Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus />
+                      <Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hal. Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus />
                     </div>
                     <div className="mt-4 flex flex-col gap-2">
                       <Label htmlFor="request-artist">Artist</Label>
-                      <Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="e.g., Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} />
+                      <Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Hal. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} />
                     </div>
                   </div>
 

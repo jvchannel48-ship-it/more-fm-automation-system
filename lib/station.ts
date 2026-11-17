@@ -237,7 +237,7 @@ async function fill(
         fadeIn: 0,
         fadeOut: 0,
         kind: 'dj-mic',
-        title: 'RJ FM DJ request announcement',
+        title: 'MOR 93.5 DJ request announcement',
         artist: 'Christopher · Edge TTS',
       })
       continue
@@ -266,7 +266,7 @@ async function fill(
         fadeIn: 0,
         fadeOut: 0,
         kind: 'dj-mic',
-        title: guessingChallenge ? 'RJ FM guess-the-song challenge' : 'RJ FM Bicol DJ announcement',
+        title: guessingChallenge ? 'MOR 93.5 guess-the-song challenge' : 'MOR 93.5 Bicol DJ announcement',
         artist: 'Christopher · Edge TTS',
       })
     }
@@ -291,7 +291,7 @@ async function fill(
         fadeIn: 0,
         fadeOut: 0,
         kind: 'dj-mic',
-        title: 'RJ FM song answer reveal',
+        title: 'MOR 93.5 song answer reveal',
         artist: 'Christopher · Edge TTS',
       })
     }
