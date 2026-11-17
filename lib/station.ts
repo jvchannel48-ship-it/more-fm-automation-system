@@ -125,13 +125,10 @@ async function findSong(
   const playedKeys = new Set(history.map((h) => h.key))
   const pool = newTagalogOpmEnabled ? NEW_TAGALOG_OPM_ARTISTS : program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
-  if (newTagalogOpmEnabled) candidatesArtists.sort((a, b) => Number(b.name === 'Dionela') - Number(a.name === 'Dionela'))
   const variants = newTagalogOpmEnabled ? NEW_TAGALOG_OPM_VARIANTS : program.variants[language]
 
-  for (const [index, artist] of candidatesArtists.slice(0, 5).entries()) {
-    const variant = newTagalogOpmEnabled && index === 0 && artist.name === 'Dionela'
-      ? 'Marilag'
-      : variants[Math.floor(Math.random() * variants.length)] ?? ''
+  for (const artist of candidatesArtists.slice(0, 5)) {
+    const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       betadashUrl({ search: `${artist.name} ${variant}`.trim() }),
       15_000,
