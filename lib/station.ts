@@ -5,8 +5,6 @@ import {
   DZMM_STREAM_URL,
   dzmmWindowAt,
   languageForSlot,
-  NEW_TAGALOG_OPM_ARTISTS,
-  NEW_TAGALOG_OPM_VARIANTS,
   nextSignOn,
   programAt,
   type Artist,
@@ -120,14 +118,13 @@ async function findSong(
   songCount: number,
   history: HistoryEntry[],
   now: number,
-  newTagalogOpmEnabled = false,
 ) {
-  const language = newTagalogOpmEnabled ? 'tagalog' : languageForSlot(program, songCount)
+  const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const pool = newTagalogOpmEnabled ? NEW_TAGALOG_OPM_ARTISTS : program.pools[language]
+  const pool = program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
-  const variants = newTagalogOpmEnabled ? NEW_TAGALOG_OPM_VARIANTS : program.variants[language]
+  const variants = program.variants[language]
 
   for (const artist of candidatesArtists.slice(0, 5)) {
     const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
@@ -218,7 +215,6 @@ async function fill(
   state: StationState,
   now: number,
   sundayScheduleEnabled: boolean,
-  newTagalogOpmEnabled: boolean,
   edgeTtsEnabled: boolean,
 ) {
   let guard = 0
@@ -244,10 +240,9 @@ async function fill(
       })
       continue
     }
-    const randomTagalogOpm = Math.random() < 0.5
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt, randomTagalogOpm)
+      : await findSong(program, state.songCount, state.history, startAt)
     if (!song) break
     if (request) state.requestQueue.shift()
     // Every fourth song is an English guess-the-song challenge. The
@@ -378,7 +373,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, settings.newTagalogOpmEnabled, settings.edgeTtsEnabled)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.edgeTtsEnabled)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {

@@ -21,8 +21,7 @@ const sundayBlocks = [
   { start: 4, end: 10, id: 'sunday-english-oldies', language: 'english' },
   { start: 10, end: 15, id: 'sunday-oldies', language: 'tagalog' },
   { start: 15, end: 16, id: 'sunday-tagalog-classic', language: 'tagalog' },
-  { start: 16, end: 19, id: 'disco', language: 'english' },
-  { start: 19, end: 20, id: 'sunday-tagalog-classic', language: 'tagalog' },
+  { start: 15, end: 20, id: 'sunday-tagalog-classic', language: 'tagalog' },
   { start: 20, end: 24, id: 'sunday-english-love', language: 'english' },
 ] as const
 
@@ -30,9 +29,7 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  const expectedNormalProgram = hour === 16 || hour === 17 || hour === 18
-    ? 'disco'
-    : hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
+  const expectedNormalProgram = hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
   assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedNormalProgram, `Sunday ${hour}:00 uses the expected normal rotation when Sunday schedule is OFF`)
   assert.equal(programAt(manilaTime(16, hour)).id, expectedNormalProgram, `Monday ${hour}:00 selects the expected regular program`)
 
@@ -57,8 +54,9 @@ assert.ok(PROGRAMS['love-mix'].pools.english.length > 0, 'mellow rotation includ
 assert.ok(PROGRAMS['love-mix'].pools.tagalog.length > 0, 'mellow rotation includes Tagalog songs')
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('soft ballad'), 'English searches prioritize soft ballads')
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('easy listening'), 'English searches prioritize easy listening')
-assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('soft OPM ballad'), 'Tagalog searches prioritize soft OPM ballads')
-assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'mellow Tagalog rotation includes Dionela')
+assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('classic OPM ballad'), 'Tagalog searches prioritize classic OPM ballads')
+assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Rey Valera'), 'classic Tagalog love rotation includes Rey Valera')
+assert.ok(!PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'classic Tagalog rotation excludes modern OPM artists')
 assert.ok(NEW_TAGALOG_OPM_ARTISTS.some((artist) => artist.name === 'Adie'), 'new-song pool includes contemporary OPM artists')
 assert.ok(!NEW_TAGALOG_OPM_VARIANTS.includes('Marilag'), 'new-song rotation does not force Marilag')
 assert.ok(PROGRAMS['sunday-english-oldies'].pools.english.some((artist) => artist.name === 'Victor Wood'), 'Sunday English oldies include Victor Wood')
@@ -73,8 +71,8 @@ assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station remains off bef
 assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'station signs on at 4 AM')
 assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), 'next sign-on during off-air is 4 AM the same day')
 assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on after 4 AM is 4 AM the following day')
-assert.equal(programAt(manilaTime(16, 16, 0)).id, 'disco', '4:00 PM starts the disco block')
-assert.equal(programAt(manilaTime(16, 18, 2)).id, 'disco', '6:02 PM remains in the disco block')
+assert.equal(programAt(manilaTime(16, 16, 0)).id, 'daytime-love', '4:00 PM stays on classic love songs')
+assert.equal(programAt(manilaTime(16, 18, 2)).id, 'daytime-love', '6:02 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
 
 const mondayMorning = dzmmWindowAt(manilaTime(16, 5, 30))

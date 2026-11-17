@@ -255,8 +255,8 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Rico J. Puno|rico j',
 ])
 
-const LOVE_VARIANTS = ['soft ballad', 'easy listening', 'love song', 'official audio', 'greatest hits']
-const OPM_VARIANTS = ['soft OPM ballad', 'OPM love song', 'easy listening OPM', 'official audio', 'greatest hits']
+const LOVE_VARIANTS = ['classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
+const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', 'original audio', 'greatest hits']
 const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
@@ -306,7 +306,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {
@@ -379,10 +379,9 @@ export function nextSignOn(ms: number): number {
   return target
 }
 
-/** Daily 4:00–6:02 PM disco block; 6:03 PM onward returns to the love-song mix. */
+/** Own programming stays on classic love songs; DZMM windows are handled separately. */
 export function programAt(ms: number, sundayScheduleEnabled = true): Program {
-  const { hour, minute, day } = manilaTime(ms)
-  if (hour === 16 || hour === 17 || (hour === 18 && minute < 3)) return PROGRAMS.disco
+  const { hour, day } = manilaTime(ms)
   if (sundayScheduleEnabled && day === 0) {
     if (hour >= 4 && hour < 10) return PROGRAMS['sunday-english-oldies']
     if (hour >= 10 && hour < 15) return PROGRAMS['sunday-oldies']
