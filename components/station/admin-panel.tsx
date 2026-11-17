@@ -54,7 +54,6 @@ export function AdminPanel() {
         sundayScheduleEnabled?: boolean
         newTagalogOpmEnabled?: boolean
         bassBoostDb?: number
-        edgeTtsEnabled?: boolean
       } | undefined
       if (method === 'POST') {
         setMessage('Na-refresh ang music rotation.')
@@ -76,10 +75,6 @@ export function AdminPanel() {
         setMessage(status.persistenceConfigured
           ? `Bass boost saved at ${status.bassBoostDb} dB.`
           : `Bass boost set to ${status.bassBoostDb} dB for this server session; durable storage is not configured.`)
-      } else if (typeof values?.edgeTtsEnabled === 'boolean') {
-        setMessage(status.persistenceConfigured
-          ? values.edgeTtsEnabled ? 'Edge TTS DJ is ON. Christopher will speak after every two songs and before queued requests.' : 'Edge TTS DJ is OFF.'
-          : 'Edge TTS setting changed for this server session; durable storage is not configured.')
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
@@ -133,15 +128,6 @@ export function AdminPanel() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
-        <div className="flex flex-col gap-0.5">
-          <Label>Edge TTS DJ — Christopher</Label>
-          <span className="text-xs text-muted-foreground">
-            Always ON · English en-US Christopher male voice; random Tagalog/English rotation, jokes, challenges, and request introductions.
-          </span>
-        </div>
-        <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">ON</span>
-      </div>
       <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <Label htmlFor="bass-boost-db">Bass boost (dB)</Label>
         <div className="flex items-center gap-2">
