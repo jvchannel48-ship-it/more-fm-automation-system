@@ -32,7 +32,7 @@ export function RadioPlayer() {
     keepPreviousData: true,
   })
   const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
-  const { buffering, unlock, audioRef } = useBroadcast(data, playing, muted ? 0 : nightVolume, setPlaying)
+  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume)
 
   useEffect(() => {
     const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
@@ -93,8 +93,7 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MoRe FM 93.5 live player" className="flex w-full flex-col items-center gap-8 text-center">
-      <audio ref={audioRef} preload="none" playsInline aria-hidden="true" className="sr-only" />
+    <section aria-label="MOR 93.5 Naga live player" className="flex w-full flex-col items-center gap-8 text-center">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -124,7 +123,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={togglePlay}
           disabled={offAir}
-          aria-label={playing ? 'Pause MoRe FM 93.5' : 'Play MoRe FM 93.5'}
+          aria-label={playing ? 'Pause MOR 93.5 Naga' : 'Play MOR 93.5 Naga'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -141,10 +140,10 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          MoRe FM <span className="text-primary">93.5</span>
+          MOR <span className="text-primary">93.5</span> Naga
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          MORE FM 93.5 · LIVE · EASY LISTENING
+          MOR 93.5 NAGA LIVESTREAM ONLY
         </p>
         <div className="mt-2">
           <Equalizer active={live} />
