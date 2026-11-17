@@ -22,7 +22,14 @@ export async function GET(request: Request) {
             continue
           }
 
-          const track = now.tracks.find((item) => item.startAt + item.duration * 1000 > Date.now()) ?? now.tracks[0]
+          // TTS announcements are optional. If the TTS provider is unavailable,
+          // never let a failed DJ-mic track block the actual MOR/DZMM audio.
+          const audioTracks = now.tracks.filter((item) => item.kind !== 'dj-mic')
+          if (audioTracks.length === 0) {
+            await sleep(500)
+            continue
+          }
+          const track = audioTracks.find((item) => item.startAt + item.duration * 1000 > Date.now()) ?? audioTracks[0]
           const sourceUrl = new URL(track.src, request.url).toString()
           const upstream = await fetch(sourceUrl, {
             cache: 'no-store',
