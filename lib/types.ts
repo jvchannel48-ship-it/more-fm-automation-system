@@ -22,6 +22,7 @@ export interface StationSettings {
   broadcastEnabled: boolean
   sundayScheduleEnabled: boolean
   newTagalogOpmEnabled: boolean
+  bassBoostDb: number
 }
 
 export interface NowResponse {
@@ -29,6 +30,7 @@ export interface NowResponse {
   offAir: boolean
   nextOnAir: number | null
   tracks: Track[]
+  bassBoostDb: number
 }
 
 export interface AdminStatus extends StationSettings {

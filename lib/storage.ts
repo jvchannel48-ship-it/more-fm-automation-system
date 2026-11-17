@@ -159,6 +159,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   sundayScheduleEnabled: true,
   newTagalogOpmEnabled: true,
+  bassBoostDb: 0,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -167,5 +168,8 @@ export async function getSettings(): Promise<StationSettings> {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     sundayScheduleEnabled: typeof saved.sundayScheduleEnabled === 'boolean' ? saved.sundayScheduleEnabled : true,
     newTagalogOpmEnabled: typeof saved.newTagalogOpmEnabled === 'boolean' ? saved.newTagalogOpmEnabled : true,
+    bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb)
+      ? Math.min(14, Math.max(0, saved.bassBoostDb))
+      : 0,
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,11 @@ export function AdminPanel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [bassBoostInput, setBassBoostInput] = useState('0')
+
+  useEffect(() => {
+    if (data) setBassBoostInput(String(data.bassBoostDb ?? 0))
+  }, [data?.bassBoostDb])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -48,6 +53,7 @@ export function AdminPanel() {
         broadcastEnabled?: boolean
         sundayScheduleEnabled?: boolean
         newTagalogOpmEnabled?: boolean
+        bassBoostDb?: number
       } | undefined
       if (method === 'POST') {
         setMessage('Na-refresh ang music rotation.')
@@ -65,12 +71,25 @@ export function AdminPanel() {
         setMessage(status.persistenceConfigured
           ? 'Nai-save ang Broadcast setting sa Blob.'
           : 'Na-toggle ang Broadcast, pero pansamantala lang ito sa server memory.')
+      } else if (typeof values?.bassBoostDb === 'number') {
+        setMessage(status.persistenceConfigured
+          ? `Bass boost saved at ${status.bassBoostDb} dB.`
+          : `Bass boost set to ${status.bassBoostDb} dB for this server session; durable storage is not configured.`)
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
     } finally {
       setBusy(false)
     }
+  }
+
+  const saveBassBoost = () => {
+    const value = Number(bassBoostInput)
+    if (!Number.isFinite(value) || value < 0 || value > 14) {
+      setError('Enter a bass boost from 0 to +14 dB.')
+      return
+    }
+    void send('PUT', { bassBoostDb: value })
   }
 
   return (
@@ -124,6 +143,31 @@ export function AdminPanel() {
           disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { newTagalogOpmEnabled: checked })}
         />
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
+        <Label htmlFor="bass-boost-db">Bass boost (dB)</Label>
+        <div className="flex items-center gap-2">
+          <input
+            id="bass-boost-db"
+            type="number"
+            min={0}
+            max={14}
+            step={0.5}
+            value={bassBoostInput}
+            onChange={(event) => setBassBoostInput(event.target.value)}
+            disabled={!data || busy}
+            className="h-10 w-28 rounded-md border border-input bg-background px-3 text-sm tabular-nums"
+            aria-describedby="bass-boost-help"
+          />
+          <span className="text-sm text-muted-foreground">dB</span>
+          <Button type="button" variant="secondary" disabled={!data || busy} onClick={saveBassBoost}>
+            Apply bass
+          </Button>
+        </div>
+        <p id="bass-boost-help" className="text-xs text-muted-foreground">
+          Set 0–14 dB. 0 dB is neutral; the player applies a low-frequency boost up to +14 dB.
+        </p>
       </div>
 
       {data?.persistenceConfigured === false && (

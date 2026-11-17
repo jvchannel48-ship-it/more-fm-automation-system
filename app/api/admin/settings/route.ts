@@ -16,6 +16,7 @@ export async function PUT(request: NextRequest) {
     broadcastEnabled?: unknown
     sundayScheduleEnabled?: unknown
     newTagalogOpmEnabled?: unknown
+    bassBoostDb?: unknown
   }
   const current = await getSettings()
   const next = {
@@ -26,6 +27,9 @@ export async function PUT(request: NextRequest) {
     newTagalogOpmEnabled: typeof body.newTagalogOpmEnabled === 'boolean'
       ? body.newTagalogOpmEnabled
       : current.newTagalogOpmEnabled,
+    bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
+      ? Math.min(14, Math.max(0, body.bassBoostDb))
+      : current.bassBoostDb,
   }
   await writeJson(SETTINGS_PATH, next)
   if (typeof body.newTagalogOpmEnabled === 'boolean'

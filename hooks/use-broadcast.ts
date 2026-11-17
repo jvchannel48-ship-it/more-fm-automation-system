@@ -11,6 +11,7 @@ interface Slot {
   el: HTMLAudioElement
   uid: string | null
   synced: boolean
+  bassFilter: BiquadFilterNode | null
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
@@ -26,8 +27,19 @@ function trackGain(track: Track, now: number) {
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
+  const audioContext = useRef<AudioContext | null>(null)
+  const bassDb = useRef(0)
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false })
+
+  useEffect(() => {
+    const nextDb = Math.min(14, Math.max(0, data?.bassBoostDb ?? 0))
+    bassDb.current = nextDb
+    for (const slot of slots.current) {
+      const filter = slot.bassFilter
+      if (filter) filter.gain.setTargetAtTime(nextDb, filter.context.currentTime, 0.08)
+    }
+  }, [data?.bassBoostDb])
 
   useEffect(() => {
     if (data) offset.current = data.serverTime - Date.now()
@@ -35,12 +47,41 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
 
   const unlock = useCallback(() => {
     if (slots.current.length > 0) return
+    let context = audioContext.current
+    if (!context) {
+      try {
+        context = new AudioContext()
+        audioContext.current = context
+      } catch {
+        context = null
+      }
+    }
+    if (context?.state === 'suspended') void context.resume().catch(() => undefined)
     slots.current = Array.from({ length: 3 }, () => {
       const el = new Audio()
       el.preload = 'auto'
+      let bassFilter: BiquadFilterNode | null = null
+      if (context) {
+        try {
+          const source = context.createMediaElementSource(el)
+          bassFilter = context.createBiquadFilter()
+          bassFilter.type = 'lowshelf'
+          bassFilter.frequency.value = 120
+          bassFilter.gain.value = bassDb.current
+          const limiter = context.createDynamicsCompressor()
+          limiter.threshold.value = -3
+          limiter.knee.value = 3
+          limiter.ratio.value = 10
+          limiter.attack.value = 0.003
+          limiter.release.value = 0.25
+          source.connect(bassFilter).connect(limiter).connect(context.destination)
+        } catch {
+          bassFilter = null
+        }
+      }
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
-      return { el, uid: null, synced: false }
+      return { el, uid: null, synced: false, bassFilter }
     })
   }, [])
 
@@ -121,6 +162,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         slot.el.removeAttribute('src')
       }
       slots.current = []
+      if (audioContext.current && audioContext.current.state !== 'closed') {
+        void audioContext.current.close().catch(() => undefined)
+      }
+      audioContext.current = null
     },
     [],
   )

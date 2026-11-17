@@ -25,6 +25,7 @@ async function main() {
 
     assert.equal((await getSettings()).sundayScheduleEnabled, true, 'Sunday special programming defaults ON')
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'modern Tagalog OPM mode defaults ON')
+    assert.equal((await getSettings()).bassBoostDb, 0, 'bass boost defaults to neutral 0 dB')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: false })
     assert.equal((await getSettings()).broadcastEnabled, false, 'the broadcast OFF toggle remains readable in memory fallback')
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'OPM mode stays ON when legacy settings omit its value')
@@ -39,8 +40,14 @@ async function main() {
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'OPM mode stays ON after reading settings again')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: true, sundayScheduleEnabled: true, newTagalogOpmEnabled: false })
     assert.equal((await getSettings()).newTagalogOpmEnabled, false, 'OPM mode turns OFF after an explicit admin toggle')
+    await writeJson(SETTINGS_PATH, { bassBoostDb: 6.5 })
+    assert.equal((await getSettings()).bassBoostDb, 6.5, 'admin bass boost accepts and persists a numeric dB value')
+    await writeJson(SETTINGS_PATH, { bassBoostDb: 16 })
+    assert.equal((await getSettings()).bassBoostDb, 14, 'bass boost is capped at +14 dB')
+    await writeJson(SETTINGS_PATH, { bassBoostDb: -2 })
+    assert.equal((await getSettings()).bassBoostDb, 0, 'bass boost cannot be set below neutral 0 dB')
 
-    console.log('listener-count: memory fallback, listener expiry, broadcast, Sunday, and persistent OPM toggle checks passed')
+    console.log('listener-count: memory fallback, listener expiry, station settings, OPM toggle, and bass boost checks passed')
   } finally {
     Date.now = originalDateNow
   }

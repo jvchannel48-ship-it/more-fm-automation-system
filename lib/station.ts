@@ -257,9 +257,9 @@ async function loadState(now: number) {
 export async function enqueueSongRequest(title: string, artist: string) {
   const now = Date.now()
   const { state } = await loadState(now)
-  if (state.requestQueue.length >= 10) throw new Error('Puno muna ang song request queue. Subukan ulit mamaya.')
+  if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
   const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue)
-  if (!resolved) throw new Error('Hindi mahanap ang kanta ngayon. Subukan ang ibang title o artist.')
+  if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
   const request: SongRequest = {
     requestId: crypto.randomUUID(),
     title,
@@ -287,6 +287,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
       offAir: true,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null,
       tracks: [],
+      bassBoostDb: settings.bassBoostDb,
     }
   }
 
@@ -301,7 +302,16 @@ export async function getNowPlaying(): Promise<NowResponse> {
     await writeJson(STATE_PATH, state)
   }
 
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks }
+  return {
+    serverTime: Date.now(),
+    offAir: false,
+    nextOnAir: null,
+    tracks: state.tracks.map((track) => ({
+      ...track,
+      src: `/api/audio?src=${encodeURIComponent(track.src)}`,
+    })),
+    bassBoostDb: settings.bassBoostDb,
+  }
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {
