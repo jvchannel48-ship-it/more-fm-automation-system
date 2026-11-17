@@ -5,6 +5,15 @@ import type { NowResponse } from '@/lib/types'
 
 const STREAM_URL = '/api/stream'
 
+function setLivePositionState() {
+  if (!('mediaSession' in navigator) || typeof navigator.mediaSession.setPositionState !== 'function') return
+  try {
+    navigator.mediaSession.setPositionState({ duration: Infinity, playbackRate: 1, position: 0 })
+  } catch {
+    // Some browsers do not expose MediaSession position state for live media.
+  }
+}
+
 export function useBroadcast(
   data: NowResponse | undefined,
   playing: boolean,
@@ -32,6 +41,7 @@ export function useBroadcast(
       setState((previous) => ({ ...previous, buffering: false, onAir: true }))
       onPlaybackChange(true)
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'
+      setLivePositionState()
     }
     const onWaiting = () => setState((previous) => ({ ...previous, buffering: true }))
     const onPause = () => {
