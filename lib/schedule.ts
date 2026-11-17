@@ -9,6 +9,7 @@ export type ProgramId =
   | 'sunday-tagalog-classic'
   | 'sunday-english-love'
   | 'english-love'
+  | 'daytime-love'
   | 'disco'
   | 'night-love'
   | 'love-mix'
@@ -287,6 +288,11 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
+  'daytime-love': {
+    id: 'daytime-love',
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
+    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+  },
   disco: {
     id: 'disco',
     pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
@@ -342,12 +348,15 @@ export function programAt(ms: number, sundayScheduleEnabled = true): Program {
     if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
     if (hour >= 20) return PROGRAMS['sunday-english-love']
   }
+  if (hour >= 12 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
 }
 
-/** Rotation: 2 English, then 2 Tagalog, repeating. */
+/** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'
   if (program.englishOnly) return 'english'
+  if (program.id === 'daytime-love') return songCount % 4 === 3 ? 'tagalog' : 'english'
+  /** Normal mellow rotation: 2 English, then 2 Tagalog, repeating. */
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }

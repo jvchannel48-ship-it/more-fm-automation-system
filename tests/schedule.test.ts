@@ -27,8 +27,9 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  assert.equal(programAt(manilaTime(sunday, hour), false).id, 'love-mix', `Sunday ${hour}:00 uses normal mellow rotation when Sunday schedule is OFF`)
-  assert.equal(programAt(manilaTime(16, hour)).id, 'love-mix', `Monday ${hour}:00 uses normal mellow rotation`)
+  const expectedDaytime = hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
+  assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedDaytime, `Sunday ${hour}:00 uses the weekday rotation when Sunday schedule is OFF`)
+  assert.equal(programAt(manilaTime(16, hour)).id, expectedDaytime, `Monday ${hour}:00 uses the expected daily rotation`)
 
   const expectedBlock = sundayBlocks.find(({ start, end }) => hour >= start && hour < end)
   if (expectedBlock) {
@@ -37,6 +38,15 @@ for (let hour = 0; hour < 24; hour++) {
     assert.equal(languageForSlot(program, 0), expectedBlock.language, `Sunday ${hour}:00 selects the expected language`)
   }
 }
+
+assert.equal(programAt(manilaTime(16, 11, 59)).id, 'love-mix', 'weekday pre-noon stays on the normal mix')
+assert.equal(programAt(manilaTime(16, 12)).id, 'daytime-love', 'weekday noon starts daytime love songs')
+assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
+assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', 'noon starts with English love songs')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', 'noon keeps English as the main language')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', 'noon keeps English as the main language')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 3), 'tagalog', 'a Tagalog love song appears occasionally')
 
 assert.ok(PROGRAMS['love-mix'].pools.english.length > 0, 'mellow rotation includes English songs')
 assert.ok(PROGRAMS['love-mix'].pools.tagalog.length > 0, 'mellow rotation includes Tagalog songs')
