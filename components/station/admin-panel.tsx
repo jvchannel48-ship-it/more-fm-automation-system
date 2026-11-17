@@ -133,38 +133,14 @@ export function AdminPanel() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <Label htmlFor="new-tagalog-opm">New Tagalog OPM mode</Label>
-          <span className="text-xs text-muted-foreground">
-            {data?.newTagalogOpmEnabled
-              ? 'Naka-ON · bagong Tagalog OPM bawat automatic song; hanggang i-OFF mo'
-              : 'Naka-OFF · normal song rotation'}
-          </span>
-        </div>
-        <Switch
-          id="new-tagalog-opm"
-          checked={data?.newTagalogOpmEnabled ?? false}
-          disabled={!data || busy}
-          onCheckedChange={(checked) => send('PUT', { newTagalogOpmEnabled: checked })}
-        />
-      </div>
-
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
         <div className="flex flex-col gap-0.5">
-          <Label htmlFor="edge-tts-enabled">Edge TTS DJ — Christopher</Label>
+          <Label>Edge TTS DJ — Christopher</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.edgeTtsEnabled
-              ? 'ON · en-US Christopher, male voice; speaks after every 2 songs and introduces requests before playback.'
-              : 'OFF · turn on to enable the automatic DJ voice.'}
+            Always ON · English en-US Christopher male voice; random Tagalog/English rotation, jokes, challenges, and request introductions.
           </span>
         </div>
-        <Switch
-          id="edge-tts-enabled"
-          checked={data?.edgeTtsEnabled ?? false}
-          disabled={!data || busy}
-          onCheckedChange={(checked) => send('PUT', { edgeTtsEnabled: checked })}
-        />
+        <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">ON</span>
       </div>
       <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <Label htmlFor="bass-boost-db">Bass boost (dB)</Label>

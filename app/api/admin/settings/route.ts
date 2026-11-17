@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
     bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
       ? Math.min(14, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
-    edgeTtsEnabled: typeof body.edgeTtsEnabled === 'boolean' ? body.edgeTtsEnabled : current.edgeTtsEnabled,
+    edgeTtsEnabled: true,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'

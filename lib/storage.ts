@@ -160,7 +160,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   sundayScheduleEnabled: true,
   newTagalogOpmEnabled: true,
   bassBoostDb: 0,
-  edgeTtsEnabled: false,
+  edgeTtsEnabled: true,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -172,6 +172,7 @@ export async function getSettings(): Promise<StationSettings> {
     bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb)
       ? Math.min(14, Math.max(0, saved.bassBoostDb))
       : 0,
-    edgeTtsEnabled: typeof saved.edgeTtsEnabled === 'boolean' ? saved.edgeTtsEnabled : false,
+    // Christopher is always enabled; keep the field for backwards-compatible state files.
+    edgeTtsEnabled: true,
   }
 }

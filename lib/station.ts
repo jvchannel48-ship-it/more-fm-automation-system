@@ -245,9 +245,10 @@ async function fill(
       })
       continue
     }
+    const randomTagalogOpm = Math.random() < 0.5
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt, newTagalogOpmEnabled)
+      : await findSong(program, state.songCount, state.history, startAt, randomTagalogOpm)
     if (!song) break
     if (request) state.requestQueue.shift()
     // Every second station break is an English guess-the-song challenge. The
