@@ -257,9 +257,9 @@ async function loadState(now: number) {
 export async function enqueueSongRequest(title: string, artist: string) {
   const now = Date.now()
   const { state } = await loadState(now)
-  if (state.requestQueue.length >= 10) throw new Error('The song request queue is full. Please try again later.')
+  if (state.requestQueue.length >= 10) throw new Error('Puno muna ang song request queue. Subukan ulit mamaya.')
   const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue)
-  if (!resolved) throw new Error('We could not find that song right now. Check the title and artist, then try again.')
+  if (!resolved) throw new Error('Hindi mahanap ang kanta ngayon. Subukan ang ibang title o artist.')
   const request: SongRequest = {
     requestId: crypto.randomUUID(),
     title,
