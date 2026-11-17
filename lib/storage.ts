@@ -158,7 +158,7 @@ export const STATE_PATH = 'station/state-v2.json'
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   sundayScheduleEnabled: true,
-  newTagalogOpmEnabled: false,
+  newTagalogOpmEnabled: true,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -166,6 +166,6 @@ export async function getSettings(): Promise<StationSettings> {
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     sundayScheduleEnabled: typeof saved.sundayScheduleEnabled === 'boolean' ? saved.sundayScheduleEnabled : true,
-    newTagalogOpmEnabled: typeof saved.newTagalogOpmEnabled === 'boolean' ? saved.newTagalogOpmEnabled : false,
+    newTagalogOpmEnabled: typeof saved.newTagalogOpmEnabled === 'boolean' ? saved.newTagalogOpmEnabled : true,
   }
 }
