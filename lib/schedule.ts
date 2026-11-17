@@ -90,6 +90,24 @@ const PINOY_LOVE = artists('tagalog', [
   'Jaya',
 ])
 
+export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
+  'Dionela',
+  'Adie',
+  'Zack Tabudlo',
+  'Arthur Nery',
+  'Moira Dela Torre',
+  'TJ Monterde',
+  'Janine Teñoso',
+  'mrld',
+])
+
+export const NEW_TAGALOG_OPM_VARIANTS = [
+  'Marilag',
+  'new OPM love song',
+  'modern OPM ballad',
+  'soft Tagalog love song',
+]
+
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
   'Air Supply',
@@ -221,7 +239,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {

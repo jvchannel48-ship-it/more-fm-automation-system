@@ -1,5 +1,14 @@
 import assert from 'node:assert/strict'
-import { isOffAir, nextSignOn, PROGRAMS, programAt, SIGN_OFF_HOUR, SIGN_ON_HOUR } from '../lib/schedule.ts'
+import {
+  isOffAir,
+  NEW_TAGALOG_OPM_ARTISTS,
+  NEW_TAGALOG_OPM_VARIANTS,
+  nextSignOn,
+  PROGRAMS,
+  programAt,
+  SIGN_OFF_HOUR,
+  SIGN_ON_HOUR,
+} from '../lib/schedule.ts'
 
 function manilaTime(day: number, hour: number, minute = 0, second = 0) {
   return Date.UTC(2026, 10, day, hour - 8, minute, second)
@@ -20,6 +29,9 @@ assert.ok(PROGRAMS['love-mix'].pools.tagalog.length > 0, 'mellow rotation includ
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('soft ballad'), 'English searches prioritize soft ballads')
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('easy listening'), 'English searches prioritize easy listening')
 assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('soft OPM ballad'), 'Tagalog searches prioritize soft OPM ballads')
+assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'mellow Tagalog rotation includes Dionela')
+assert.ok(NEW_TAGALOG_OPM_ARTISTS.some((artist) => artist.name === 'Adie'), 'new-song pool includes contemporary OPM artists')
+assert.ok(NEW_TAGALOG_OPM_VARIANTS.includes('Marilag'), 'new-song action prioritizes Marilag')
 assert.equal(isOffAir(manilaTime(sunday, 0, 59)), false, 'station stays on until 1 AM sign-off')
 assert.equal(isOffAir(manilaTime(sunday, 1, 0)), true, 'station signs off at 1 AM')
 assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station remains off before 4 AM')

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { isOriginalArtistTrack } from '../lib/song-filter.ts'
 
 const whitney = { name: 'Whitney Houston', match: 'Whitney Houston' }
+const dionela = { name: 'Dionela', match: 'dionela' }
 
 assert.equal(
   isOriginalArtistTrack('Whitney Houston - I Look to You (Official HD Video)', whitney),
@@ -12,6 +13,11 @@ assert.equal(
   isOriginalArtistTrack('I Will Always Love You - Whitney Houston (Official Audio)', whitney),
   true,
   'a song title followed by the original artist credit is allowed',
+)
+assert.equal(
+  isOriginalArtistTrack('Dionela - Marilag (Official Lyric Video)', dionela),
+  true,
+  'Dionela Marilag original is eligible for the new Tagalog OPM feature',
 )
 
 for (const title of [

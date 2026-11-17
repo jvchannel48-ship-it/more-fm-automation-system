@@ -21,8 +21,10 @@ export async function PUT(request: NextRequest) {
   return NextResponse.json(await getAdminStatus(), noStore)
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, ...noStore })
-  await refreshQueue()
+  const body = (await request.json().catch(() => ({}))) as { mode?: unknown }
+  const mode = body.mode === 'new-tagalog' ? 'new-tagalog' : 'rotation'
+  await refreshQueue(mode)
   return NextResponse.json(await getAdminStatus(), noStore)
 }

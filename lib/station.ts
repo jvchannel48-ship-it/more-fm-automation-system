@@ -1,6 +1,15 @@
 import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
-import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
+import {
+  isOffAir,
+  languageForSlot,
+  NEW_TAGALOG_OPM_ARTISTS,
+  NEW_TAGALOG_OPM_VARIANTS,
+  nextSignOn,
+  programAt,
+  type Artist,
+  type Program,
+} from './schedule'
 import { isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
@@ -24,9 +33,12 @@ interface StationState {
   history: HistoryEntry[]
   fillingUntil: number
   requestQueue: SongRequest[]
+  preferNewTagalog: boolean
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [] }
+const EMPTY_STATE: StationState = {
+  tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [], preferNewTagalog: false,
+}
 
 interface SearchItem {
   id: string
@@ -101,15 +113,25 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   return shuffle(fresh.length >= 3 ? fresh : allowed)
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number) {
-  const language = languageForSlot(program, songCount)
+async function findSong(
+  program: Program,
+  songCount: number,
+  history: HistoryEntry[],
+  now: number,
+  preferNewTagalog = false,
+) {
+  const language = preferNewTagalog ? 'tagalog' : languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const candidatesArtists = eligibleArtists(program.pools[language], history, now)
-  const variants = program.variants[language]
+  const pool = preferNewTagalog ? NEW_TAGALOG_OPM_ARTISTS : program.pools[language]
+  const candidatesArtists = eligibleArtists(pool, history, now)
+  if (preferNewTagalog) candidatesArtists.sort((a, b) => Number(b.name === 'Dionela') - Number(a.name === 'Dionela'))
+  const variants = preferNewTagalog ? NEW_TAGALOG_OPM_VARIANTS : program.variants[language]
 
-  for (const artist of candidatesArtists.slice(0, 5)) {
-    const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
+  for (const [index, artist] of candidatesArtists.slice(0, 5).entries()) {
+    const variant = preferNewTagalog && index === 0 && artist.name === 'Dionela'
+      ? 'Marilag'
+      : variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(
       betadashUrl({ search: `${artist.name} ${variant}`.trim() }),
       15_000,
@@ -197,9 +219,10 @@ async function fill(state: StationState, now: number) {
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt)
+      : await findSong(program, state.songCount, state.history, startAt, state.preferNewTagalog)
     if (!song) break
     if (request) state.requestQueue.shift()
+    else if (state.preferNewTagalog) state.preferNewTagalog = false
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
@@ -221,6 +244,7 @@ async function loadState(now: number) {
     ...EMPTY_STATE,
     ...saved,
     requestQueue: Array.isArray(saved.requestQueue) ? saved.requestQueue : [],
+    preferNewTagalog: saved.preferNewTagalog === true,
   }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
@@ -292,11 +316,12 @@ export async function getAdminStatus(): Promise<AdminStatus> {
   }
 }
 
-export async function refreshQueue() {
+export async function refreshQueue(mode: 'rotation' | 'new-tagalog' = 'rotation') {
   const now = Date.now()
   const { state } = await loadState(now)
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
+  if (mode === 'new-tagalog') state.preferNewTagalog = true
   await writeJson(STATE_PATH, state)
 }

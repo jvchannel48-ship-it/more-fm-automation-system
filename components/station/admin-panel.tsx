@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { RefreshCw } from 'lucide-react'
+import { Music2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -46,7 +46,9 @@ export function AdminPanel() {
       mutate(status, { revalidate: false })
       setMessage(method === 'PUT'
         ? status.persistenceConfigured ? 'Nai-save ang Broadcast setting sa Blob.' : 'Na-toggle ang Broadcast, pero pansamantala lang ito sa server memory.'
-        : 'Na-refresh ang music rotation.')
+        : (body as { mode?: string } | undefined)?.mode === 'new-tagalog'
+          ? 'Na-update ang queue: susunod na automatic song ay bagong Tagalog OPM; prioritized ang “Marilag” ni Dionela.'
+          : 'Na-refresh ang music rotation.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
     } finally {
@@ -88,10 +90,16 @@ export function AdminPanel() {
         <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
       </div>
 
-      <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
-        <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
-        Refresh rotation
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
+          <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
+          Refresh rotation
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => send('POST', { mode: 'new-tagalog' })}>
+          <Music2 aria-hidden="true" />
+          Play new Tagalog OPM next
+        </Button>
+      </div>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
         Mellow classic love songs at soft OPM buong araw. Walang disco block; English at Tagalog ang rotation.
