@@ -12,7 +12,7 @@ import {
 } from './schedule'
 import { isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
-import { buildGenericDjText, buildRequestDjText, EDGE_TTS_DURATION_SECONDS } from './edge-tts'
+import { buildGenericDjText, buildGuessChallengeText, buildRequestDjText, buildRevealText, EDGE_TTS_DURATION_SECONDS } from './edge-tts'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -152,6 +152,7 @@ async function findSong(
         return {
           id: item.id,
           key: songKey(item.title),
+          title: item.title,
           artist: artist.name,
           src: dl.downloadUrl,
           duration: parseDuration(item.duration),
@@ -244,28 +245,34 @@ async function fill(
       })
       continue
     }
-    if (edgeTtsEnabled && state.songCount > 0 && state.songCount % 2 === 0 && !hasQueuedDjAnnouncement(state, now)) {
-      const text = buildGenericDjText()
+    const song = request
+      ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
+      : await findSong(program, state.songCount, state.history, startAt, newTagalogOpmEnabled)
+    if (!song) break
+    if (request) state.requestQueue.shift()
+    // Every second station break is an English guess-the-song challenge. The
+    // reveal is queued after the song, so the answer is heard even if nobody
+    // sends a guess.
+    const stationBreak = !request && edgeTtsEnabled && state.songCount > 0 && state.songCount % 2 === 0 && !hasQueuedDjAnnouncement(state, now)
+    const guessingChallenge = stationBreak && state.songCount % 4 === 0
+    const introText = guessingChallenge
+      ? buildGuessChallengeText(song.title, song.artist)
+      : stationBreak ? buildGenericDjText() : null
+    const baseStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    const songStart = baseStart + (introText ? EDGE_TTS_DURATION_SECONDS * 1000 : 0)
+    if (introText) {
       state.tracks.push({
-        uid: `dj-break-${state.songCount}-${startAt}`,
-        src: edgeTtsSource(text),
-        startAt,
+        uid: `dj-break-${state.songCount}-${baseStart}`,
+        src: edgeTtsSource(introText),
+        startAt: baseStart,
         duration: EDGE_TTS_DURATION_SECONDS,
         fadeIn: 0,
         fadeOut: 0,
         kind: 'dj-mic',
-        title: 'RJ FM Bicol DJ announcement',
+        title: guessingChallenge ? 'RJ FM guess-the-song challenge' : 'RJ FM Bicol DJ announcement',
         artist: 'Christopher · Edge TTS',
       })
-      continue
     }
-    const song = request
-      ? { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt, newTagalogOpmEnabled)
-    if (!song) break
-    if (request) state.requestQueue.shift()
-    // Song lookup can take several seconds; never schedule a fresh start in the past.
-    const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
@@ -274,9 +281,23 @@ async function fill(
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
       kind: 'music',
-      title: request?.title,
+      title: song.title,
       artist: song.artist,
     })
+    if (guessingChallenge) {
+      const revealStart = songStart + song.duration * 1000
+      state.tracks.push({
+        uid: `dj-reveal-${song.id}-${revealStart}`,
+        src: edgeTtsSource(buildRevealText(song.title, song.artist)),
+        startAt: revealStart,
+        duration: EDGE_TTS_DURATION_SECONDS,
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'dj-mic',
+        title: 'RJ FM song answer reveal',
+        artist: 'Christopher · Edge TTS',
+      })
+    }
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
   }
