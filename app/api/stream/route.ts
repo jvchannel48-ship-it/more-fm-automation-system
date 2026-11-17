@@ -23,7 +23,8 @@ export async function GET(request: Request) {
           }
 
           const track = now.tracks.find((item) => item.startAt + item.duration * 1000 > Date.now()) ?? now.tracks[0]
-          const upstream = await fetch(track.src, {
+          const sourceUrl = new URL(track.src, request.url).toString()
+          const upstream = await fetch(sourceUrl, {
             cache: 'no-store',
             signal: request.signal,
           })
