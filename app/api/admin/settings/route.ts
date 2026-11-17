@@ -17,6 +17,7 @@ export async function PUT(request: NextRequest) {
     sundayScheduleEnabled?: unknown
     newTagalogOpmEnabled?: unknown
     bassBoostDb?: unknown
+    edgeTtsEnabled?: unknown
   }
   const current = await getSettings()
   const next = {
@@ -30,10 +31,12 @@ export async function PUT(request: NextRequest) {
     bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
       ? Math.min(14, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
+    edgeTtsEnabled: typeof body.edgeTtsEnabled === 'boolean' ? body.edgeTtsEnabled : current.edgeTtsEnabled,
   }
   await writeJson(SETTINGS_PATH, next)
-  if (typeof body.newTagalogOpmEnabled === 'boolean'
-    && body.newTagalogOpmEnabled !== current.newTagalogOpmEnabled) {
+  if ((typeof body.newTagalogOpmEnabled === 'boolean'
+    && body.newTagalogOpmEnabled !== current.newTagalogOpmEnabled)
+    || (typeof body.edgeTtsEnabled === 'boolean' && body.edgeTtsEnabled !== current.edgeTtsEnabled)) {
     await refreshQueue()
   }
   return NextResponse.json(await getAdminStatus(), noStore)

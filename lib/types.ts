@@ -5,6 +5,9 @@ export interface Track {
   duration: number
   fadeIn: number
   fadeOut: number
+  kind?: 'music' | 'dj-mic'
+  title?: string
+  artist?: string
 }
 
 export interface SongRequest {
@@ -23,6 +26,7 @@ export interface StationSettings {
   sundayScheduleEnabled: boolean
   newTagalogOpmEnabled: boolean
   bassBoostDb: number
+  edgeTtsEnabled: boolean
 }
 
 export interface NowResponse {

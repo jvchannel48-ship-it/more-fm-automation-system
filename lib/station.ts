@@ -12,6 +12,7 @@ import {
 } from './schedule'
 import { isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
+import { buildGenericDjText, buildRequestDjText, EDGE_TTS_DURATION_SECONDS } from './edge-tts'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -206,12 +207,19 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
+function edgeTtsSource(text: string) {
+  return `/api/tts?text=${encodeURIComponent(text)}`
+}
+function hasQueuedDjAnnouncement(state: StationState, now: number) {
+  return state.tracks.some((track) => track.kind === 'dj-mic' && trackEnd(track) > now)
+}
 
 async function fill(
   state: StationState,
   now: number,
   sundayScheduleEnabled: boolean,
   newTagalogOpmEnabled: boolean,
+  edgeTtsEnabled: boolean,
 ) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
@@ -221,6 +229,36 @@ async function fill(
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     const request = state.requestQueue[0]
+    if (request && edgeTtsEnabled && !hasQueuedDjAnnouncement(state, now)) {
+      const text = buildRequestDjText(request.title, request.artist)
+      state.tracks.push({
+        uid: `dj-request-${request.requestId}-${startAt}`,
+        src: edgeTtsSource(text),
+        startAt,
+        duration: EDGE_TTS_DURATION_SECONDS,
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'dj-mic',
+        title: 'RJ FM DJ request announcement',
+        artist: 'Christopher · Edge TTS',
+      })
+      continue
+    }
+    if (edgeTtsEnabled && state.songCount > 0 && state.songCount % 2 === 0 && !hasQueuedDjAnnouncement(state, now)) {
+      const text = buildGenericDjText()
+      state.tracks.push({
+        uid: `dj-break-${state.songCount}-${startAt}`,
+        src: edgeTtsSource(text),
+        startAt,
+        duration: EDGE_TTS_DURATION_SECONDS,
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'dj-mic',
+        title: 'RJ FM Bicol DJ announcement',
+        artist: 'Christopher · Edge TTS',
+      })
+      continue
+    }
     const song = request
       ? { id: request.id, key: request.key, src: request.src, duration: request.duration, artist: request.artist }
       : await findSong(program, state.songCount, state.history, startAt, newTagalogOpmEnabled)
@@ -235,6 +273,9 @@ async function fill(
       duration: song.duration,
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
+      kind: 'music',
+      title: request?.title,
+      artist: song.artist,
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
@@ -295,7 +336,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, settings.newTagalogOpmEnabled)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.newTagalogOpmEnabled, settings.edgeTtsEnabled)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
@@ -308,7 +349,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
     nextOnAir: null,
     tracks: state.tracks.map((track) => ({
       ...track,
-      src: `/api/audio?src=${encodeURIComponent(track.src)}`,
+      src: track.kind === 'dj-mic' ? track.src : `/api/audio?src=${encodeURIComponent(track.src)}`,
     })),
     bassBoostDb: settings.bassBoostDb,
   }
