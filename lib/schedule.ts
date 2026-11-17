@@ -334,9 +334,10 @@ export function nextSignOn(ms: number): number {
   return target
 }
 
-/** Sunday blocks apply while enabled; every other time uses the mellow easy-listening mix. */
+/** Daily 4:00–6:02 PM disco block; 6:03 PM onward returns to the love-song mix. */
 export function programAt(ms: number, sundayScheduleEnabled = true): Program {
-  const { hour, day } = manilaTime(ms)
+  const { hour, minute, day } = manilaTime(ms)
+  if (hour === 16 || hour === 17 || (hour === 18 && minute < 3)) return PROGRAMS.disco
   if (sundayScheduleEnabled && day === 0) {
     if (hour >= 4 && hour < 10) return PROGRAMS['sunday-english-oldies']
     if (hour >= 10 && hour < 15) return PROGRAMS['sunday-oldies']
