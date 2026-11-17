@@ -23,12 +23,17 @@ async function main() {
     assert.equal(await getActiveListenerCount(), 0, 'stale heartbeats expire after one minute')
     assert.equal(isBlobStorageAvailable(), false, 'storage status stays false when no Blob token is configured')
 
+    assert.equal((await getSettings()).sundayScheduleEnabled, true, 'Sunday special programming defaults ON')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: false })
     assert.equal((await getSettings()).broadcastEnabled, false, 'the broadcast OFF toggle remains readable in memory fallback')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: true })
     assert.equal((await getSettings()).broadcastEnabled, true, 'the broadcast ON toggle remains readable in memory fallback')
+    await writeJson(SETTINGS_PATH, { broadcastEnabled: true, sundayScheduleEnabled: false })
+    assert.equal((await getSettings()).sundayScheduleEnabled, false, 'Sunday schedule OFF toggle persists in memory fallback')
+    await writeJson(SETTINGS_PATH, { broadcastEnabled: true, sundayScheduleEnabled: true })
+    assert.equal((await getSettings()).sundayScheduleEnabled, true, 'Sunday schedule ON toggle persists in memory fallback')
 
-    console.log('listener-count: memory fallback, live count, expiry, and broadcast toggle checks passed')
+    console.log('listener-count: memory fallback, live count, expiry, broadcast toggle, and Sunday setting checks passed')
   } finally {
     Date.now = originalDateNow
   }

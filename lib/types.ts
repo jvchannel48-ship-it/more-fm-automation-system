@@ -20,6 +20,7 @@ export interface SongRequest {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  sundayScheduleEnabled: boolean
 }
 
 export interface NowResponse {
@@ -30,6 +31,7 @@ export interface NowResponse {
 }
 
 export interface AdminStatus extends StationSettings {
+  newTagalogNext: boolean
   persistenceConfigured: boolean
   listenersNow: number
   songsThisWeek: number

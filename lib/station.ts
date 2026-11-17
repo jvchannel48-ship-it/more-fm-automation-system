@@ -208,12 +208,12 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 
-async function fill(state: StationState, now: number) {
+async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
     if (isOffAir(startAt)) break
-    const program = programAt(startAt)
+    const program = programAt(startAt, sundayScheduleEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     const request = state.requestQueue[0]
@@ -292,7 +292,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now)
+    await fill(state, now, settings.sundayScheduleEnabled)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
@@ -308,6 +308,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
   return {
     ...settings,
+    newTagalogNext: state.preferNewTagalog,
     persistenceConfigured: isBlobStorageAvailable(),
     listenersNow,
     songsThisWeek: state.history.length,
@@ -322,6 +323,6 @@ export async function refreshQueue(mode: 'rotation' | 'new-tagalog' = 'rotation'
   // Keep only the song on air; the next request picks a fresh upcoming song.
   state.tracks = state.tracks.filter((t) => t.startAt <= now)
   state.fillingUntil = 0
-  if (mode === 'new-tagalog') state.preferNewTagalog = true
+  state.preferNewTagalog = mode === 'new-tagalog'
   await writeJson(STATE_PATH, state)
 }

@@ -3,7 +3,16 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
 
-export type ProgramId = 'sunday-oldies' | 'english-love' | 'disco' | 'night-love' | 'love-mix' | 'off-air'
+export type ProgramId =
+  | 'sunday-oldies'
+  | 'sunday-english-oldies'
+  | 'sunday-tagalog-classic'
+  | 'sunday-english-love'
+  | 'english-love'
+  | 'disco'
+  | 'night-love'
+  | 'love-mix'
+  | 'off-air'
 
 export type Language = 'english' | 'tagalog'
 
@@ -18,6 +27,7 @@ export interface Program {
   pools: Record<Language, Artist[]>
   variants: Record<Language, string[]>
   tagalogOnly?: boolean
+  englishOnly?: boolean
 }
 
 function artists(language: Language, entries: string[]): Artist[] {
@@ -51,6 +61,38 @@ const PINOY_OLDIES = artists('tagalog', [
   'Celeste Legaspi',
   'Merci Molina',
   'Asin',
+])
+
+const SUNDAY_ENGLISH_OLDIES = artists('english', [
+  'Bobby Vinton',
+  'Victor Wood',
+  'Jim Reeves',
+  'Perry Como',
+  'Andy Williams',
+  'Nat King Cole',
+  'Matt Monro',
+  'Frank Sinatra',
+  'Tom Jones',
+  'Neil Sedaka',
+  'Engelbert Humperdinck|engelbert',
+  'Paul Anka',
+])
+
+const SUNDAY_TAGALOG_CLASSICS = artists('tagalog', [
+  'Rodel Naval',
+  'Renz Verano',
+  'Lea Salonga|lea salonga',
+  'Rey Valera',
+  'Basil Valdez',
+  'Ariel Rivera',
+  'Martin Nievera',
+  'Ogie Alcasid',
+  'Joey Albert',
+  'Rico J. Puno|rico j',
+  'Marco Sison',
+  'Nonoy Zuniga|zuniga',
+  'Jessa Zaragoza',
+  'Donna Cruz',
 ])
 
 const PINOY_LOVE = artists('tagalog', [
@@ -214,6 +256,7 @@ const TAGALOG_DISCO = artists('tagalog', [
 
 const LOVE_VARIANTS = ['soft ballad', 'easy listening', 'love song', 'official audio', 'greatest hits']
 const OPM_VARIANTS = ['soft OPM ballad', 'OPM love song', 'easy listening OPM', 'official audio', 'greatest hits']
+const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
@@ -221,6 +264,24 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     pools: { english: [], tagalog: PINOY_OLDIES },
     variants: { english: [], tagalog: ['', 'official audio', 'lyrics', 'greatest hits'] },
     tagalogOnly: true,
+  },
+  'sunday-english-oldies': {
+    id: 'sunday-english-oldies',
+    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
+    variants: { english: SUNDAY_OLDIES_VARIANTS, tagalog: [] },
+    englishOnly: true,
+  },
+  'sunday-tagalog-classic': {
+    id: 'sunday-tagalog-classic',
+    pools: { english: [], tagalog: SUNDAY_TAGALOG_CLASSICS },
+    variants: { english: [], tagalog: OPM_VARIANTS },
+    tagalogOnly: true,
+  },
+  'sunday-english-love': {
+    id: 'sunday-english-love',
+    pools: { english: NIGHT_LOVE, tagalog: [] },
+    variants: { english: LOVE_VARIANTS, tagalog: [] },
+    englishOnly: true,
   },
   'english-love': {
     id: 'english-love',
@@ -273,14 +334,21 @@ export function nextSignOn(ms: number): number {
   return target
 }
 
-/** All-day mellow easy-listening mix: classic English love songs and soft OPM. */
-export function programAt(ms: number): Program {
-  void ms
+/** Sunday blocks apply while enabled; every other time uses the mellow easy-listening mix. */
+export function programAt(ms: number, sundayScheduleEnabled = true): Program {
+  const { hour, day } = manilaTime(ms)
+  if (sundayScheduleEnabled && day === 0) {
+    if (hour >= 4 && hour < 10) return PROGRAMS['sunday-english-oldies']
+    if (hour >= 10 && hour < 15) return PROGRAMS['sunday-oldies']
+    if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
+    if (hour >= 20) return PROGRAMS['sunday-english-love']
+  }
   return PROGRAMS['love-mix']
 }
 
 /** Rotation: 2 English, then 2 Tagalog, repeating. */
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'
+  if (program.englishOnly) return 'english'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }
