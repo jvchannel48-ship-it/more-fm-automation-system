@@ -19,7 +19,9 @@ const sunday = 15
 const sundayBlocks = [
   { start: 4, end: 10, id: 'sunday-english-oldies', language: 'english' },
   { start: 10, end: 15, id: 'sunday-oldies', language: 'tagalog' },
-  { start: 15, end: 20, id: 'sunday-tagalog-classic', language: 'tagalog' },
+  { start: 15, end: 16, id: 'sunday-tagalog-classic', language: 'tagalog' },
+  { start: 16, end: 19, id: 'disco', language: 'english' },
+  { start: 19, end: 20, id: 'sunday-tagalog-classic', language: 'tagalog' },
   { start: 20, end: 24, id: 'sunday-english-love', language: 'english' },
 ] as const
 
@@ -27,9 +29,11 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  const expectedDaytime = hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
-  assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedDaytime, `Sunday ${hour}:00 uses the weekday rotation when Sunday schedule is OFF`)
-  assert.equal(programAt(manilaTime(16, hour)).id, expectedDaytime, `Monday ${hour}:00 uses the expected daily rotation`)
+  const expectedNormalProgram = hour === 16 || hour === 17 || hour === 18
+    ? 'disco'
+    : hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
+  assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedNormalProgram, `Sunday ${hour}:00 uses the expected normal rotation when Sunday schedule is OFF`)
+  assert.equal(programAt(manilaTime(16, hour)).id, expectedNormalProgram, `Monday ${hour}:00 selects the expected regular program`)
 
   const expectedBlock = sundayBlocks.find(({ start, end }) => hour >= start && hour < end)
   if (expectedBlock) {
@@ -68,5 +72,8 @@ assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station remains off bef
 assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'station signs on at 4 AM')
 assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), 'next sign-on during off-air is 4 AM the same day')
 assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on after 4 AM is 4 AM the following day')
+assert.equal(programAt(manilaTime(16, 16, 0)).id, 'disco', '4:00 PM starts the disco block')
+assert.equal(programAt(manilaTime(16, 18, 2)).id, 'disco', '6:02 PM remains in the disco block')
+assert.equal(programAt(manilaTime(16, 18, 3)).id, 'love-mix', '6:03 PM starts the love-song mix')
 
 console.log('schedule: Sunday blocks, Sunday toggle fallback, and 1 AM sign-off / 4 AM sign-on all pass')
