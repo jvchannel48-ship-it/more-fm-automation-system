@@ -1,6 +1,6 @@
 export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 
-export const SIGN_OFF_HOUR = 1
+export const SIGN_OFF_HOUR = 3
 export const SIGN_ON_HOUR = 4
 export const DZMM_STREAM_URL = 'https://us1.amfmph.com:8852/live'
 
@@ -342,20 +342,12 @@ export function dzmmWindowAt(ms: number): DzmmWindow | null {
   const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
   const minuteOfDay = hour * 60 + minute
 
-  if (minuteOfDay >= 330 && minuteOfDay < 420) {
-    return { startAt: dayStart + 330 * 60_000, endAt: dayStart + 420 * 60_000 }
+  if (minuteOfDay >= 420 && minuteOfDay < 480) {
+    return { startAt: dayStart + 420 * 60_000, endAt: dayStart + 480 * 60_000 }
   }
 
-  if (day >= 1 && day <= 6 && minuteOfDay >= 840 && minuteOfDay < 901) {
-    return { startAt: dayStart + 840 * 60_000, endAt: dayStart + 901 * 60_000 }
-  }
-
-  if (day >= 1 && day <= 5 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
+  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
     return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1200 * 60_000 }
-  }
-
-  if (day === 6 && minuteOfDay >= 1110 && minuteOfDay < 1170) {
-    return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1170 * 60_000 }
   }
 
   if (minuteOfDay >= 1320) {
