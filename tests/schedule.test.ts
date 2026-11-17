@@ -74,6 +74,6 @@ assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), 'next sig
 assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on after 4 AM is 4 AM the following day')
 assert.equal(programAt(manilaTime(16, 16, 0)).id, 'disco', '4:00 PM starts the disco block')
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'disco', '6:02 PM remains in the disco block')
-assert.equal(programAt(manilaTime(16, 18, 3)).id, 'love-mix', '6:03 PM starts the love-song mix')
+assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
 
 console.log('schedule: Sunday blocks, Sunday toggle fallback, and 1 AM sign-off / 4 AM sign-on all pass')
