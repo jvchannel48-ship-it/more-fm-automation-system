@@ -144,7 +144,6 @@ export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
 ])
 
 export const NEW_TAGALOG_OPM_VARIANTS = [
-  'Marilag',
   'new OPM love song',
   'modern OPM ballad',
   'soft Tagalog love song',

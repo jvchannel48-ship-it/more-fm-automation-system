@@ -45,7 +45,7 @@ assert.ok(PROGRAMS['love-mix'].variants.english.includes('easy listening'), 'Eng
 assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('soft OPM ballad'), 'Tagalog searches prioritize soft OPM ballads')
 assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'mellow Tagalog rotation includes Dionela')
 assert.ok(NEW_TAGALOG_OPM_ARTISTS.some((artist) => artist.name === 'Adie'), 'new-song pool includes contemporary OPM artists')
-assert.ok(NEW_TAGALOG_OPM_VARIANTS.includes('Marilag'), 'new-song action prioritizes Marilag')
+assert.ok(!NEW_TAGALOG_OPM_VARIANTS.includes('Marilag'), 'new-song rotation does not force Marilag')
 assert.ok(PROGRAMS['sunday-english-oldies'].pools.english.some((artist) => artist.name === 'Victor Wood'), 'Sunday English oldies include Victor Wood')
 assert.ok(PROGRAMS['sunday-english-oldies'].variants.english.includes('Mr Lonely'), 'Sunday English oldies search for Mr Lonely')
 assert.ok(PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => artist.name === 'Imelda Papin'), 'Sunday Pinoy jukebox includes Imelda Papin')
