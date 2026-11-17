@@ -31,8 +31,24 @@ for (const title of [
   'Someone Else - Cover of Whitney Houston',
   'Whitney Houston - Canción en español',
   'Whitney Houston - AI-generated version',
+  'Whitney Houston - Club Nights',
+  'Whitney Houston - Saturday Party',
+  'Whitney Houston - Funky Love',
+  'Whitney Houston - Midnight Groove',
+  'Whitney Houston - Boogie On',
+  'Whitney Houston - House of Love',
+  'Whitney Houston - Electronic Dreams',
+  'Whitney Houston - Love Song (Extended Mix)',
+  'Whitney Houston - I Look to You [Radio Edit]',
+  'Whitney Houston - Dance_Mix',
 ]) {
   assert.equal(isOriginalArtistTrack(title, whitney), false, `excluded: ${title}`)
 }
+
+assert.equal(
+  isOriginalArtistTrack('Whitney Houston - Saving All My Love for You (Official Audio)', whitney),
+  true,
+  'a classic ballad remains eligible',
+)
 
 console.log('song filter: only artist-credited originals pass; dance/pop/rock and cover/remix results are rejected')
