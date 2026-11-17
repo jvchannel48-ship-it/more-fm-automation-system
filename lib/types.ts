@@ -26,7 +26,6 @@ export interface StationSettings {
   sundayScheduleEnabled: boolean
   newTagalogOpmEnabled: boolean
   bassBoostDb: number
-  edgeTtsEnabled: boolean
 }
 
 export interface NowResponse {
