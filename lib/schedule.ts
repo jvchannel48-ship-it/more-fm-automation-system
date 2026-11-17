@@ -2,6 +2,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 
 export const SIGN_OFF_HOUR = 1
 export const SIGN_ON_HOUR = 4
+export const DZMM_STREAM_URL = 'https://us1.amfmph.com:8852/live'
 
 export type ProgramId =
   | 'sunday-oldies'
@@ -321,9 +322,48 @@ export interface ManilaTime {
   minute: number
 }
 
+export interface DzmmWindow {
+  startAt: number
+  endAt: number
+}
+
 export function manilaTime(ms: number): ManilaTime {
   const d = new Date(ms + MANILA_OFFSET_MS)
   return { hour: d.getUTCHours(), day: d.getUTCDay(), minute: d.getUTCMinutes() }
+}
+
+/** Returns a scheduled DZMM window, or null when the station should play its own music. */
+export function dzmmWindowAt(ms: number): DzmmWindow | null {
+  const { hour, minute, day } = manilaTime(ms)
+  if (day === 0) return null
+
+  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
+  localDayStart.setUTCHours(0, 0, 0, 0)
+  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
+  const minuteOfDay = hour * 60 + minute
+
+  if (minuteOfDay >= 330 && minuteOfDay < 420) {
+    return { startAt: dayStart + 330 * 60_000, endAt: dayStart + 420 * 60_000 }
+  }
+
+  if (day >= 1 && day <= 5 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
+    return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1200 * 60_000 }
+  }
+
+  if (day === 6 && minuteOfDay >= 1110 && minuteOfDay < 1170) {
+    return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1170 * 60_000 }
+  }
+
+  if (minuteOfDay >= 1320) {
+    const endAt = day === 6 ? dayStart + 24 * 60 * 60_000 : dayStart + 27 * 60 * 60_000
+    return { startAt: dayStart + 1320 * 60_000, endAt }
+  }
+
+  if (minuteOfDay < 180) {
+    return { startAt: day === 1 ? dayStart : dayStart - 120 * 60_000, endAt: dayStart + 180 * 60_000 }
+  }
+
+  return null
 }
 
 export function isOffAir(ms: number): boolean {

@@ -8,11 +8,10 @@ const noStore = { 'Cache-Control': 'private, no-store, no-transform' }
 function isAllowedMediaUrl(value: string) {
   try {
     const url = new URL(value)
-    return url.protocol === 'https:'
-      && !url.username
-      && !url.password
-      && !url.port
-      && /^cdn\d+\.savetube\.vip$/i.test(url.hostname)
+    if (url.protocol !== 'https:' || url.username || url.password) return false
+    const isMusicSource = !url.port && /^cdn\d+\.savetube\.vip$/i.test(url.hostname)
+    const isDzmmSource = url.hostname === 'us1.amfmph.com' && url.port === '8852' && url.pathname === '/live'
+    return isMusicSource || isDzmmSource
   } catch {
     return false
   }

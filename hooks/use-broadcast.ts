@@ -122,14 +122,14 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
 
         const expected = (now - track.startAt) / 1000
-        if (el.readyState >= 1) {
+        if (track.kind !== 'live' && el.readyState >= 1) {
           if (!slot.synced || Math.abs(el.currentTime - expected) > DRIFT_TOLERANCE_S) {
             if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
             slot.synced = true
           }
         }
         if (el.readyState < 3 && !el.ended) buffering = true
-        el.volume = clamp01(trackGain(track, now) * volume)
+        el.volume = clamp01((track.kind === 'live' ? 1 : trackGain(track, now)) * volume)
         if (el.paused && !el.ended) el.play().catch(() => undefined)
       }
 

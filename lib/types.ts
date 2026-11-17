@@ -5,7 +5,7 @@ export interface Track {
   duration: number
   fadeIn: number
   fadeOut: number
-  kind?: 'music' | 'dj-mic'
+  kind?: 'music' | 'dj-mic' | 'live'
   title?: string
   artist?: string
 }

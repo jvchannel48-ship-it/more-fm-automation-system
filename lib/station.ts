@@ -2,6 +2,8 @@ import 'server-only'
 import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import {
   isOffAir,
+  DZMM_STREAM_URL,
+  dzmmWindowAt,
   languageForSlot,
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
@@ -347,6 +349,27 @@ export async function getNowPlaying(): Promise<NowResponse> {
       offAir: true,
       nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null,
       tracks: [],
+      bassBoostDb: settings.bassBoostDb,
+    }
+  }
+
+  const dzmmWindow = dzmmWindowAt(now)
+  if (dzmmWindow) {
+    return {
+      serverTime: Date.now(),
+      offAir: false,
+      nextOnAir: null,
+      tracks: [{
+        uid: `dzmm-${dzmmWindow.startAt}`,
+        src: DZMM_STREAM_URL,
+        startAt: dzmmWindow.startAt,
+        duration: (dzmmWindow.endAt - dzmmWindow.startAt) / 1000,
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'live',
+        title: 'DZMM Radyo Patrol 630',
+        artist: 'DZMM live broadcast',
+      }],
       bassBoostDb: settings.bassBoostDb,
     }
   }

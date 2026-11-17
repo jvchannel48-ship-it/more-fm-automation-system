@@ -4,6 +4,7 @@ import {
   languageForSlot,
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
+  dzmmWindowAt,
   nextSignOn,
   PROGRAMS,
   programAt,
@@ -75,5 +76,16 @@ assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on
 assert.equal(programAt(manilaTime(16, 16, 0)).id, 'disco', '4:00 PM starts the disco block')
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'disco', '6:02 PM remains in the disco block')
 assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
+
+const mondayMorning = dzmmWindowAt(manilaTime(16, 5, 30))
+assert.equal(mondayMorning?.endAt, manilaTime(16, 7), 'weekday morning DZMM ends at 7:00 AM')
+assert.equal(dzmmWindowAt(manilaTime(16, 5, 29)), null, 'weekday music remains on before 5:30 AM')
+assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.endAt, manilaTime(16, 20), 'weekday TV Patrol runs until 8:00 PM')
+assert.equal(dzmmWindowAt(manilaTime(21, 18, 30))?.endAt, manilaTime(21, 19, 30), 'Saturday TV Patrol ends at 7:30 PM')
+assert.equal(dzmmWindowAt(manilaTime(21, 19, 31)), null, 'Saturday music resumes at 7:31 PM')
+assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'weekday evening music remains before 10:00 PM')
+assert.equal(dzmmWindowAt(manilaTime(16, 22))?.startAt, manilaTime(16, 22), 'weekday DZMM starts at 10:00 PM')
+assert.equal(dzmmWindowAt(manilaTime(17, 2, 59))?.endAt, manilaTime(17, 3), 'overnight DZMM ends at 3:00 AM')
+assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only')
 
 console.log('schedule: Sunday blocks, Sunday toggle fallback, and 1 AM sign-off / 4 AM sign-on all pass')
