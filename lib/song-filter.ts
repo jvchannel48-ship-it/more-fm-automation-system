@@ -65,6 +65,9 @@ export const GENRE_BLOCK_PRESETS = [
   { id: 'news', label: 'News' },
 ] as const
 
+/** Alias for older admin UI Strict classic love button. */
+export const STRICT_CLASSIC_LOVE_GENRES = DEFAULT_BLOCKED_GENRES
+
 function normalize(value: string) {
   return value
     .toLowerCase()
