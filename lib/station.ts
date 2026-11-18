@@ -5,8 +5,7 @@ import {
   isOffAir,
   DZMM_STREAM_URL,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
-  dailyAnnouncementCutoffAt,
-  dailyAnnouncementWindowEndAt,
+  dailyAnnouncementScheduleAt,
   dzmmWindowAt,
   languageForSlot,
   manilaDateKey,
@@ -29,9 +28,12 @@ const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
 const EVENING_TRANSITION_SECONDS = 12.2
 const LOVE_CONNECT_IDENT_SRC = '/audio/dzmm-love-connect-10pm.mp3'
 const TRANSITION_LOOKAHEAD_MS = 120_000
-const DAILY_ANNOUNCEMENT_SRC = '/audio/rj-fm-daily-announcement.mp3'
-const DAILY_ANNOUNCEMENT_SECONDS = 13.636
-const DAILY_ANNOUNCEMENT_TITLE = 'RJ FM daily announcement'
+const SATURDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-daily-announcement.mp3'
+const SATURDAY_ANNOUNCEMENT_SECONDS = 13.636
+const WEEKDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-weekday-announcement.mp3'
+const WEEKDAY_ANNOUNCEMENT_SECONDS = 5.407
+const SATURDAY_ANNOUNCEMENT_TITLE = 'RJ FM Saturday announcement'
+const WEEKDAY_ANNOUNCEMENT_TITLE = 'RJ FM weekday announcement'
 
 interface HistoryEntry {
   id: string
@@ -279,24 +281,29 @@ async function fill(
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
-    const windowStartAt = dailyAnnouncementCutoffAt(songStart)
-    const windowEndAt = dailyAnnouncementWindowEndAt(songStart)
-    const inAnnouncementWindow = songStart >= windowStartAt && songStart < windowEndAt
+    const announcementSchedule = dailyAnnouncementScheduleAt(songStart)
+    const inAnnouncementWindow = announcementSchedule
+      && songStart >= announcementSchedule.availableFrom
+      && songStart < announcementSchedule.expiresAt
     if (inAnnouncementWindow) state.dailyAnnouncementSongCount++
-    const announcementEndAt = songStart + song.duration * 1000 + DAILY_ANNOUNCEMENT_SECONDS * 1000
+    const announcementSeconds = announcementSchedule?.kind === 'saturday'
+      ? SATURDAY_ANNOUNCEMENT_SECONDS
+      : WEEKDAY_ANNOUNCEMENT_SECONDS
+    const announcementEndAt = songStart + song.duration * 1000 + announcementSeconds * 1000
     if (!state.dailyAnnouncementPlayed
-      && state.dailyAnnouncementSongCount >= 3
+      && announcementSchedule
+      && state.dailyAnnouncementSongCount >= announcementSchedule.songsRequired
       && inAnnouncementWindow
-      && announcementEndAt <= windowEndAt) {
+      && announcementEndAt <= announcementSchedule.expiresAt) {
       state.tracks.push({
         uid: `rj-fm-daily-announcement-${state.dailyAnnouncementDay}`,
-        src: DAILY_ANNOUNCEMENT_SRC,
+        src: announcementSchedule.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_SRC : WEEKDAY_ANNOUNCEMENT_SRC,
         startAt: songStart + song.duration * 1000,
-        duration: DAILY_ANNOUNCEMENT_SECONDS,
+        duration: announcementSeconds,
         fadeIn: 0,
         fadeOut: 0,
         kind: 'dj-mic',
-        title: DAILY_ANNOUNCEMENT_TITLE,
+        title: announcementSchedule.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_TITLE : WEEKDAY_ANNOUNCEMENT_TITLE,
         artist: 'RJ FM',
       })
       state.dailyAnnouncementPlayed = true
@@ -321,16 +328,16 @@ async function loadState(now: number) {
     state.dailyAnnouncementSongCount = 0
     state.dailyAnnouncementPlayed = false
   }
-  if (now >= dailyAnnouncementWindowEndAt(now)) state.dailyAnnouncementPlayed = true
+  const announcementSchedule = dailyAnnouncementScheduleAt(now)
+  if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
-  // Remove stale scheduled audio, including this daily clip outside the 9:48–10:00 PM window.
+  // Remove stale scheduled audio, including announcement clips outside their active day window.
   state.tracks = state.tracks.filter((t) => {
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) {
       return trackEnd(t) >= now - 1000
     }
-    return now >= dailyAnnouncementCutoffAt(now)
-      && now < dailyAnnouncementWindowEndAt(now)
-      && trackEnd(t) >= now - 1000
+    const schedule = dailyAnnouncementScheduleAt(now)
+    return Boolean(schedule && now >= schedule.availableFrom && now < schedule.expiresAt && trackEnd(t) >= now - 1000)
   })
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }

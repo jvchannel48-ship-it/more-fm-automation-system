@@ -338,19 +338,35 @@ export function manilaTime(ms: number): ManilaTime {
 export function manilaDateKey(ms: number): string {
   return new Date(ms + MANILA_OFFSET_MS).toISOString().slice(0, 10)
 }
-
-/** The daily RJ FM announcement window starts at 9:48 PM Manila time. */
-export function dailyAnnouncementCutoffAt(ms: number): number {
-  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(21, 48, 0, 0)
-  return localDayStart.getTime() - MANILA_OFFSET_MS
+export interface DailyAnnouncementSchedule {
+  kind: 'weekday' | 'saturday'
+  songsRequired: number
+  availableFrom: number
+  expiresAt: number
 }
 
-/** The announcement window ends when the 10:00 PM DZMM handoff begins. */
-export function dailyAnnouncementWindowEndAt(ms: number): number {
+/** Weekdays use the new clip after 3 songs until 9:45 PM; Saturday uses the old clip after 5 songs. */
+export function dailyAnnouncementScheduleAt(ms: number): DailyAnnouncementSchedule | null {
+  const { day } = manilaTime(ms)
+  if (day === 0) return null
   const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(22, 0, 0, 0)
-  return localDayStart.getTime() - MANILA_OFFSET_MS
+  localDayStart.setUTCHours(0, 0, 0, 0)
+  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
+  const availableFrom = dayStart + SIGN_ON_HOUR * 60 * 60 * 1000
+  if (day >= 1 && day <= 5) {
+    return {
+      kind: 'weekday',
+      songsRequired: 3,
+      availableFrom,
+      expiresAt: dayStart + 21 * 60 * 60 * 1000 + 45 * 60 * 1000,
+    }
+  }
+  return {
+    kind: 'saturday',
+    songsRequired: 5,
+    availableFrom,
+    expiresAt: dayStart + 24 * 60 * 60 * 1000,
+  }
 }
 
 /** Returns a scheduled DZMM window, or null when the station should play its own music. */
