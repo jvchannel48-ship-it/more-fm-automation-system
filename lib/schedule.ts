@@ -422,12 +422,45 @@ export function isOffAir(ms: number): boolean {
   return hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
 }
 
+/** Off-air window for a regional station (Manila clock). Handles overnight windows (e.g. 22→4). */
+export function isOffAirHours(ms: number, signOffHour: number, signOnHour: number): boolean {
+  const { hour } = manilaTime(ms)
+  if (signOffHour === signOnHour) return false
+  if (signOffHour < signOnHour) return hour >= signOffHour && hour < signOnHour
+  // Overnight: e.g. off 22, on 4 → off when hour >= 22 OR hour < 4
+  return hour >= signOffHour || hour < signOnHour
+}
+
 export function nextSignOn(ms: number): number {
   const d = new Date(ms + MANILA_OFFSET_MS)
   d.setUTCHours(SIGN_ON_HOUR, 0, 0, 0)
   let target = d.getTime() - MANILA_OFFSET_MS
   if (target <= ms) target += 24 * 60 * 60 * 1000
   return target
+}
+
+export function nextSignOnAtHour(ms: number, signOnHour: number): number {
+  const d = new Date(ms + MANILA_OFFSET_MS)
+  d.setUTCHours(signOnHour, 0, 0, 0)
+  let target = d.getTime() - MANILA_OFFSET_MS
+  if (target <= ms) target += 24 * 60 * 60 * 1000
+  return target
+}
+
+/** Iloilo DZMM block only: 6:30 PM – 8:00 PM Manila (Mon–Sat). */
+export function iloiloDzmmWindowAt(ms: number): DzmmWindow | null {
+  const { hour, minute, day } = manilaTime(ms)
+  if (day === 0) return null
+  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
+  localDayStart.setUTCHours(0, 0, 0, 0)
+  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
+  const minuteOfDay = hour * 60 + minute
+  // 18:30 = 1110, 20:00 = 1200
+  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
+    const startAt = dayStart + 1110 * 60_000
+    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
+  }
+  return null
 }
 
 /** Own programming stays on classic love songs; DZMM windows are handled separately. */
