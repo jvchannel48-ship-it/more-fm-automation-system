@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { RefreshCw } from 'lucide-react'
+import { Headphones, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -20,6 +20,28 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     <div className="flex flex-col gap-0.5 rounded-lg bg-secondary px-3 py-2">
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       <span className="text-[11px] text-muted-foreground">{label}</span>
+    </div>
+  )
+}
+
+function AdminPlayer({ listeners }: { listeners: number | string }) {
+  return (
+    <div className="relative flex min-h-[86px] flex-col justify-between overflow-hidden rounded-lg border border-primary/25 bg-gradient-to-br from-primary/20 via-secondary to-card px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_8px_18px_rgba(0,0,0,0.24)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-lg font-semibold tabular-nums">MOR 93.5</span>
+        <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-live">
+          <span className="size-1.5 animate-pulse rounded-full bg-live" aria-hidden="true" />
+          Live
+        </span>
+      </div>
+      <div className="flex items-end justify-between gap-2">
+        <span className="text-[11px] text-muted-foreground">Admin player</span>
+        <div className="flex flex-col items-center gap-0.5 text-primary" title="Listeners connected">
+          <Headphones className="size-3.5" aria-hidden="true" />
+          <span className="text-[10px] font-semibold tabular-nums text-foreground">{listeners}</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Total users</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -161,11 +183,12 @@ export function AdminPanel() {
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       {message && <p className="text-xs text-emerald-300" role="status">{message}</p>}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
         <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
+        <AdminPlayer listeners={data?.listenersNow ?? '–'} />
       </div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
