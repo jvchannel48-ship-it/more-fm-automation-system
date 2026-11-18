@@ -54,8 +54,6 @@ export function AccountMenu() {
     let first = true
     const refresh = async () => {
       if (!active || document.visibilityState !== 'visible') return
-      // Only block the form UI on the first load — background polls must not
-      // replace the signup/login inputs with "Checking account…" (kills typing).
       if (first) setProfileLoading(true)
       await refreshProfile(open)
       if (active && first) {
@@ -131,39 +129,88 @@ export function AccountMenu() {
     finally { setBusy(false) }
   }
 
-  return <>
-    <Button variant="ghost" size="icon" aria-label="Account and profile" onClick={() => { setOpen(true); setError(''); setMessage('') }} className="relative">
-      {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="" className="size-7 rounded-full object-cover" /> : <CircleUserRound aria-hidden="true" />}
-      {profile && <span className="absolute bottom-1 right-1 size-2 rounded-full bg-emerald-500 ring-2 ring-background" aria-label="Logged in" />}
-    </Button>
-    {open && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl">
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="Close account" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
-        <h2 id="account-title" className="pr-8 text-xl font-semibold">Profile & account</h2>
-        {profile ? <div className="mt-5 flex flex-col gap-5">
-          <div className="flex items-center gap-3 rounded-xl bg-secondary/60 p-3">
-            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
-            <div className="min-w-0"><p className="truncate font-medium">{profile.displayName || 'Listener'}</p><p className="truncate text-xs text-muted-foreground">{profile.email}</p></div>
-          </div>
-          <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-            <p className="text-xs text-muted-foreground">Your credits · live update</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p>
-            <p className="text-xs text-muted-foreground">{profile.dailyCredits} daily + {profile.bonusCredits} bonus · {profile.dailyAllowance} daily credits</p>
-          </div>
-          <div className="flex flex-col gap-2"><Label htmlFor="profile-name">Name</Label><div className="flex gap-2"><Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} /><Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button></div></div>
-          <div className="flex flex-col gap-2"><Label htmlFor="profile-email">Change email</Label><Input id="profile-email" type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /><Input aria-label="Current password to change email" type="password" autoComplete="current-password" placeholder="Current password" value={currentEmailPassword} onChange={(event) => setCurrentEmailPassword(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateSecurity('email')} disabled={busy || !newEmail.trim() || newEmail.trim() === profile.email || !currentEmailPassword}>Update email</Button></div>
-          <div className="flex flex-col gap-2"><Label htmlFor="profile-password">Change password</Label><Input id="profile-password" type="password" minLength={8} autoComplete="new-password" placeholder="New password (min 8)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><Input aria-label="Current password to change password" type="password" autoComplete="current-password" placeholder="Current password" value={currentChangePassword} onChange={(event) => setCurrentChangePassword(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateSecurity('password')} disabled={busy || newPassword.length < 8 || !currentChangePassword}>Update password</Button></div>
-          <div className="flex flex-col gap-2"><Label htmlFor="profile-avatar">Profile picture (JPEG/PNG/WebP, max 1 MB)</Label><input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" /><Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button></div>
-          <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Log out</Button>
-        </div> : profileLoading ? <p className="mt-5 text-sm text-muted-foreground" role="status">Checking account…</p> : <form onSubmit={doAuth} className="mt-5 flex flex-col gap-4">
-          {mode === 'signup' && <div className="flex flex-col gap-2"><Label htmlFor="account-name">Name</Label><Input id="account-name" maxLength={60} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required /></div>}
-          <div className="flex flex-col gap-2"><Label htmlFor="account-email">Email</Label><Input id="account-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
-          <div className="flex flex-col gap-2"><Label htmlFor="account-password">Password</Label><Input id="account-password" type="password" minLength={8} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required /></div>
-          <Button type="submit" disabled={busy || !email || password.length < 8}><LogIn />{busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}</Button>
-          <Button type="button" variant="ghost" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}>{mode === 'login' ? 'Create a new account' : 'Already have an account? Log in'}</Button>
-        </form>}
-        {message && <p className="mt-4 rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-200" role="status">{message}</p>}
-        {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
-      </section>
-    </div>}
-  </>
+  return (
+    <>
+      <Button variant="ghost" size="icon" aria-label="Account and profile" onClick={() => { setOpen(true); setError(''); setMessage('') }} className="relative">
+        {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="" className="size-7 rounded-full object-cover" /> : <CircleUserRound aria-hidden="true" />}
+        {profile && <span className="absolute bottom-1 right-1 size-2 rounded-full bg-emerald-500 ring-2 ring-background" aria-label="Logged in" />}
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl">
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Close account" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
+            <h2 id="account-title" className="pr-8 text-xl font-semibold">Profile & account</h2>
+            {profile ? (
+              <div className="mt-5 flex flex-col gap-5">
+                <div className="flex items-center gap-3 rounded-xl bg-secondary/60 p-3">
+                  {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{profile.displayName || 'Listener'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <p className="text-xs text-muted-foreground">Your credits · live update</p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p>
+                  <p className="text-xs text-muted-foreground">{profile.dailyCredits} daily + {profile.bonusCredits} bonus · {profile.dailyAllowance} daily credits</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="profile-name">Name</Label>
+                  <div className="flex gap-2">
+                    <Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} />
+                    <Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="profile-email">Change email</Label>
+                  <Input id="profile-email" type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+                  <Input aria-label="Current password to change email" type="password" autoComplete="current-password" placeholder="Current password" value={currentEmailPassword} onChange={(event) => setCurrentEmailPassword(event.target.value)} />
+                  <Button type="button" variant="secondary" onClick={() => updateSecurity('email')} disabled={busy || !newEmail.trim() || newEmail.trim() === profile.email || !currentEmailPassword}>Update email</Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="profile-password">Change password</Label>
+                  <Input id="profile-password" type="password" minLength={8} autoComplete="new-password" placeholder="New password (min 8)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                  <Input aria-label="Current password to change password" type="password" autoComplete="current-password" placeholder="Current password" value={currentChangePassword} onChange={(event) => setCurrentChangePassword(event.target.value)} />
+                  <Button type="button" variant="secondary" onClick={() => updateSecurity('password')} disabled={busy || newPassword.length < 8 || !currentChangePassword}>Update password</Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="profile-avatar">Profile picture (JPEG/PNG/WebP, max 1 MB)</Label>
+                  <input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" />
+                  <Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button>
+                </div>
+                <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Log out</Button>
+              </div>
+            ) : profileLoading ? (
+              <p className="mt-5 text-sm text-muted-foreground" role="status">Checking account…</p>
+            ) : (
+              <form onSubmit={doAuth} className="mt-5 flex flex-col gap-4">
+                {mode === 'signup' && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="account-name">Name</Label>
+                    <Input id="account-name" maxLength={60} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required />
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="account-email">Email</Label>
+                  <Input id="account-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="account-password">Password</Label>
+                  <Input id="account-password" type="password" minLength={8} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required />
+                </div>
+                <Button type="submit" disabled={busy || !email || password.length < 8}>
+                  <LogIn />{busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}>
+                  {mode === 'login' ? 'Create a new account' : 'Already have an account? Log in'}
+                </Button>
+              </form>
+            )}
+            {message && <p className="mt-4 rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-200" role="status">{message}</p>}
+            {error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
+          </section>
+        </div>
+      )}
+    </>
+  )
 }
