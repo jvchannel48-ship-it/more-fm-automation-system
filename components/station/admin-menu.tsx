@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { ExternalLink, Info, Lock, LogOut, Menu, Users } from 'lucide-react'
+import { ExternalLink, Lock, LogOut, Menu, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { AdminPanel } from './admin-panel'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -22,7 +22,7 @@ function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-function SectionTitle({ icon: Icon, children }: { icon: typeof Info; children: React.ReactNode }) {
+function SectionTitle({ icon: Icon, children }: { icon: typeof Users; children: React.ReactNode }) {
   return (
     <h3 className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
       <Icon className="size-3.5" aria-hidden="true" />
@@ -66,25 +66,7 @@ export function AdminMenu() {
         <Menu aria-hidden="true" />
       </SheetTrigger>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
-        <SheetHeader>
-          <SheetTitle>
-            MOR <span className="text-primary">93.5</span> Naga
-          </SheetTitle>
-          <SheetDescription>MOR 93.5 Naga · DZMM scheduled broadcast</SheetDescription>
-        </SheetHeader>
-
         <div className="flex flex-col gap-6 px-4 pb-6">
-          <section className="flex flex-col gap-3">
-            <SectionTitle icon={Info}>Info</SectionTitle>
-            <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">MOR 93.5 Naga</p>
-              <p className="text-muted-foreground">DZMM (Mon–Sat): 7:00–8:00 AM · 12:00–1:00 PM · 6:30–8:00 PM · 10:00 PM ident, then live at about 10:00:06 PM. MOR music resumes at 1:01 PM.</p>
-              <p className="text-muted-foreground">Overnight DZMM ends at 3:00 AM on weeknights and midnight after Saturday; Sunday is music-only.</p>
-              <p className="text-muted-foreground">MOR music: 4:00–6:59 AM · 8:01 AM–1:59 PM · 3:01–6:29 PM · 8:01–9:59 PM</p>
-              <p className="text-muted-foreground">MOR signs on at 4:00 AM after the 3:00 AM sign-off</p>
-            </div>
-          </section>
-
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Users}>Social Media</SectionTitle>
             <Button
