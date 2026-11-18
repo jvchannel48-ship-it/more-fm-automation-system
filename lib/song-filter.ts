@@ -65,7 +65,11 @@ export const GENRE_BLOCK_PRESETS = [
   { id: 'news', label: 'News' },
 ] as const
 
-/** Alias for older admin UI Strict classic love button. */
+/**
+ * Alias kept for admin-panel import:
+ * `import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'`
+ * (Vercel build failed on b15a06a when this export was missing.)
+ */
 export const STRICT_CLASSIC_LOVE_GENRES = DEFAULT_BLOCKED_GENRES
 
 function normalize(value: string) {
