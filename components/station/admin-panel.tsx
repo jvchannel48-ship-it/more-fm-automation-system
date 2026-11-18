@@ -315,11 +315,6 @@ export function AdminPanel() {
         </Button>
       </div>
 
-      {data?.persistenceConfigured === false && (
-        <p className="rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-100" role="status">
-          Walang durable Blob storage. Broadcast, OPM, Sunday schedule, at listener settings ay pansamantala at maaaring mawala sa restart o magkaiba sa server instances. Ikonekta ang Vercel Blob o i-set ang BLOB_READ_WRITE_TOKEN.
-        </p>
-      )}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       {message && <p className="text-xs text-emerald-300" role="status">{message}</p>}
 
