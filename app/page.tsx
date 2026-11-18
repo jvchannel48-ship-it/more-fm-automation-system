@@ -3,13 +3,13 @@ import { RadioPlayer } from '@/components/station/radio-player'
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="radio-app-shell relative flex min-h-dvh flex-col overflow-hidden">
       <div
         className="pointer-events-none absolute left-1/2 top-1/3 -z-10 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl"
         aria-hidden="true"
       />
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4">
-        <span className="font-mono text-sm font-bold tracking-widest">
+      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-5">
+        <span className="station-mark font-mono text-sm font-bold tracking-[0.28em]">
           MOR <span className="text-primary">93.5</span>
         </span>
         <AdminMenu />

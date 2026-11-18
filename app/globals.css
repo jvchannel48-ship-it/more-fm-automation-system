@@ -93,3 +93,157 @@
     transform: translateX(360%);
   }
 }
+
+/* Cinematic radio-studio visual language inspired by the supplied night-city reference. */
+body {
+  background: #050b12;
+}
+
+.radio-app-shell {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 27%, rgba(255, 178, 67, 0.16), transparent 18rem),
+    radial-gradient(circle at 12% 72%, rgba(24, 87, 119, 0.2), transparent 24rem),
+    linear-gradient(180deg, #06101a 0%, #08121b 42%, #03070c 100%);
+  filter: saturate(1.12) contrast(1.04);
+}
+
+.radio-app-shell::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  content: '';
+  opacity: 0.52;
+  background:
+    radial-gradient(circle at 7% 57%, rgba(255, 181, 72, 0.6) 0 1px, transparent 2px),
+    radial-gradient(circle at 23% 66%, rgba(255, 198, 108, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 54%, rgba(255, 161, 48, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 91% 65%, rgba(255, 212, 133, 0.6) 0 1px, transparent 2px),
+    radial-gradient(circle at 64% 76%, rgba(255, 177, 64, 0.75) 0 1px, transparent 2px),
+    linear-gradient(150deg, transparent 0 42%, rgba(2, 7, 12, 0.75) 42% 47%, transparent 47%),
+    linear-gradient(30deg, transparent 0 48%, rgba(2, 7, 12, 0.85) 48% 55%, transparent 55%);
+  background-size: 180px 180px, 230px 230px, 260px 260px, 310px 310px, 370px 370px, 100% 100%, 100% 100%;
+  filter: blur(1px);
+}
+
+.radio-app-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 10, 0.18), transparent 28%, rgba(1, 4, 7, 0.72) 100%),
+    radial-gradient(ellipse at center, transparent 20%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.radio-header {
+  text-shadow: 0 0 22px rgba(255, 190, 93, 0.25);
+}
+
+.station-mark {
+  color: #f5f7fb;
+}
+
+.station-mark .text-primary,
+.player-title .text-primary {
+  color: #ffc15d;
+  text-shadow: 0 0 18px rgba(255, 174, 57, 0.5);
+}
+
+.radio-player {
+  position: relative;
+  width: min(100%, 34rem);
+  padding: 1.25rem 1rem 1.75rem;
+}
+
+.live-badge {
+  box-shadow: 0 0 0 1px rgba(255, 79, 79, 0.14), 0 0 26px rgba(255, 74, 62, 0.24), inset 0 0 18px rgba(255, 74, 62, 0.1);
+  background: linear-gradient(180deg, rgba(255, 76, 66, 0.14), rgba(70, 8, 14, 0.3));
+  text-shadow: 0 0 12px currentColor;
+}
+
+.vinyl-stage {
+  filter: saturate(1.25) contrast(1.1);
+}
+
+.vinyl-stage::before {
+  position: absolute;
+  inset: 13%;
+  border-radius: 999px;
+  content: '';
+  background: radial-gradient(circle, rgba(255, 181, 61, 0.46), transparent 62%);
+  filter: blur(28px);
+  opacity: 0.8;
+}
+
+.vinyl-record {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 35% 29%, rgba(255, 255, 255, 0.22), transparent 0 7%, rgba(255, 255, 255, 0.04) 7% 9%, transparent 9% 18%, rgba(255, 255, 255, 0.08) 18% 19%, transparent 19% 27%, rgba(255, 255, 255, 0.05) 27% 28%, transparent 28%),
+    repeating-radial-gradient(circle at center, #06080b 0 2px, #13171c 2px 3px, #030406 3px 5px),
+    conic-gradient(from 35deg, #050608, #343a3e 9%, #07090d 19%, #23272d 31%, #040507 44%, #262b31 58%, #030406 72%, #252a30 87%, #050608);
+  border: 1px solid rgba(231, 239, 245, 0.28);
+  box-shadow: inset 10px 10px 28px rgba(255, 255, 255, 0.08), inset -18px -16px 35px rgba(0, 0, 0, 0.92), 0 20px 45px rgba(0, 0, 0, 0.58);
+}
+
+.vinyl-record::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: '';
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.24), transparent 19% 63%, rgba(255, 255, 255, 0.08) 70%, transparent 78%);
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.vinyl-label {
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  background: radial-gradient(circle at 35% 27%, #ffe6ac, #f4a83c 42%, #7a370d 100%);
+  border: 5px solid rgba(255, 209, 105, 0.62);
+  box-shadow: 0 0 28px rgba(255, 168, 47, 0.7), inset 0 0 18px rgba(255, 255, 255, 0.38), inset 0 -12px 20px rgba(91, 27, 5, 0.45);
+}
+
+.vinyl-label-mark {
+  color: #24150b;
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 5vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.vinyl-hole {
+  z-index: 2;
+  background: #090c10;
+  border: 2px solid rgba(255, 212, 128, 0.35);
+  box-shadow: inset 0 2px 5px #000, 0 0 10px rgba(255, 178, 47, 0.5);
+}
+
+.record-button {
+  z-index: 3;
+  border: 1px solid rgba(255, 219, 147, 0.36);
+  box-shadow: 0 0 0 7px rgba(255, 175, 53, 0.1), 0 10px 28px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.12), inset 0 -5px 10px rgba(0, 0, 0, 0.68);
+}
+
+.signal-bars {
+  padding: 0.42rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(4, 10, 15, 0.54);
+  box-shadow: 0 0 24px rgba(255, 178, 58, 0.2), inset 0 0 12px rgba(255, 178, 58, 0.12);
+}
+
+.signal-bars span {
+  background: linear-gradient(180deg, #fff0bd, #ffb43d 55%, #e87518);
+  box-shadow: 0 0 9px rgba(255, 177, 54, 0.8);
+}
+
+.volume-deck {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(255, 199, 105, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(14, 26, 35, 0.86), rgba(3, 8, 13, 0.92));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
