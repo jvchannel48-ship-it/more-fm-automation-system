@@ -37,7 +37,10 @@ function AdminPlayer({ listeners }: { listeners: number | string }) {
       <div className="flex items-end justify-between gap-2">
         <span className="text-[11px] text-muted-foreground">Admin player</span>
         <div className="flex flex-col items-center gap-0.5 text-primary" title="Listeners connected">
-          <Headphones className="size-3.5" aria-hidden="true" />
+          <span className="relative grid size-7 place-items-center rounded-full border border-amber-200/50 bg-gradient-to-br from-amber-100 via-amber-400 to-orange-700 text-amber-950 shadow-[0_0_12px_rgba(255,183,63,0.72),inset_0_1px_2px_rgba(255,255,255,0.8),inset_0_-3px_5px_rgba(112,42,6,0.48)]">
+            <span className="absolute inset-0 rounded-full bg-white/15 blur-[1px]" aria-hidden="true" />
+            <Headphones className="relative size-4 drop-shadow-[0_2px_1px_rgba(70,24,3,0.65)]" strokeWidth={2.25} aria-hidden="true" />
+          </span>
           <span className="text-[10px] font-semibold tabular-nums text-foreground">{listeners}</span>
           <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Total users</span>
         </div>
