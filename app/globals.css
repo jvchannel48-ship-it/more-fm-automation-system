@@ -102,10 +102,11 @@ body {
 .radio-app-shell {
   isolation: isolate;
   background:
-    radial-gradient(circle at 50% 27%, rgba(255, 178, 67, 0.16), transparent 18rem),
-    radial-gradient(circle at 12% 72%, rgba(24, 87, 119, 0.2), transparent 24rem),
-    linear-gradient(180deg, #06101a 0%, #08121b 42%, #03070c 100%);
-  filter: saturate(1.12) contrast(1.04);
+    radial-gradient(ellipse at 50% 42%, rgba(255, 170, 53, 0.2), transparent 20rem),
+    radial-gradient(ellipse at 12% 78%, rgba(20, 74, 104, 0.28), transparent 25rem),
+    radial-gradient(ellipse at 92% 68%, rgba(255, 119, 26, 0.12), transparent 18rem),
+    linear-gradient(180deg, #030a12 0%, #071420 44%, #02060a 100%);
+  filter: saturate(1.22) contrast(1.08);
 }
 
 .radio-app-shell::before {
@@ -113,17 +114,19 @@ body {
   inset: 0;
   z-index: -2;
   content: '';
-  opacity: 0.52;
+  opacity: 0.72;
   background:
-    radial-gradient(circle at 7% 57%, rgba(255, 181, 72, 0.6) 0 1px, transparent 2px),
-    radial-gradient(circle at 23% 66%, rgba(255, 198, 108, 0.7) 0 1px, transparent 2px),
-    radial-gradient(circle at 78% 54%, rgba(255, 161, 48, 0.7) 0 1px, transparent 2px),
-    radial-gradient(circle at 91% 65%, rgba(255, 212, 133, 0.6) 0 1px, transparent 2px),
-    radial-gradient(circle at 64% 76%, rgba(255, 177, 64, 0.75) 0 1px, transparent 2px),
-    linear-gradient(150deg, transparent 0 42%, rgba(2, 7, 12, 0.75) 42% 47%, transparent 47%),
-    linear-gradient(30deg, transparent 0 48%, rgba(2, 7, 12, 0.85) 48% 55%, transparent 55%);
-  background-size: 180px 180px, 230px 230px, 260px 260px, 310px 310px, 370px 370px, 100% 100%, 100% 100%;
-  filter: blur(1px);
+    radial-gradient(circle at 9% 64%, rgba(255, 178, 63, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 21% 69%, rgba(255, 202, 112, 0.85) 0 2px, transparent 3px),
+    radial-gradient(circle at 77% 57%, rgba(255, 153, 39, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 91% 67%, rgba(255, 215, 140, 0.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 67% 78%, rgba(255, 177, 64, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 49% 47%, rgba(255, 138, 45, 0.8) 0 3px, transparent 5px),
+    linear-gradient(153deg, transparent 0 40%, rgba(1, 5, 10, 0.94) 40% 51%, transparent 51%),
+    linear-gradient(27deg, transparent 0 46%, rgba(1, 5, 10, 0.9) 46% 57%, transparent 57%),
+    linear-gradient(180deg, transparent 0 55%, rgba(3, 10, 15, 0.85) 55% 100%);
+  background-size: 160px 160px, 220px 220px, 250px 250px, 310px 310px, 360px 360px, 280px 280px, 100% 100%, 100% 100%, 100% 100%;
+  filter: blur(0.8px);
 }
 
 .radio-app-shell::after {
@@ -158,8 +161,8 @@ body {
 }
 
 .live-badge {
-  box-shadow: 0 0 0 1px rgba(255, 79, 79, 0.14), 0 0 26px rgba(255, 74, 62, 0.24), inset 0 0 18px rgba(255, 74, 62, 0.1);
-  background: linear-gradient(180deg, rgba(255, 76, 66, 0.14), rgba(70, 8, 14, 0.3));
+  box-shadow: 0 0 0 1px rgba(255, 104, 93, 0.22), 0 0 30px rgba(255, 58, 48, 0.42), inset 0 0 18px rgba(255, 74, 62, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(255, 76, 66, 0.2), rgba(70, 8, 14, 0.54));
   text-shadow: 0 0 12px currentColor;
 }
 
@@ -183,8 +186,8 @@ body {
     radial-gradient(circle at 35% 29%, rgba(255, 255, 255, 0.22), transparent 0 7%, rgba(255, 255, 255, 0.04) 7% 9%, transparent 9% 18%, rgba(255, 255, 255, 0.08) 18% 19%, transparent 19% 27%, rgba(255, 255, 255, 0.05) 27% 28%, transparent 28%),
     repeating-radial-gradient(circle at center, #06080b 0 2px, #13171c 2px 3px, #030406 3px 5px),
     conic-gradient(from 35deg, #050608, #343a3e 9%, #07090d 19%, #23272d 31%, #040507 44%, #262b31 58%, #030406 72%, #252a30 87%, #050608);
-  border: 1px solid rgba(231, 239, 245, 0.28);
-  box-shadow: inset 10px 10px 28px rgba(255, 255, 255, 0.08), inset -18px -16px 35px rgba(0, 0, 0, 0.92), 0 20px 45px rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(231, 239, 245, 0.4);
+  box-shadow: inset 10px 10px 28px rgba(255, 255, 255, 0.11), inset -18px -16px 35px rgba(0, 0, 0, 0.96), 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 32px rgba(255, 174, 54, 0.12);
 }
 
 .vinyl-record::after {
