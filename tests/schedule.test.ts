@@ -5,8 +5,7 @@ import {
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
-  dailyAnnouncementCutoffAt,
-  dailyAnnouncementWindowEndAt,
+  dailyAnnouncementScheduleAt,
   dzmmWindowAt,
   manilaDateKey,
   nextSignOn,
@@ -115,11 +114,16 @@ assert.equal(mondayAfternoonDzmm, null, 'MOR music runs during the afternoon')
 assert.equal(dzmmWindowAt(manilaTime(16, 8, 1)), null, 'MOR music resumes at 8:01 AM')
 assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'MOR music remains on before the 10:00 PM DZMM return')
 
-const mondayAnnouncementCutoff = dailyAnnouncementCutoffAt(manilaTime(16, 21, 48))
-assert.equal(mondayAnnouncementCutoff, manilaTime(16, 21, 48), 'daily announcement cutoff is 9:48 PM Manila time')
-assert.equal(dailyAnnouncementCutoffAt(manilaTime(16, 21, 49)), mondayAnnouncementCutoff, 'cutoff stays fixed for the same Manila day')
-assert.equal(dailyAnnouncementWindowEndAt(manilaTime(16, 21, 48)), manilaTime(16, 22), 'daily announcement window ends at the 10 PM handoff')
-assert.notEqual(dailyAnnouncementCutoffAt(manilaTime(17, 21, 48)), mondayAnnouncementCutoff, 'the next Manila day gets a new cutoff')
+const mondayAnnouncement = dailyAnnouncementScheduleAt(manilaTime(16, 12))
+assert.equal(mondayAnnouncement?.kind, 'weekday', 'Monday uses the new weekday announcement')
+assert.equal(mondayAnnouncement?.songsRequired, 3, 'Monday announcement follows 3 songs')
+assert.equal(mondayAnnouncement?.expiresAt, manilaTime(16, 21, 45), 'weekday announcement disappears at 9:45 PM')
+assert.equal(dailyAnnouncementScheduleAt(manilaTime(16, 21, 45))?.expiresAt, manilaTime(16, 21, 45), 'weekday expiry is fixed for the day')
+const saturdayAnnouncement = dailyAnnouncementScheduleAt(manilaTime(21, 12))
+assert.equal(saturdayAnnouncement?.kind, 'saturday', 'Saturday uses the original announcement')
+assert.equal(saturdayAnnouncement?.songsRequired, 5, 'Saturday announcement follows 5 songs')
+assert.equal(saturdayAnnouncement?.expiresAt, manilaTime(22, 0), 'Saturday announcement ends at Sunday midnight')
+assert.equal(dailyAnnouncementScheduleAt(manilaTime(15, 12)), null, 'Sunday has no announcement clip schedule')
 assert.equal(manilaDateKey(manilaTime(16, 21, 48)), '2026-11-16', 'daily automation uses the Manila calendar date')
 
 console.log('schedule: DZMM morning/evening/overnight windows and 3 AM sign-off / 4 AM sign-on all pass')
