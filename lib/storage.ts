@@ -5,15 +5,44 @@ import type { StationSettings } from './types'
 const memoryFallback = new Map<string, string>()
 const MAX_BASS_BOOST_DB = 12
 const BLOB_RETRY_DELAY_MS = 15_000
+const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET?.trim() || 'morefm-station'
+
+/** Defaults from the station Supabase project (overridable via Render env). */
+const DEFAULT_SUPABASE_URL = 'https://lbzsosywniqvdroimbwd.supabase.co'
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_-px7dTEhuIAEx2VakAjWNg_sM3YrjDH'
+
 let retryBlobAfter = 0
 let warnedAboutFallback = false
 let blobOperational: boolean | null = null
 
-function hasBlobCredentials() {
+function supabaseUrl() {
+  return (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim().replace(/\/$/, '')
+}
+
+function supabaseKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    DEFAULT_SUPABASE_KEY
+  ).trim()
+}
+
+function hasSupabaseCredentials() {
+  return Boolean(supabaseUrl() && supabaseKey())
+}
+
+function hasVercelBlobCredentials() {
   return Boolean(
     process.env.BLOB_READ_WRITE_TOKEN ||
     (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID),
   )
+}
+
+function hasBlobCredentials() {
+  return hasSupabaseCredentials() || hasVercelBlobCredentials()
 }
 
 export function isBlobStorageAvailable() {
@@ -34,7 +63,51 @@ function readMemory<T>(pathname: string, fallback: T): T {
 function warnMemoryFallback() {
   if (warnedAboutFallback) return
   warnedAboutFallback = true
-  console.warn('[morefm] Vercel Blob unavailable; using process-memory station state until storage recovers')
+  console.warn('[morefm] Durable blob unavailable; using process-memory station state until storage recovers')
+}
+
+function supabaseObjectUrl(pathname: string) {
+  const objectPath = pathname.replace(/^\/+/, '')
+  return `${supabaseUrl()}/storage/v1/object/${SUPABASE_BUCKET}/${objectPath}`
+}
+
+function supabaseHeaders(extra: Record<string, string> = {}) {
+  const key = supabaseKey()
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    ...extra,
+  }
+}
+
+async function readFromSupabase(pathname: string): Promise<string | null> {
+  if (!hasSupabaseCredentials()) return null
+  const response = await fetch(supabaseObjectUrl(pathname), {
+    method: 'GET',
+    headers: supabaseHeaders(),
+    cache: 'no-store',
+  })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`Supabase storage read failed (${response.status})`)
+  return response.text()
+}
+
+async function writeToSupabase(pathname: string, text: string) {
+  if (!hasSupabaseCredentials()) return false
+  const response = await fetch(supabaseObjectUrl(pathname), {
+    method: 'POST',
+    headers: supabaseHeaders({
+      'Content-Type': 'application/json',
+      'x-upsert': 'true',
+    }),
+    body: text,
+    cache: 'no-store',
+  })
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    throw new Error(`Supabase storage write failed (${response.status}) ${detail.slice(0, 200)}`)
+  }
+  return true
 }
 
 export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
@@ -45,6 +118,19 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   }
 
   try {
+    if (hasSupabaseCredentials()) {
+      const text = await readFromSupabase(pathname)
+      if (text == null) {
+        blobOperational = true
+        return readMemory(pathname, fallback)
+      }
+      const data = JSON.parse(text) as T
+      memoryFallback.set(pathname, text)
+      retryBlobAfter = 0
+      blobOperational = true
+      return data
+    }
+
     const result = await get(pathname, { access: 'private', useCache: false })
     if (!result || !result.stream) {
       blobOperational = true
@@ -56,7 +142,8 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     retryBlobAfter = 0
     blobOperational = true
     return data
-  } catch {
+  } catch (error) {
+    console.error('[morefm] blob read failed', pathname, error instanceof Error ? error.message : error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
     blobOperational = false
     warnMemoryFallback()
@@ -75,6 +162,13 @@ export async function writeJson(pathname: string, data: unknown) {
   }
 
   try {
+    if (hasSupabaseCredentials()) {
+      await writeToSupabase(pathname, text)
+      retryBlobAfter = 0
+      blobOperational = true
+      return true
+    }
+
     await put(pathname, text, {
       access: 'private',
       allowOverwrite: true,
@@ -85,7 +179,8 @@ export async function writeJson(pathname: string, data: unknown) {
     retryBlobAfter = 0
     blobOperational = true
     return true
-  } catch {
+  } catch (error) {
+    console.error('[morefm] blob write failed', pathname, error instanceof Error ? error.message : error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
     blobOperational = false
     warnMemoryFallback()
