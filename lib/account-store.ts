@@ -4,6 +4,7 @@ import { promisify } from 'node:util'
 import type { PoolClient } from 'pg'
 import { getDb } from './db'
 import { needsManilaDailyReset, spendCredits, SONG_REQUEST_CREDIT_COST } from './credit-math'
+import { ensureListenerSchema } from './listener-schema'
 
 const scrypt = promisify(scryptCallback)
 const SESSION_DAYS = 30
@@ -77,6 +78,7 @@ export function isValidDeviceId(deviceId: string) {
 
 export async function loginOrCreateDeviceAccount(deviceIdInput: string) {
   if (!isValidDeviceId(deviceIdInput)) throw new Error('Invalid device id.')
+  await ensureListenerSchema()
   const email = `device_${deviceIdInput.toLowerCase()}@device.local`
   const existing = await getDb().query<{ id: string }>('SELECT id FROM morefm_listener_accounts WHERE email = $1', [email])
   if (existing.rows[0]) {
@@ -228,17 +230,20 @@ export async function getAvatar(accountId: string) {
 
 export async function setDailyAllowance(amount: number) {
   if (!Number.isInteger(amount) || amount < 0 || amount > 1_000_000) throw new Error('Daily credits must be a whole number from 0 to 1,000,000.')
+  await ensureListenerSchema()
   await getDb().query('UPDATE morefm_credit_settings SET daily_allowance=$1,updated_at=now() WHERE id=true', [amount])
   return amount
 }
 
 export async function addCreditsToAll(amount: number) {
   if (!Number.isInteger(amount) || amount < 1 || amount > 1_000_000) throw new Error('Add-credit amount must be a whole number from 1 to 1,000,000.')
+  await ensureListenerSchema()
   const { rowCount } = await getDb().query('UPDATE morefm_listener_accounts SET bonus_credits=bonus_credits+$1,updated_at=now()', [amount])
   return rowCount ?? 0
 }
 
 export async function getAdminCreditData() {
+  await ensureListenerSchema()
   const today = manilaTodaySql()
   await getDb().query(
     `UPDATE morefm_listener_accounts a SET daily_credits=s.daily_allowance,credit_date=${today},updated_at=now()
