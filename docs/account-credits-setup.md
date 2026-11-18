@@ -1,19 +1,16 @@
-# Listener accounts and song-request credits
+# Listener accounts and song-request credits (Render Postgres)
 
-The application uses Supabase Auth for email/password listener accounts and Supabase Postgres for durable credit balances. Song requests cost 20 credits. Daily credits reset on the Asia/Manila calendar day; admin changes to the daily allowance apply on the next reset. Bonus credits issued by **Add Credit All** do not expire and are consumed after daily credits.
+The app stores email/password accounts, sessions, private profile pictures, and credit balances in the existing Render Postgres database. Each accepted song request costs 20 credits. Daily credits reset by the Asia/Manila date; bonus credits are added by the admin and do not expire. The app returns the new balance immediately after a request and refreshes visible balances every 3 seconds while the page is open.
 
-## Supabase setup
+## Configure the Render service
 
-1. In the Supabase project SQL Editor, run [`supabase/migrations/202611180001_account_daily_credits.sql`](../supabase/migrations/202611180001_account_daily_credits.sql) once.
-2. In Supabase Authentication → Providers, enable Email/password sign-in. If email confirmation is enabled, configure email delivery and use the confirmation link before logging in. Email changes may also require confirmation.
-3. In the Vercel project environment settings, add these variables for every environment where the app will run:
-   - `NEXT_PUBLIC_SUPABASE_URL`: the project URL.
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the publishable/anon key (safe to expose to browser).
-   - `SUPABASE_SERVICE_ROLE_KEY`: server-only service-role key. Never add `NEXT_PUBLIC_` and never commit its value.
-   - `ADMIN_PASSWORD`: a strong, private admin password. Admin endpoints fail closed when it is missing. Optionally use `ADMIN_SECRET` as a separate signing secret.
-4. Redeploy the application after setting environment variables.
-5. Log in to the radio Admin Panel, set **Daily credits per user**, and use **Add bonus credits to all accounts** when needed.
+1. In Render, open the `more-fm-automation-system` web service and add `DATABASE_URL` using the **Internal Database URL** from the existing `mor-naga-db` Postgres resource in the same region/workspace. Keep this value server-only; never use a `NEXT_PUBLIC_` prefix or commit the URL.
+2. Run [`db/migrations/202611180001_listener_accounts_credits.sql`](../db/migrations/202611180001_listener_accounts_credits.sql) against that Render database once. It creates only the account/session/credit tables and does not alter station playback data. The application does not auto-run DDL on startup.
+3. Make sure `ADMIN_PASSWORD` is set on the web service; Admin login intentionally fails closed if it is missing. Optionally set `ADMIN_SECRET` as a separate cookie-signing secret.
+4. Redeploy/restart the web service after the env var and migration are ready. The daily allowance starts at 0; sign into Admin Panel and set the daily credit amount before song requests can use daily credits.
 
-The daily allowance is initially zero, so song requests remain unavailable until the admin sets an allowance or grants bonus credits. The account modal shows a user's own balance; the admin account list shows registered users' email, daily credits, and bonus credits.
+Email/password authentication is handled by the app; passwords are salted and hashed using Node's scrypt, and raw passwords are never stored. Sessions are opaque random tokens stored by hash in Postgres and sent to the browser only in an HttpOnly, Secure-on-HTTPS, SameSite=Lax cookie. Email changes take effect immediately and currently do not send a verification email because no SMTP/email provider is configured. Profile avatars are private, stored as Postgres bytes, and limited to JPEG/PNG/WebP up to 1 MiB.
 
-The `listener-avatars` bucket is public for image display. Uploads are accepted only through the server endpoint after the signed-in user is verified, restricted to JPEG/PNG/WebP, and limited to 2 MiB. Public bucket images can be viewed by anyone who has the URL; do not upload sensitive images.
+## Important Render database lifecycle note
+
+The existing `mor-naga-db` was reported by Render as a **Free** Postgres instance with an expiration date of **December 14, 2026**. It is suitable for connecting this implementation now, but do not rely on it for permanent balances beyond that date without confirming Render's current retention/upgrade options and backing up the data. An expiring database could make account login and credit balances unavailable or lose data.

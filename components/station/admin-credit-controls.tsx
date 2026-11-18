@@ -16,15 +16,21 @@ export function AdminCreditControls() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  const load = async () => {
+  const load = async (syncAllowanceInput = false) => {
     try {
       const response = await fetch('/api/admin/credits', { cache: 'no-store' })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error ?? 'Hindi ma-load ang credit accounts.')
-      setData(result as AdminCredits); setDailyInput(String((result as AdminCredits).dailyAllowance))
+      setError('')
+      setData(result as AdminCredits)
+      if (syncAllowanceInput) setDailyInput(String((result as AdminCredits).dailyAllowance))
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Hindi ma-load ang credit accounts.') }
   }
-  useEffect(() => { void load() }, [])
+  useEffect(() => {
+    void load(true)
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void load(false) }, 3000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const update = async (method: 'PUT' | 'POST', body: object) => {
     setBusy(true); setError(''); setMessage('')
@@ -34,7 +40,7 @@ export function AdminCreditControls() {
       if (!response.ok) throw new Error(result.error ?? 'Hindi na-update ang credits.')
       if (method === 'PUT') setMessage(`Daily allowance set to ${result.dailyAllowance}. Mag-aapply ito sa susunod na daily reset.`)
       else setMessage(`Naidagdag ang ${result.addedCredits} bonus credits sa ${result.accountsUpdated} accounts.`)
-      await load()
+      await load(true)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Hindi na-update ang credits.') }
     finally { setBusy(false) }
   }
@@ -52,7 +58,7 @@ export function AdminCreditControls() {
   }
 
   return <section className="flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
-    <div><h3 className="flex items-center gap-2 font-semibold"><Users className="size-4" /> Listener accounts & credits</h3><p className="mt-1 text-xs text-muted-foreground">20 credits bawat matagumpay na song request. Manila time ang daily reset.</p></div>
+    <div><h3 className="flex items-center gap-2 font-semibold"><Users className="size-4" /> Listener accounts & credits</h3><p className="mt-1 text-xs text-muted-foreground">20 credits bawat matagumpay na song request. Manila time ang daily reset. Balances auto-refresh every 3 seconds.</p></div>
     <div className="flex flex-col gap-2"><Label htmlFor="daily-credit-allowance">Daily credits per user</Label><div className="flex gap-2"><Input id="daily-credit-allowance" type="number" min="0" max="1000000" step="1" value={dailyInput} onChange={(event) => setDailyInput(event.target.value)} disabled={busy} /><Button type="button" variant="secondary" onClick={setDaily} disabled={busy}>Set daily</Button></div><p className="text-xs text-muted-foreground">Nag-aapply sa susunod na daily reset; ang kasalukuyang araw ay hindi nire-reset.</p></div>
     <div className="flex flex-col gap-2"><Label htmlFor="add-credit-all">Add bonus credits to all accounts</Label><div className="flex gap-2"><Input id="add-credit-all" type="number" min="1" max="1000000" step="1" value={grantInput} onChange={(event) => setGrantInput(event.target.value)} placeholder="Amount" disabled={busy} /><Button type="button" onClick={grantAll} disabled={busy || !grantInput}><Gift />Add to all</Button></div></div>
     <div className="flex items-center justify-between"><h4 className="text-sm font-medium">Users ({data?.profiles.length ?? 0})</h4><Button type="button" variant="ghost" size="sm" onClick={() => void load()} disabled={busy}><RefreshCw className="size-3.5" />Refresh</Button></div>

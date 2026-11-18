@@ -1,12 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { enqueueSongRequest } from '@/lib/station'
 import { privateJsonHeaders, requireAccount } from '@/lib/account-api'
+import { chargeSongRequest, refundSongRequest } from '@/lib/account-store'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
-  const { user, client, response: authResponse } = await requireAccount(request.headers.get('authorization'))
+  const { user, response: authResponse } = await requireAccount(request)
   if (authResponse) return authResponse
   const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown }
   const title = typeof body.title === 'string' ? body.title.trim() : ''
@@ -19,10 +20,10 @@ export async function POST(request: NextRequest) {
   let creditsRemaining: number | undefined
   try {
     const result = await enqueueSongRequest(title, artist, async () => {
-      const { data, error } = await client!.rpc('charge_song_request', { p_user_id: user!.id }).maybeSingle()
-      if (error || !data) throw new Error('CREDITS_UNAVAILABLE')
-      const creditResult = data as { accepted: boolean; credits_remaining: number }
-      creditsRemaining = creditResult.credits_remaining
+      let creditResult: Awaited<ReturnType<typeof chargeSongRequest>>
+      try { creditResult = await chargeSongRequest(user!.id) }
+      catch { throw new Error('CREDITS_UNAVAILABLE') }
+      creditsRemaining = creditResult.creditsRemaining
       if (!creditResult.accepted) throw new Error('CREDITS_EMPTY')
       charged = true
     })
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credits are temporarily unavailable. Please try again later.' }, { status: 503, headers: privateJsonHeaders })
     }
     if (charged) {
-      try { await client!.rpc('refund_song_request', { p_user_id: user!.id }) } catch { console.error('[morefm] credit refund failed after enqueue error') }
+      try { await refundSongRequest(user!.id) } catch { console.error('[morefm] credit refund failed after enqueue error') }
     }
     console.error('[morefm] song request failed', error)
     return NextResponse.json(
