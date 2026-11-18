@@ -6,17 +6,22 @@ import { Bell, FileText, Image as ImageIcon, Inbox, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
+import {
+  clearAllNotificationState,
+  filterVisibleNotifications,
+  MAX_SAVED_NOTIFICATION_IDS,
+  mergeNotificationIds,
+} from '@/lib/notification-state'
 
 const READ_KEY = 'mor-935-read-notifications'
 const DISMISSED_KEY = 'mor-935-dismissed-notifications'
-const MAX_SAVED_IDS = 100
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then((response) => response.json() as Promise<{ notifications: StationNotification[] }>)
 
 function readStoredIds(key: string) {
   try {
     const saved: unknown = JSON.parse(window.localStorage.getItem(key) ?? '[]')
     return Array.isArray(saved)
-      ? saved.filter((item): item is string => typeof item === 'string').slice(-MAX_SAVED_IDS)
+      ? saved.filter((item): item is string => typeof item === 'string').slice(-MAX_SAVED_NOTIFICATION_IDS)
       : []
   } catch {
     return []
@@ -52,7 +57,7 @@ export function NotificationCenter() {
   }, [])
 
   const visibleNotifications = useMemo(
-    () => notifications.filter((item) => !dismissedIds.includes(item.id)),
+    () => filterVisibleNotifications(notifications, dismissedIds),
     [notifications, dismissedIds],
   )
   const unreadCount = useMemo(
@@ -61,21 +66,19 @@ export function NotificationCenter() {
   )
 
   const markAllRead = () => {
-    const next = Array.from(new Set([...readIds, ...visibleNotifications.map((item) => item.id)])).slice(-MAX_SAVED_IDS)
+    const next = mergeNotificationIds(readIds, visibleNotifications.map((item) => item.id))
     setReadIds(next)
     saveStoredIds(READ_KEY, next)
   }
 
   const clearAll = () => {
-    const currentIds = visibleNotifications.map((item) => item.id)
-    if (currentIds.length === 0) return
+    if (visibleNotifications.length === 0) return
 
-    const nextDismissed = Array.from(new Set([...dismissedIds, ...currentIds])).slice(-MAX_SAVED_IDS)
-    const nextRead = Array.from(new Set([...readIds, ...currentIds])).slice(-MAX_SAVED_IDS)
-    setDismissedIds(nextDismissed)
-    setReadIds(nextRead)
-    saveStoredIds(DISMISSED_KEY, nextDismissed)
-    saveStoredIds(READ_KEY, nextRead)
+    const next = clearAllNotificationState(visibleNotifications, dismissedIds, readIds)
+    setDismissedIds(next.dismissedIds)
+    setReadIds(next.readIds)
+    saveStoredIds(DISMISSED_KEY, next.dismissedIds)
+    saveStoredIds(READ_KEY, next.readIds)
   }
 
   return (

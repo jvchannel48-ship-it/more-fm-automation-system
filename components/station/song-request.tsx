@@ -67,7 +67,7 @@ export function SongRequest() {
                   <div>
                     <p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">On-air request line</p>
                     <h2 id="song-request-title" className="text-xl font-semibold tracking-tight">Choose your next song</h2>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Ilagay ang title at artist. Ihahanda ng AutoDJ mula sa Betadash at ipi-play sa susunod na slot.</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Enter the song title and artist. Your request will be queued for the next available slot.</p>
                   </div>
                 </div>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="Close song request" onClick={close}>

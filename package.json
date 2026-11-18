@@ -9,7 +9,8 @@
     "start": "next start",
     "test:listeners": "node --conditions=react-server --experimental-strip-types tests/listener-count.test.ts",
     "test:schedule": "node --experimental-strip-types tests/schedule.test.ts",
-    "test:song-filter": "node --experimental-strip-types tests/song-filter.test.ts"
+    "test:song-filter": "node --experimental-strip-types tests/song-filter.test.ts",
+    "test:notifications": "node --experimental-strip-types tests/notification-state.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
