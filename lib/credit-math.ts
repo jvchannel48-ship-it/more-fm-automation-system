@@ -1,4 +1,7 @@
-export function spendCredits(dailyCredits: number, bonusCredits: number, cost = 20) {
+/** Credits charged for one successful song request. Two songs = 30 credits. */
+export const SONG_REQUEST_CREDIT_COST = 15
+
+export function spendCredits(dailyCredits: number, bonusCredits: number, cost = SONG_REQUEST_CREDIT_COST) {
   if (!Number.isInteger(dailyCredits) || dailyCredits < 0 || !Number.isInteger(bonusCredits) || bonusCredits < 0 || !Number.isInteger(cost) || cost < 1) {
     throw new RangeError('Credit amounts and cost must be non-negative integers, with a positive cost.')
   }
