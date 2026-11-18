@@ -70,6 +70,46 @@ export async function loginAccount(emailInput: string, password: string) {
   return { accountId: row.id, token: session.token, expiresAt: session.expiresAt }
 }
 
+/** Phone/browser device login — no create-account form. Same device keeps the same credits. */
+export function isValidDeviceId(deviceId: string) {
+  return typeof deviceId === 'string' && /^[a-zA-Z0-9_-]{16,80}$/.test(deviceId)
+}
+
+export async function loginOrCreateDeviceAccount(deviceIdInput: string) {
+  if (!isValidDeviceId(deviceIdInput)) throw new Error('Invalid device id.')
+  const email = `device_${deviceIdInput.toLowerCase()}@device.local`
+  const existing = await getDb().query<{ id: string }>('SELECT id FROM morefm_listener_accounts WHERE email = $1', [email])
+  if (existing.rows[0]) {
+    const session = await createSession(existing.rows[0].id)
+    return { accountId: existing.rows[0].id, token: session.token, expiresAt: session.expiresAt }
+  }
+  const credentials = await hashPassword(randomBytes(24).toString('base64url'))
+  const client = await getDb().connect()
+  try {
+    await client.query('BEGIN')
+    const settings = await client.query<{ daily_allowance: number }>('SELECT daily_allowance FROM morefm_credit_settings WHERE id = true FOR SHARE')
+    const allowance = settings.rows[0]?.daily_allowance ?? 0
+    const inserted = await client.query<{ id: string }>(
+      `INSERT INTO morefm_listener_accounts(email, display_name, password_salt, password_hash, daily_credits, bonus_credits, credit_date)
+       VALUES ($1, $2, $3, $4, $5, 0, ${manilaTodaySql()}) RETURNING id`,
+      [email, 'Phone listener', credentials.salt, credentials.hash, allowance],
+    )
+    await client.query('COMMIT')
+    const session = await createSession(inserted.rows[0].id)
+    return { accountId: inserted.rows[0].id, token: session.token, expiresAt: session.expiresAt }
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    if ((error as { code?: string })?.code === '23505') {
+      const again = await getDb().query<{ id: string }>('SELECT id FROM morefm_listener_accounts WHERE email = $1', [email])
+      if (again.rows[0]) {
+        const session = await createSession(again.rows[0].id)
+        return { accountId: again.rows[0].id, token: session.token, expiresAt: session.expiresAt }
+      }
+    }
+    throw error
+  } finally { client.release() }
+}
+
 async function createSession(accountId: string) {
   const token = randomBytes(32).toString('base64url')
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000)
