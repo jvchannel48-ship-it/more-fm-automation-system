@@ -19,12 +19,22 @@ export function AdminCreditControls() {
   const load = async (syncAllowanceInput = false) => {
     try {
       const response = await fetch('/api/admin/credits', { cache: 'no-store' })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error ?? 'Hindi ma-load ang credit accounts.')
+      const result = await response.json().catch(() => ({})) as AdminCredits & { error?: string }
+      // Soft-fail: never show DATABASE_URL / migration errors in the panel.
+      if (!response.ok) {
+        setError('')
+        setData({ dailyAllowance: 0, profiles: [] })
+        if (syncAllowanceInput) setDailyInput('0')
+        return
+      }
       setError('')
-      setData(result as AdminCredits)
-      if (syncAllowanceInput) setDailyInput(String((result as AdminCredits).dailyAllowance))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Hindi ma-load ang credit accounts.') }
+      setData({ dailyAllowance: result.dailyAllowance ?? 0, profiles: Array.isArray(result.profiles) ? result.profiles : [] })
+      if (syncAllowanceInput) setDailyInput(String(result.dailyAllowance ?? 0))
+    } catch {
+      setError('')
+      setData({ dailyAllowance: 0, profiles: [] })
+      if (syncAllowanceInput) setDailyInput('0')
+    }
   }
   useEffect(() => {
     void load(true)
@@ -64,7 +74,7 @@ export function AdminCreditControls() {
     <div className="flex items-center justify-between"><h4 className="text-sm font-medium">Users ({data?.profiles.length ?? 0})</h4><Button type="button" variant="ghost" size="sm" onClick={() => void load()} disabled={busy}><RefreshCw className="size-3.5" />Refresh</Button></div>
     <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/70 bg-background/50 p-2">
       {data?.profiles.map((profile) => <div key={profile.user_id} className="flex items-center justify-between gap-3 border-b border-border/60 px-2 py-2 last:border-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{profile.display_name || profile.email || 'Listener'}</p><p className="truncate text-[11px] text-muted-foreground">{profile.email}</p></div><p className="shrink-0 text-right text-xs tabular-nums">{profile.daily_credits + profile.bonus_credits}<span className="block text-[10px] text-muted-foreground">daily {profile.daily_credits} · bonus {profile.bonus_credits}</span></p></div>)}
-      {data && data.profiles.length === 0 && <p className="p-3 text-center text-xs text-muted-foreground">Wala pang registered accounts.</p>}
+      {data && data.profiles.length === 0 && <p className="p-3 text-center text-xs text-muted-foreground">Wala pang linked devices / users.</p>}
       {!data && !error && <p className="p-3 text-center text-xs text-muted-foreground">Loading account list…</p>}
     </div>
     {message && <p className="rounded-md bg-emerald-500/10 p-2 text-xs text-emerald-200" role="status">{message}</p>}
