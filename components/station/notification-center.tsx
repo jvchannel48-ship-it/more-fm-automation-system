@@ -2,13 +2,34 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { Bell, FileText, Image as ImageIcon, Inbox } from 'lucide-react'
+import { Bell, FileText, Image as ImageIcon, Inbox, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
 
 const READ_KEY = 'mor-935-read-notifications'
+const DISMISSED_KEY = 'mor-935-dismissed-notifications'
+const MAX_SAVED_IDS = 100
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then((response) => response.json() as Promise<{ notifications: StationNotification[] }>)
+
+function readStoredIds(key: string) {
+  try {
+    const saved: unknown = JSON.parse(window.localStorage.getItem(key) ?? '[]')
+    return Array.isArray(saved)
+      ? saved.filter((item): item is string => typeof item === 'string').slice(-MAX_SAVED_IDS)
+      : []
+  } catch {
+    return []
+  }
+}
+
+function saveStoredIds(key: string, ids: string[]) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(ids))
+  } catch {
+    // Keep the current browser session usable if local storage is unavailable.
+  }
+}
 
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleString('en-PH', {
@@ -22,27 +43,39 @@ export function NotificationCenter() {
   const { data } = useSWR('/api/notifications', fetcher, { refreshInterval: 15000, revalidateOnFocus: true })
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<string[]>([])
+  const [dismissedIds, setDismissedIds] = useState<string[]>([])
   const notifications = data?.notifications ?? []
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(window.localStorage.getItem(READ_KEY) ?? '[]')
-      if (Array.isArray(saved)) setReadIds(saved.filter((item): item is string => typeof item === 'string'))
-    } catch {
-      setReadIds([])
-    }
+    setReadIds(readStoredIds(READ_KEY))
+    setDismissedIds(readStoredIds(DISMISSED_KEY))
   }, [])
 
-  const unreadCount = useMemo(() => notifications.filter((item) => !readIds.includes(item.id)).length, [notifications, readIds])
+  const visibleNotifications = useMemo(
+    () => notifications.filter((item) => !dismissedIds.includes(item.id)),
+    [notifications, dismissedIds],
+  )
+  const unreadCount = useMemo(
+    () => visibleNotifications.filter((item) => !readIds.includes(item.id)).length,
+    [visibleNotifications, readIds],
+  )
 
   const markAllRead = () => {
-    const next = Array.from(new Set([...readIds, ...notifications.map((item) => item.id)])).slice(-100)
+    const next = Array.from(new Set([...readIds, ...visibleNotifications.map((item) => item.id)])).slice(-MAX_SAVED_IDS)
     setReadIds(next)
-    try {
-      window.localStorage.setItem(READ_KEY, JSON.stringify(next))
-    } catch {
-      // The panel still opens even when local storage is unavailable.
-    }
+    saveStoredIds(READ_KEY, next)
+  }
+
+  const clearAll = () => {
+    const currentIds = visibleNotifications.map((item) => item.id)
+    if (currentIds.length === 0) return
+
+    const nextDismissed = Array.from(new Set([...dismissedIds, ...currentIds])).slice(-MAX_SAVED_IDS)
+    const nextRead = Array.from(new Set([...readIds, ...currentIds])).slice(-MAX_SAVED_IDS)
+    setDismissedIds(nextDismissed)
+    setReadIds(nextRead)
+    saveStoredIds(DISMISSED_KEY, nextDismissed)
+    saveStoredIds(READ_KEY, nextRead)
   }
 
   return (
@@ -63,13 +96,25 @@ export function NotificationCenter() {
           <SheetTitle className="flex items-center gap-2"><Bell className="size-4 text-primary" />Notifications</SheetTitle>
           <SheetDescription>Mga bagong announcement mula sa MOR 93.5 Naga.</SheetDescription>
         </SheetHeader>
+        {visibleNotifications.length > 0 && (
+          <div className="flex justify-end px-4">
+            <Button type="button" variant="ghost" size="sm" aria-label="Clear all notifications" onClick={clearAll} className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+              <Trash2 aria-hidden="true" />
+              Clear all
+            </Button>
+          </div>
+        )}
         <div className="flex flex-col gap-3 px-4 pb-6">
-          {notifications.length === 0 ? (
+          {visibleNotifications.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
               <Inbox className="size-7" aria-hidden="true" />
-              <p className="text-sm">Walang notification sa ngayon.</p>
+              <p className="text-sm">
+                {notifications.length === 0
+                  ? 'Walang notification sa ngayon.'
+                  : 'Na-clear mo na ang lahat ng notification sa browser na ito.'}
+              </p>
             </div>
-          ) : notifications.map((item) => (
+          ) : visibleNotifications.map((item) => (
             <article key={item.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
