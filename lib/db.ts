@@ -4,8 +4,15 @@ import { Pool } from 'pg'
 let pool: Pool | null = null
 
 /**
- * Prefer the Render Postgres Internal URL (same private network as the web service).
- * Accept a few common env aliases so misnamed keys still connect.
+ * External Database URL for mor-naga (Render Postgres).
+ * Prefer setting DATABASE_URL on the web service to the Internal URL in production;
+ * this default keeps accounts/credits working if the env var is missing.
+ */
+const DEFAULT_DATABASE_URL =
+  'postgresql://mor_admin:nHh8ZGNMdb5GELoPjdEGePhHTnUsA3Kl@dpg-dbrvitjrjlhs73co8grg-a.oregon-postgres.render.com/mor_naga'
+
+/**
+ * Prefer DATABASE_URL (Internal URL on Render is best). Accept common aliases.
  */
 export function getDatabaseUrl(): string | null {
   const candidates = [
@@ -13,6 +20,7 @@ export function getDatabaseUrl(): string | null {
     process.env.POSTGRES_URL,
     process.env.POSTGRES_CONNECTION_STRING,
     process.env.RENDER_DATABASE_URL,
+    DEFAULT_DATABASE_URL,
   ]
   for (const value of candidates) {
     const trimmed = value?.trim()
@@ -33,16 +41,17 @@ export function getDb() {
     )
   }
   if (!pool) {
-    // Render managed Postgres requires SSL. Internal URLs still work with rejectUnauthorized:false.
+    // Render managed Postgres requires SSL for External URL and usually for Internal too.
     const useSsl =
       process.env.NODE_ENV === 'production' ||
-      /render\.com|amazonaws\.com|sslmode=require/i.test(connectionString)
+      /render\.com|amazonaws\.com|sslmode=require/i.test(connectionString) ||
+      connectionString === DEFAULT_DATABASE_URL
 
     pool = new Pool({
       connectionString,
       max: 5,
       idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 15_000,
       ssl: useSsl ? { rejectUnauthorized: false } : undefined,
     })
     pool.on('error', (error) => console.error('[morefm] Postgres pool error', error.message))
@@ -66,7 +75,7 @@ export async function pingDatabase(): Promise<{ ok: true } | { ok: false; error:
     const message = error instanceof Error ? error.message : 'Database connection failed'
     return {
       ok: false,
-      error: `${message}. Confirm DATABASE_URL uses the Internal URL and the web service is in the same Render region as the database.`,
+      error: `${message}. Confirm DATABASE_URL points at mor-naga and SSL is allowed.`,
     }
   }
 }
