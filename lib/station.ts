@@ -46,6 +46,7 @@ interface SearchItem {
   title: string
   url: string
   duration: string
+  genre?: string
 }
 
 function parseDuration(value: string): number {
@@ -62,6 +63,18 @@ function normalize(text: string) {
     .replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+function matchesBlockedGenre(value: string, blockedGenres: string[]) {
+  const normalized = normalize(value)
+  return blockedGenres.some((genre) => {
+    const needle = normalize(genre)
+    return needle && (normalized === needle || normalized.includes(` ${needle} `) || normalized.startsWith(`${needle} `) || normalized.endsWith(` ${needle}`))
+  })
+}
+
+function isBlockedProgram(program: Program, blockedGenres: string[]) {
+  return matchesBlockedGenre(program.id.replaceAll('-', ' '), blockedGenres)
 }
 
 function songKey(title: string) {
@@ -119,7 +132,9 @@ async function findSong(
   songCount: number,
   history: HistoryEntry[],
   now: number,
+  blockedGenres: string[],
 ) {
+  if (isBlockedProgram(program, blockedGenres)) return null
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
@@ -137,6 +152,7 @@ async function findSong(
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
       if (!isOriginalArtistTrack(item.title, artist)) return false
+      if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
 
@@ -209,6 +225,7 @@ async function fill(
   state: StationState,
   now: number,
   sundayScheduleEnabled: boolean,
+  blockedGenres: string[],
 ) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
@@ -220,7 +237,7 @@ async function fill(
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt)
+      : await findSong(program, state.songCount, state.history, startAt, blockedGenres)
     if (!song) break
     if (request) state.requestQueue.shift()
     const baseStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -339,7 +356,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
             latest.requestQueue = []
             try {
               // Start music at the live fade-out point, not after the stream ends.
-              await fill(latest, transitionStartAt, settings.sundayScheduleEnabled)
+              await fill(latest, transitionStartAt, settings.sundayScheduleEnabled, settings.blockedGenres)
             } finally {
               latest.requestQueue = requests
             }
@@ -387,7 +404,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
   if (needsFill && state.fillingUntil < now && !options.skipFill) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
@@ -460,7 +477,7 @@ export async function recoverFailedTrack(uid: string): Promise<NowResponse> {
   )
   const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
   if (!hasCurrentMusic && !hasUpcomingMusic) {
-    await fill(state, now, settings.sundayScheduleEnabled)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres)
   }
 
   await writeJson(STATE_PATH, state)

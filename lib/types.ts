@@ -26,6 +26,7 @@ export interface StationSettings {
   sundayScheduleEnabled: boolean
   newTagalogOpmEnabled: boolean
   bassBoostDb: number
+  blockedGenres: string[]
 }
 
 export interface NowResponse {

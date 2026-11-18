@@ -54,10 +54,15 @@ export function AdminPanel() {
   const [notificationTitle, setNotificationTitle] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
   const [notificationFile, setNotificationFile] = useState<File | null>(null)
+  const [blockedGenres, setBlockedGenres] = useState<string[]>([])
+  const [genreInput, setGenreInput] = useState('')
 
   useEffect(() => {
-    if (data) setBassBoostInput(String(data.bassBoostDb ?? 0))
-  }, [data?.bassBoostDb])
+    if (data) {
+      setBassBoostInput(String(data.bassBoostDb ?? 0))
+      setBlockedGenres(data.blockedGenres ?? [])
+    }
+  }, [data?.bassBoostDb, data?.blockedGenres])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -78,6 +83,7 @@ export function AdminPanel() {
         sundayScheduleEnabled?: boolean
         newTagalogOpmEnabled?: boolean
         bassBoostDb?: number
+        blockedGenres?: string[]
       } | undefined
       if (method === 'POST') {
         setMessage('Na-refresh ang music rotation.')
@@ -99,6 +105,10 @@ export function AdminPanel() {
         setMessage(status.persistenceConfigured
           ? `Bass boost saved at ${status.bassBoostDb} dB.`
           : `Bass boost set to ${status.bassBoostDb} dB for this server session; durable storage is not configured.`)
+      } else if (Array.isArray(values?.blockedGenres)) {
+        setMessage(status.persistenceConfigured
+          ? 'Na-save ang blocked genre filter at ni-refresh ang rotation.'
+          : 'Na-update ang blocked genre filter, pero pansamantala lang ito sa server memory.')
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
@@ -114,6 +124,23 @@ export function AdminPanel() {
       return
     }
     void send('PUT', { bassBoostDb: value })
+  }
+
+  const updateBlockedGenres = (next: string[]) => {
+    const normalized = [...new Set(next.map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
+    setBlockedGenres(normalized)
+    void send('PUT', { blockedGenres: normalized })
+  }
+
+  const addBlockedGenre = () => {
+    const genre = genreInput.trim().toLowerCase()
+    if (!genre) return
+    if (blockedGenres.includes(genre)) {
+      setGenreInput('')
+      return
+    }
+    setGenreInput('')
+    updateBlockedGenres([...blockedGenres, genre])
   }
 
   const sendNotification = async () => {
@@ -206,6 +233,48 @@ export function AdminPanel() {
         <p id="bass-boost-help" className="text-xs text-muted-foreground">
           Set 0–14 dB. 0 dB is neutral; the player applies a low-frequency boost up to +14 dB.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
+        <div>
+          <Label htmlFor="blocked-genre">Genre filter / block</Label>
+          <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco o dance.</p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            id="blocked-genre"
+            value={genreInput}
+            onChange={(event) => setGenreInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                addBlockedGenre()
+              }
+            }}
+            placeholder="Enter genre to block"
+            disabled={busy}
+            className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+          />
+          <Button type="button" variant="secondary" disabled={busy || !genreInput.trim()} onClick={addBlockedGenre}>Add</Button>
+        </div>
+        {blockedGenres.length > 0 ? (
+          <div className="flex flex-wrap gap-2" aria-label="Blocked genres">
+            {blockedGenres.map((genre) => (
+              <button
+                key={genre}
+                type="button"
+                onClick={() => updateBlockedGenres(blockedGenres.filter((item) => item !== genre))}
+                disabled={busy}
+                className="rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/20 disabled:opacity-50"
+                title={`Remove ${genre} block`}
+              >
+                {genre} ×
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Walang naka-block na genre.</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">

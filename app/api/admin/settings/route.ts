@@ -17,8 +17,12 @@ export async function PUT(request: NextRequest) {
     sundayScheduleEnabled?: unknown
     newTagalogOpmEnabled?: unknown
     bassBoostDb?: unknown
+    blockedGenres?: unknown
   }
   const current = await getSettings()
+  const blockedGenres = Array.isArray(body.blockedGenres)
+    ? [...new Set(body.blockedGenres.filter((genre): genre is string => typeof genre === 'string').map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
+    : current.blockedGenres
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
     sundayScheduleEnabled: typeof body.sundayScheduleEnabled === 'boolean'
@@ -30,10 +34,13 @@ export async function PUT(request: NextRequest) {
     bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
       ? Math.min(14, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
+    blockedGenres,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'
     && body.newTagalogOpmEnabled !== current.newTagalogOpmEnabled)
+    || (Array.isArray(body.blockedGenres)
+      && JSON.stringify(blockedGenres) !== JSON.stringify(current.blockedGenres))
   ) {
     await refreshQueue()
   }
