@@ -6,6 +6,7 @@ import {
   DZMM_STREAM_URL,
   dzmmWindowAt,
   languageForSlot,
+  manilaTime,
   nextSignOn,
   programAt,
   type Artist,
@@ -20,6 +21,9 @@ const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 120_000
+const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
+const EVENING_TRANSITION_SECONDS = 12.2
+const TRANSITION_LOOKAHEAD_MS = 120_000
 
 interface HistoryEntry {
   id: string
@@ -268,7 +272,7 @@ async function loadState(now: number) {
   }
   const before = state.tracks.length
   // Remove any announcement tracks left by an older persisted station state.
-  state.tracks = state.tracks.filter((t) => t.kind !== 'dj-mic' && trackEnd(t) >= now - 1000)
+  state.tracks = state.tracks.filter((t) => (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-')) && trackEnd(t) >= now - 1000)
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
 }
@@ -310,10 +314,31 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
     }
   }
 
-  const dzmmWindow = dzmmWindowAt(now)
+  const scheduledDzmm = dzmmWindowAt(now)
+  const upcomingDzmm = dzmmWindowAt(now + TRANSITION_LOOKAHEAD_MS)
+  const dzmmWindow = scheduledDzmm ?? (
+    upcomingDzmm && upcomingDzmm.startAt > now && upcomingDzmm.startAt - now <= TRANSITION_LOOKAHEAD_MS
+      ? upcomingDzmm
+      : null
+  )
   if (dzmmWindow && state.failedDzmmWindowStart !== dzmmWindow.startAt) {
     const liveUid = `dzmm-${dzmmWindow.startAt}`
     const transitionStartAt = dzmmWindow.endAt - CROSSFADE_SECONDS * 1000
+    const isEveningHandoff = manilaTime(dzmmWindow.startAt).hour === 18
+    const transitionTrack: Track | null = isEveningHandoff
+      ? {
+          uid: `dzmm-transition-${dzmmWindow.startAt}`,
+          src: EVENING_TRANSITION_SRC,
+          startAt: dzmmWindow.startAt - 60_000,
+          duration: EVENING_TRANSITION_SECONDS,
+          fadeIn: 0,
+          fadeOut: 0,
+          kind: 'dj-mic',
+          title: 'DZMM evening transition announcement',
+          artist: 'MOR 93.5 station announcement',
+        }
+      : null
+    const announcementStartAt = transitionTrack?.startAt ?? transitionStartAt
     const handoffRetryDelay = () => Math.min(FILL_LOCK_MS, Math.max(5_000, transitionStartAt - Date.now()))
     const liveTrack: Track = {
       uid: liveUid,
@@ -326,10 +351,18 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
       title: 'DZMM Radyo Patrol 630',
       artist: 'DZMM live broadcast',
     }
-    const transitionMusic = state.tracks.filter((track) =>
-      track.kind === 'music' && track.startAt >= transitionStartAt && track.startAt < dzmmWindow.endAt,
-    )
-    const nextTracks = [liveTrack, ...transitionMusic].sort((a, b) => a.startAt - b.startAt)
+    const transitionMusic = state.tracks
+      .filter((track) => track.kind === 'music' && track.startAt < announcementStartAt && trackEnd(track) > now && now < announcementStartAt)
+      .map((track) => ({
+        ...track,
+        duration: Math.max(1, (announcementStartAt - track.startAt) / 1000),
+        fadeOut: 0,
+      }))
+    const nextTracks = [
+      ...transitionMusic,
+      ...(transitionTrack ? [transitionTrack] : []),
+      liveTrack,
+    ].sort((a, b) => a.startAt - b.startAt)
     const tracksChanged = nextTracks.length !== state.tracks.length || nextTracks.some((track, index) => {
       const current = state.tracks[index]
       return current?.uid !== track.uid || current?.src !== track.src || current?.fadeOut !== track.fadeOut
@@ -337,10 +370,10 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
     })
     if (tracksChanged) state.tracks = nextTracks
 
-    const hasTransitionMusic = state.tracks.some((track) =>
-      track.kind === 'music' && track.startAt >= transitionStartAt,
+    const hasHandoffTrack = state.tracks.some((track) =>
+      (track.kind === 'music' || track.kind === 'dj-mic') && track.startAt >= announcementStartAt,
     )
-    if (!hasTransitionMusic && state.fillingUntil < now) {
+    if (!hasHandoffTrack && state.fillingUntil < now) {
       const fillLock = now + FILL_LOCK_MS
       state.fillingUntil = fillLock
       await writeJson(STATE_PATH, state)
@@ -351,7 +384,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
 
           if (latest.failedDzmmWindowStart !== dzmmWindow.startAt
             && latest.tracks.some((track) => track.uid === liveUid)
-            && !latest.tracks.some((track) => track.kind === 'music' && track.startAt >= transitionStartAt)) {
+            && !latest.tracks.some((track) => (track.kind === 'music' || track.kind === 'dj-mic') && track.startAt >= announcementStartAt)) {
             const requests = latest.requestQueue
             latest.requestQueue = []
             try {
