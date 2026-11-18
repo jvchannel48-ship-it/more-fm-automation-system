@@ -145,14 +145,14 @@ export function AccountMenu() {
                 <div className="flex items-center gap-3 rounded-xl bg-secondary/60 p-3">
                   {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{profile.displayName || 'Listener'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
+                    <p className={'truncate font-medium'}>{profile.displayName || 'Listener'}</p>
+                    <p className={'truncate text-xs text-muted-foreground'}>{profile.email}</p>
                   </div>
                 </div>
                 <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
                   <p className="text-xs text-muted-foreground">Your credits · live update</p>
-                  <p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p>
-                  <p className="text-xs text-muted-foreground">{profile.dailyCredits} daily + {profile.bonusCredits} bonus · {profile.dailyAllowance} daily credits</p>
+                  <p className={'mt-1 text-2xl font-bold tabular-nums'}>{profile.creditsRemaining}</p>
+                  <p className={'text-xs text-muted-foreground'}>{profile.dailyCredits} daily + {profile.bonusCredits} bonus · {profile.dailyAllowance} daily credits</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="profile-name">Name</Label>
