@@ -15,6 +15,7 @@ interface Slot {
   uid: string | null
   src: string | null
   synced: boolean
+  bassHighPass: BiquadFilterNode | null
   bassFilter: BiquadFilterNode | null
   bassHeadroom: GainNode | null
   activeWaitSince: number | null
@@ -31,7 +32,8 @@ interface PlaybackState {
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const curve = (n: number) => Math.sin((clamp01(n) * Math.PI) / 2)
-const bassHeadroomFor = (db: number) => Math.pow(10, -(db * 0.25) / 20)
+// Keep the full 12 dB shelf while reserving 6 dB of peak headroom at maximum boost.
+const bassHeadroomFor = (db: number) => Math.pow(10, -(db * 0.5) / 20)
 
 function trackGain(track: Track, now: number) {
   const elapsed = (now - track.startAt) / 1000
@@ -84,6 +86,7 @@ export function useBroadcast(
     slots.current = Array.from({ length: 4 }, () => {
       const el = new Audio()
       el.preload = 'auto'
+      let bassHighPass: BiquadFilterNode | null = null
       let bassFilter: BiquadFilterNode | null = null
       let bassHeadroom: GainNode | null = null
       if (context) {
@@ -91,18 +94,23 @@ export function useBroadcast(
           const source = context.createMediaElementSource(el)
           bassHeadroom = context.createGain()
           bassHeadroom.gain.value = bassHeadroomFor(bassDb.current)
+          bassHighPass = context.createBiquadFilter()
+          bassHighPass.type = 'highpass'
+          bassHighPass.frequency.value = 35
+          bassHighPass.Q.value = 0.7
           bassFilter = context.createBiquadFilter()
           bassFilter.type = 'lowshelf'
-          bassFilter.frequency.value = 120
+          bassFilter.frequency.value = 90
           bassFilter.gain.value = bassDb.current
           const limiter = context.createDynamicsCompressor()
-          limiter.threshold.value = -6
-          limiter.knee.value = 18
-          limiter.ratio.value = 4
-          limiter.attack.value = 0.005
-          limiter.release.value = 0.35
-          source.connect(bassHeadroom).connect(bassFilter).connect(limiter).connect(context.destination)
+          limiter.threshold.value = -10
+          limiter.knee.value = 24
+          limiter.ratio.value = 3
+          limiter.attack.value = 0.01
+          limiter.release.value = 0.25
+          source.connect(bassHighPass).connect(bassHeadroom).connect(bassFilter).connect(limiter).connect(context.destination)
         } catch {
+          bassHighPass = null
           bassFilter = null
           bassHeadroom = null
         }
@@ -114,6 +122,7 @@ export function useBroadcast(
         uid: null,
         src: null,
         synced: false,
+        bassHighPass,
         bassFilter,
         bassHeadroom,
         activeWaitSince: null,

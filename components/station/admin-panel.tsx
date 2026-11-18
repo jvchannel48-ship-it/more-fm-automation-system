@@ -217,7 +217,7 @@ export function AdminPanel() {
           </Button>
         </div>
         <p id="bass-boost-help" className="text-xs text-muted-foreground">
-          Set 0–{MAX_BASS_BOOST_DB} dB. 0 dB is neutral; 12 dB is the safe maximum with automatic headroom and a gentle limiter to prevent muddy or buried sound.
+          Set 0–{MAX_BASS_BOOST_DB} dB. 0 dB is neutral; 12 dB is the full-bass maximum with 35 Hz rumble control, clean headroom, and gentle peak protection so vocals stay clear.
         </p>
       </div>
 
