@@ -5,6 +5,7 @@ import { CheckCircle2, MessageCircle, Radio, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ensureDeviceSession } from '@/lib/device-id'
 
 type RequestStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreditInfo = { creditsRemaining: number; dailyCredits: number; bonusCredits: number }
@@ -39,11 +40,18 @@ export function SongRequest() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!credits) {
-      setStatus('error'); setMessage('Please sign in or create an account using the profile button above before requesting a song.'); return
-    }
     setStatus('submitting'); setMessage('')
     try {
+      // Bind this phone automatically if not yet linked (no create-account).
+      if (!credits) {
+        const linked = await ensureDeviceSession()
+        if (!linked) {
+          setStatus('error'); setMessage('Hindi ma-link ang phone device. Buksan ulit ang station at subukan.'); return
+        }
+        const profileResponse = await fetch('/api/account/profile', { cache: 'no-store' })
+        const profileData = await profileResponse.json().catch(() => ({})) as CreditInfo
+        if (profileResponse.ok) setCredits(profileData)
+      }
       const response = await fetch('/api/requests', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, artist }), cache: 'no-store',
@@ -93,7 +101,7 @@ export function SongRequest() {
             <div className="rounded-2xl border border-border/80 bg-background/40 p-4"><div className="flex flex-col gap-2"><Label htmlFor="request-title">Song title</Label><Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hal. Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus /></div>
               <div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Hal. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} /></div></div>
             {status === 'submitting' && <div className="space-y-2" role="status" aria-live="polite"><div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="Submitting song request" aria-busy="true"><div className="h-full w-1/3 rounded-full bg-primary" style={{ animation: 'request-progress 1.2s ease-in-out infinite' }} /></div></div>}
-            {status === 'error' && message && <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert"><p>{message}</p>{(message.toLowerCase().includes('sign in') || message.toLowerCase().includes('mag-login')) && <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => { setOpen(false); window.dispatchEvent(new Event('morefm:open-account')) }}>Open profile / sign in</Button>}</div>}
+            {status === 'error' && message && <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert"><p>{message}</p></div>}
             <Button type="submit" className="h-11 w-full" disabled={status === 'submitting' || !title.trim() || !artist.trim()}><MessageCircle aria-hidden="true" />{status === 'submitting' ? 'Checking song…' : 'Submit request'}</Button>
           </form>}
         </div>
