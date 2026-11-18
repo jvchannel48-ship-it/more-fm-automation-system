@@ -42,11 +42,10 @@ export function SongRequest() {
     event.preventDefault()
     setStatus('submitting'); setMessage('')
     try {
-      // Bind this phone automatically if not yet linked (no create-account).
       if (!credits) {
         const linked = await ensureDeviceSession()
         if (!linked) {
-          setStatus('error'); setMessage('Hindi ma-link ang phone device. Buksan ulit ang station at subukan.'); return
+          setStatus('error'); setMessage('Could not link this device. Refresh the station and try again.'); return
         }
         const profileResponse = await fetch('/api/account/profile', { cache: 'no-store' })
         const profileData = await profileResponse.json().catch(() => ({})) as CreditInfo
@@ -60,14 +59,14 @@ export function SongRequest() {
       if (!response.ok) {
         if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : { creditsRemaining: data.creditsRemaining!, dailyCredits: 0, bonusCredits: 0 })
         if (data.creditEmpty) { setStatus('error'); setMessage(data.error ?? "YOUR CREDIT IT'S 0 TRY AGAIN TOMORROW FREE DAILY"); return }
-        throw new Error(data.error || 'Hindi ma-submit ang song request.')
+        throw new Error(data.error || 'Could not submit the song request.')
       }
       if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : current)
       setStatus('success')
       setMessage(data.position && data.position > 1
-        ? `Successful! Naka-queue ka sa #${data.position}. 15 credits were used (30 for 2 songs). Ipe-play pagkatapos ng mga naunang request.`
-        : 'Successful! Naka-queue na ang kanta. 15 credits were used (30 for 2 songs); ipe-play ito pagkatapos ng kasalukuyang kanta.')
-    } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'Hindi ma-submit ang song request.') }
+        ? `Song request successful! You are #${data.position} in the queue. 15 credits were used (30 for 2 songs). It will play after earlier requests.`
+        : 'Song request successful! Your song is queued. 15 credits were used (30 for 2 songs). It will play after the current song.')
+    } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'Could not submit the song request.') }
   }
 
   return <>
@@ -83,23 +82,22 @@ export function SongRequest() {
         <div className="p-6 sm:p-7">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex gap-3"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25"><Radio className="size-5" aria-hidden="true" /></div>
-              <div><p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">On-air request line</p><h2 id="song-request-title" className="text-xl font-semibold tracking-tight">Choose your next song</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">A valid request uses 15 credits (30 for 2 songs). Hindi mababawasan kapag hindi makita o puno ang queue.</p></div>
+              <div><p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">On-air request line</p><h2 id="song-request-title" className="text-xl font-semibold tracking-tight">Choose your next song</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">A valid request uses 15 credits (30 for 2 songs). Credits are not charged if the song is not found or the queue is full.</p></div>
             </div>
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Close song request" onClick={close}><X aria-hidden="true" /></Button>
           </div>
-          {status === 'success' ? <div className="flex flex-col items-center gap-4 rounded-2xl border border-live/30 bg-live/10 p-6 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full bg-live/15 ring-1 ring-live/30"><CheckCircle2 className="size-8 text-live" aria-hidden="true" /></div>
+          {status === 'success' ? <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
+            <CheckCircle2 className="size-10 text-emerald-400" aria-hidden="true" />
             <div><p className="text-base font-semibold">Song request successful</p><p className="mt-1 text-sm text-muted-foreground">{message}</p></div>
-            {credits && <p className="text-sm font-medium">Remaining credits: {credits.creditsRemaining}</p>}
-            <Button type="button" className="mt-1 h-10 w-full" onClick={close}>Done</Button>
-          </div> : status === 'error' && (message.includes('needed per song') || message.includes("YOUR CREDIT IT'S 0") || message.includes('credit is 0') || (credits?.creditsRemaining ?? 1) === 0) ? <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-6 text-center">
+            <Button type="button" className="w-full" onClick={close}>Done</Button>
+          </div> : (status === 'error' && (message.toLowerCase().includes("credit it's 0") || message.toLowerCase().includes('credit is 0') || (credits?.creditsRemaining ?? 1) === 0)) ? <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-6 text-center">
             <p className="text-lg font-semibold uppercase tracking-wide">{(credits?.creditsRemaining ?? 0) <= 0 ? "YOUR CREDIT IT'S 0" : 'Not enough credits'}</p>
             <p className="text-sm text-muted-foreground">{(credits?.creditsRemaining ?? 0) <= 0 ? 'TRY AGAIN TOMORROW FREE DAILY' : message}</p>
             <Button type="button" variant="outline" className="w-full" onClick={close}>Exit</Button>
           </div> : <form onSubmit={submit} className="flex flex-col gap-4">
             {credits && <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm">Credits available: <strong>{credits.creditsRemaining}</strong> (15 per song · 30 for 2)</p>}
-            <div className="rounded-2xl border border-border/80 bg-background/40 p-4"><div className="flex flex-col gap-2"><Label htmlFor="request-title">Song title</Label><Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Hal. Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus /></div>
-              <div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="Hal. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} /></div></div>
+            <div className="rounded-2xl border border-border/80 bg-background/40 p-4"><div className="flex flex-col gap-2"><Label htmlFor="request-title">Song title</Label><Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus /></div>
+              <div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="e.g. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} /></div></div>
             {status === 'submitting' && <div className="space-y-2" role="status" aria-live="polite"><div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="Submitting song request" aria-busy="true"><div className="h-full w-1/3 rounded-full bg-primary" style={{ animation: 'request-progress 1.2s ease-in-out infinite' }} /></div></div>}
             {status === 'error' && message && <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert"><p>{message}</p></div>}
             <Button type="submit" className="h-11 w-full" disabled={status === 'submitting' || !title.trim() || !artist.trim()}><MessageCircle aria-hidden="true" />{status === 'submitting' ? 'Checking song…' : 'Submit request'}</Button>
