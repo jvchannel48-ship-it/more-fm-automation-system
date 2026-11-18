@@ -105,7 +105,7 @@ export function NotificationCenter() {
             </span>
           </div>
           <SheetTitle className="mt-4 flex items-center gap-2 text-xl"><Bell className="size-4 text-primary" />Notifications</SheetTitle>
-          <SheetDescription>Mga bagong announcement at updates para sa listeners ng MOR 93.5 Naga.</SheetDescription>
+          <SheetDescription>Mga bagong announcement at updates para sa listeners ng RJ FM 93.5.</SheetDescription>
         </SheetHeader>
         {visibleNotifications.length > 0 && (
           <div className="flex items-center justify-between px-5 pt-4">

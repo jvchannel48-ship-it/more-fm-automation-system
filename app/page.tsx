@@ -11,7 +11,7 @@ export default function Home() {
       />
       <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-5">
         <span className="station-mark font-mono text-sm font-bold tracking-[0.28em]">
-          MOR <span className="text-primary">93.5</span>
+          RJ FM <span className="text-primary">93.5</span>
         </span>
         <div className="flex items-center gap-1">
           <NotificationCenter />
@@ -20,7 +20,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
-        <h1 className="sr-only">MOR 93.5 Naga livestream</h1>
+        <h1 className="sr-only">RJ FM 93.5 livestream</h1>
         <RadioPlayer />
       </main>
 

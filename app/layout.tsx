@@ -7,9 +7,9 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'MOR 93.5 Naga — Livestream Only',
+  title: 'RJ FM 93.5 — Livestream Only',
   description:
-    'MOR 93.5 Naga livestream only. 24/7 automated English and Tagalog music.',
+    'RJ FM 93.5 livestream only. 24/7 automated English and Tagalog music.',
   generator: 'v0.app',
   icons: {
     icon: [

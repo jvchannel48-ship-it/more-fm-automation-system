@@ -406,7 +406,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
           fadeOut: 0,
           kind: 'dj-mic',
           title: 'DZMM evening transition announcement',
-          artist: 'MOR 93.5 station announcement',
+          artist: 'RJ FM 93.5 station announcement',
         }
       : isLoveConnectHandoff
         ? {
