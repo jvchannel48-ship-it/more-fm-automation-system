@@ -3,13 +3,12 @@ import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { AccountMenu } from '@/components/station/account-menu'
 import { StationSelector } from '@/components/station/station-selector'
-import { StationBrand, StationShell } from '@/components/station/station-shell'
+import { StationShell } from '@/components/station/station-shell'
 
 export default function Home() {
   return (
     <StationShell>
-      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-5">
-        <StationBrand />
+      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-5">
         <div className="flex items-center gap-1">
           <StationSelector />
           <NotificationCenter />
@@ -19,7 +18,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
-        <h1 className="sr-only">RJ FM livestream</h1>
+        <h1 className="sr-only">Live radio player</h1>
         <RadioPlayer />
       </main>
     </StationShell>

@@ -41,10 +41,11 @@ export function StationSelector() {
         size="sm"
         className="h-9 gap-1.5 px-2 font-mono text-[11px] tracking-wide"
         aria-label="Select station"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         <Radio className="size-3.5 text-primary" aria-hidden="true" />
-        <span className="max-w-[10rem] truncate">
+        <span className="max-w-[11rem] truncate">
           {current.shortName} <span className="text-primary">{current.frequency}</span>
         </span>
       </Button>
@@ -60,11 +61,12 @@ export function StationSelector() {
               <button
                 key={id}
                 type="button"
-                className={`flex w-full flex-col items-start gap-0.5 px-3 py-3 text-left transition hover:bg-primary/10 ${active ? 'bg-primary/10' : ''}`}
+                className={`flex w-full flex-col items-start gap-0.5 px-3 py-3 text-left transition hover:bg-primary/10 ${active ? 'bg-primary/15' : ''}`}
                 onClick={() => select(id)}
               >
                 <span className="font-mono text-sm font-semibold tracking-wide">
                   {item.name} <span className="text-primary">{item.frequency}</span>
+                  {active && <span className="ml-2 text-[10px] font-normal uppercase tracking-wider text-primary">On</span>}
                 </span>
                 <span className="text-[11px] text-muted-foreground">{item.description}</span>
               </button>

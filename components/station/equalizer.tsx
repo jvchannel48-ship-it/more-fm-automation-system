@@ -1,15 +1,20 @@
-const BARS = [0.9, 0.6, 1.1, 0.7, 1, 0.5, 0.8, 1.2, 0.65, 0.95, 0.55, 0.85]
+const BARS = [
+  0.55, 0.95, 0.7, 1.15, 0.6, 1.05, 0.8, 1.25, 0.65, 0.9, 0.75, 1.1, 0.5, 0.85, 1.0, 0.68,
+]
 
 export function Equalizer({ active }: { active: boolean }) {
   return (
-    <div className="flex h-6 items-end gap-1" aria-hidden="true">
+    <div className="eq-deck flex h-8 items-end justify-center gap-[3px]" aria-hidden="true">
       {BARS.map((speed, i) => (
         <span
           key={i}
-          className="h-full w-1 origin-bottom rounded-full bg-primary"
+          className="eq-bar w-[3px] origin-bottom rounded-full sm:w-1"
           style={{
-            animation: active ? `eq ${speed}s ease-in-out ${i * 0.07}s infinite` : 'none',
-            transform: active ? undefined : 'scaleY(0.2)',
+            height: '100%',
+            animation: active ? `eq ${speed}s ease-in-out ${i * 0.05}s infinite` : 'none',
+            transform: active ? undefined : 'scaleY(0.18)',
+            opacity: active ? undefined : 0.35,
+            animationDelay: active ? `${i * 0.05}s` : undefined,
           }}
         />
       ))}
