@@ -78,8 +78,9 @@ export function AdminMenu() {
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
               <p className="font-medium">MOR 93.5 Naga</p>
-              <p className="text-muted-foreground">DZMM: 7:00–8:00 AM · 6:30–8:00 PM · 10:00 PM–3:00 AM</p>
-              <p className="text-muted-foreground">MOR music: 8:01 AM–6:29 PM · 8:01–9:59 PM</p>
+              <p className="text-muted-foreground">DZMM (Mon–Sat): 7:00–8:00 AM · 2:00–3:00 PM · 6:30–8:00 PM · 10:00 PM ident, then live at about 10:00:06 PM</p>
+              <p className="text-muted-foreground">Overnight DZMM ends at 3:00 AM on weeknights and midnight after Saturday; Sunday is music-only.</p>
+              <p className="text-muted-foreground">MOR music: 4:00–6:59 AM · 8:01 AM–1:59 PM · 3:01–6:29 PM · 8:01–9:59 PM</p>
               <p className="text-muted-foreground">MOR signs on at 4:00 AM after the 3:00 AM sign-off</p>
             </div>
           </section>

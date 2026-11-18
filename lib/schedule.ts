@@ -3,6 +3,7 @@ export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 export const SIGN_OFF_HOUR = 3
 export const SIGN_ON_HOUR = 4
 export const DZMM_STREAM_URL = 'https://us1.amfmph.com:8852/live'
+export const LOVE_CONNECT_IDENT_DURATION_SECONDS = 6.191
 
 export type ProgramId =
   | 'sunday-oldies'
@@ -324,6 +325,7 @@ export interface ManilaTime {
 
 export interface DzmmWindow {
   startAt: number
+  liveStartAt: number
   endAt: number
 }
 
@@ -343,20 +345,33 @@ export function dzmmWindowAt(ms: number): DzmmWindow | null {
   const minuteOfDay = hour * 60 + minute
 
   if (minuteOfDay >= 420 && minuteOfDay < 480) {
-    return { startAt: dayStart + 420 * 60_000, endAt: dayStart + 480 * 60_000 }
+    const startAt = dayStart + 420 * 60_000
+    return { startAt, liveStartAt: startAt, endAt: dayStart + 480 * 60_000 }
   }
 
   if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
-    return { startAt: dayStart + 1110 * 60_000, endAt: dayStart + 1200 * 60_000 }
+    const startAt = dayStart + 1110 * 60_000
+    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
   }
 
   if (minuteOfDay >= 1320) {
     const endAt = day === 6 ? dayStart + 24 * 60 * 60_000 : dayStart + 27 * 60 * 60_000
-    return { startAt: dayStart + 1320 * 60_000, endAt }
+    const startAt = dayStart + 1320 * 60_000
+    return {
+      startAt,
+      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
+      endAt,
+    }
   }
 
   if (minuteOfDay < 180) {
-    return { startAt: day === 1 ? dayStart : dayStart - 120 * 60_000, endAt: dayStart + 180 * 60_000 }
+    if (day === 1) return null
+    const startAt = dayStart - 120 * 60_000
+    return {
+      startAt,
+      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
+      endAt: dayStart + 180 * 60_000,
+    }
   }
 
   return null

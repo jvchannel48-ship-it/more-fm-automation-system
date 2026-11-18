@@ -4,6 +4,7 @@ import {
   languageForSlot,
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
+  LOVE_CONNECT_IDENT_DURATION_SECONDS,
   dzmmWindowAt,
   nextSignOn,
   PROGRAMS,
@@ -77,13 +78,32 @@ assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM start
 
 const mondayMorning = dzmmWindowAt(manilaTime(16, 7))
 assert.equal(mondayMorning?.endAt, manilaTime(16, 8), 'weekday morning DZMM ends at 8:00 AM')
+assert.equal(mondayMorning?.liveStartAt, mondayMorning?.startAt, 'morning DZMM has no additional ident delay')
 assert.equal(dzmmWindowAt(manilaTime(16, 6, 59)), null, 'weekday music remains on before 7:00 AM')
 assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.endAt, manilaTime(16, 20), 'weekday TV Patrol runs until 8:00 PM')
 assert.equal(dzmmWindowAt(manilaTime(21, 18, 30))?.endAt, manilaTime(21, 20), 'Saturday TV Patrol ends at 8:00 PM')
 assert.equal(dzmmWindowAt(manilaTime(21, 20, 1)), null, 'Saturday music resumes at 8:01 PM')
 assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'weekday evening music remains before 10:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 22))?.startAt, manilaTime(16, 22), 'weekday DZMM starts at 10:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(17, 2, 59))?.endAt, manilaTime(17, 3), 'overnight DZMM ends at 3:00 AM')
+assert.equal(dzmmWindowAt(manilaTime(16, 0)), null, 'Monday after midnight remains music-only after Sunday')
+assert.equal(dzmmWindowAt(manilaTime(16, 2, 59)), null, 'Monday remains music-only before the 3:00 AM sign-off')
+const mondayOvernight = dzmmWindowAt(manilaTime(16, 22))
+assert.equal(mondayOvernight?.startAt, manilaTime(16, 22), 'weekday Love Connect ident starts at 10:00 PM')
+assert.equal(
+  mondayOvernight?.liveStartAt,
+  manilaTime(16, 22) + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
+  'weekday DZMM live starts after the complete Love Connect ident',
+)
+const saturdayOvernight = dzmmWindowAt(manilaTime(21, 22))
+assert.ok(saturdayOvernight, 'Saturday evening has an overnight DZMM window')
+assert.equal(saturdayOvernight.liveStartAt, saturdayOvernight.startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000, 'Saturday DZMM follows the full ident')
+assert.equal(saturdayOvernight?.endAt, manilaTime(22, 0), 'Saturday overnight DZMM ends at midnight Sunday')
+assert.equal(dzmmWindowAt(manilaTime(22, 0)), null, 'Sunday remains music-only after the Saturday window ends')
+const tuesdayOvernight = dzmmWindowAt(manilaTime(17, 2, 59))
+assert.equal(tuesdayOvernight?.startAt, mondayOvernight?.startAt, 'Tuesday after-midnight DZMM continues Monday evening’s window')
+assert.equal(tuesdayOvernight?.liveStartAt, mondayOvernight?.liveStartAt, 'the ident delay is not restarted after midnight')
+const mondayTvPatrol = dzmmWindowAt(manilaTime(16, 18, 30))
+assert.equal(mondayTvPatrol?.liveStartAt, mondayTvPatrol?.startAt, 'the TV Patrol window keeps its current live start')
+assert.equal(tuesdayOvernight?.endAt, manilaTime(17, 3), 'overnight DZMM ends at 3:00 AM')
 assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only')
 assert.equal(dzmmWindowAt(manilaTime(15, 14)), null, 'Sunday afternoon remains music-only')
 

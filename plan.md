@@ -2,7 +2,7 @@
 
 ## Scope and approach
 
-Continue from the fetched `f5cb1a9` upstream state; do not reset the branch or remove any newer changes. Preserve the existing DZMM schedule, notification center, admin features, station persistence, and player behavior. Add the requested English song-request guidance and unit coverage for local clear-all state. The supplied evening audio and requested 10:29 PM cue conflict with the existing 10:00 PM DZMM start, so leave schedule/audio timing unchanged until clarified.
+Continue from current `main` commit `c6644aa`, based on upstream `f5cb1a9`; do not reset the branch or remove any newer changes. Preserve the existing DZMM schedule, notification center, admin features, station persistence, and player behavior. Add the requested English song-request guidance and unit coverage for local clear-all state. The user clarified that the supplied 6.191-second audio starts at 10:00 PM Manila time, then DZMM live starts immediately after it ends, at about 10:00:06 PM. Preserve the existing 6:30 PM TV Patrol transition and all other schedule windows.
 
 The schedule helper remains the source of truth for the window boundaries. In `lib/station.ts`, represent each DZMM window as a stable live track and prepare RJ FM music tracks ahead of the end boundary. The API should return the live stream promptly, while the post-window music is filled and made available early enough for the existing client preload to begin the fade before 3:01 PM. If the live audio repeatedly fails, use the existing track-recovery path to switch to RJ FM music for the remainder of that window rather than leaving the player silent.
 
@@ -12,6 +12,8 @@ In `hooks/use-broadcast.ts`, retain the existing constant-power gain behavior, u
 
 - `lib/schedule.ts`: Manila-time program and DZMM live-window definitions.
 - `lib/station.ts`: durable station state, queue fill, live-window response, and failed-track recovery.
+- `public/audio/`: user-supplied Love Connect ident and the existing TV Patrol transition audio.
+- `app/api/audio/route.ts`: proxy external approved media; station response mapping serves local `/audio/...` assets directly.
 - `app/api/now/route.ts`: no-cache now-playing GET and failed-track recovery POST.
 - `hooks/use-broadcast.ts`: client audio slots, preloading, gain/fades, and source recovery.
 - `components/station/radio-player.tsx`: play/pause UI, polling, listener heartbeat, and playback status messages.
@@ -21,7 +23,7 @@ In `hooks/use-broadcast.ts`, retain the existing constant-power gain behavior, u
 - `app/api/notifications/route.ts` and `lib/notifications.ts`: shared station announcements; leave this global storage/API unchanged for the local clear action.
 - `tests/schedule.test.ts` (or the existing schedule test file): boundary and Sunday regression coverage.
 
-No visual redesign or new brand identity, storage migration, or history-ledger rewrite is part of this change; existing RJ FM wording is standardized where old labels remained.
+No visual redesign, station rename, storage migration, or history-ledger rewrite is part of this change; preserve the current station labels and existing UI style.
 
 ## Notification-center clear-all behavior
 
@@ -33,6 +35,6 @@ Add a unit test for the same state helpers used by the component: clear all curr
 
 Use the English helper copy: “Enter the song title and artist. Your request will be queued for the next available slot.” Do not mention AutoDJ or Betadash in listener-facing text.
 
-## Evening DZMM audio cue (timing clarification required)
+## Evening DZMM audio cue (confirmed timing)
 
-The supplied audio says “Las diyes ng gabi na. Love Connect na! Kasama si Coach Vanessa Antonio.” The current schedule starts the evening DZMM window at 10:00 PM, while the request places the cue at 10:29 PM before switching to DZMM. Do not change the schedule or install this clip until the intended start boundary is confirmed.
+The supplied audio says “Las diyes ng gabi na. Love Connect na! Kasama si Coach Vanessa Antonio.” Play it at 10:00 PM Manila time and start the existing DZMM stream immediately after the 6.191-second clip ends (about 10:00:06 PM). Keep the current scheduled window boundary at 10:00 PM, so its first six seconds are the ident, and preserve the distinct TV Patrol announcement at 6:30 PM. Post-midnight continuations must attach to the previous evening's 10 PM start; Monday 12:00–2:59 AM remains music-only because the prior Sunday schedule is music-only. Serve project-local public audio directly rather than routing it through the external-source allowlist; keep the existing proxy for remote music and the DZMM live stream.

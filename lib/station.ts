@@ -4,6 +4,7 @@ import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, 
 import {
   isOffAir,
   DZMM_STREAM_URL,
+  LOVE_CONNECT_IDENT_DURATION_SECONDS,
   dzmmWindowAt,
   languageForSlot,
   manilaTime,
@@ -23,6 +24,7 @@ const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 120_000
 const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
 const EVENING_TRANSITION_SECONDS = 12.2
+const LOVE_CONNECT_IDENT_SRC = '/audio/dzmm-love-connect-10pm.mp3'
 const TRANSITION_LOOKAHEAD_MS = 120_000
 
 interface HistoryEntry {
@@ -57,6 +59,14 @@ function parseDuration(value: string): number {
   const parts = value.split(':').map(Number)
   if (parts.some(Number.isNaN)) return 0
   return parts.reduce((acc, n) => acc * 60 + n, 0)
+}
+
+function toClientTrack(track: Track): Track {
+  const isLocalPublicAsset = track.src.startsWith('/') && !track.src.startsWith('//')
+  return {
+    ...track,
+    src: isLocalPublicAsset ? track.src : `/api/audio?src=${encodeURIComponent(track.src)}`,
+  }
 }
 
 function normalize(text: string) {
@@ -325,11 +335,12 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
     const liveUid = `dzmm-${dzmmWindow.startAt}`
     const transitionStartAt = dzmmWindow.endAt - CROSSFADE_SECONDS * 1000
     const isEveningHandoff = manilaTime(dzmmWindow.startAt).hour === 18
+    const isLoveConnectHandoff = manilaTime(dzmmWindow.startAt).hour === 22
     const transitionTrack: Track | null = isEveningHandoff
       ? {
           uid: `dzmm-transition-${dzmmWindow.startAt}`,
           src: EVENING_TRANSITION_SRC,
-          startAt: dzmmWindow.startAt - 60_000,
+          startAt: dzmmWindow.startAt - EVENING_TRANSITION_SECONDS * 1000,
           duration: EVENING_TRANSITION_SECONDS,
           fadeIn: 0,
           fadeOut: 0,
@@ -337,14 +348,26 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
           title: 'DZMM evening transition announcement',
           artist: 'MOR 93.5 station announcement',
         }
-      : null
+      : isLoveConnectHandoff
+        ? {
+            uid: `dzmm-love-connect-${dzmmWindow.startAt}`,
+            src: LOVE_CONNECT_IDENT_SRC,
+            startAt: dzmmWindow.startAt,
+            duration: LOVE_CONNECT_IDENT_DURATION_SECONDS,
+            fadeIn: 0,
+            fadeOut: 0,
+            kind: 'dj-mic',
+            title: 'Love Connect',
+            artist: 'Coach Vanessa Antonio',
+          }
+        : null
     const announcementStartAt = transitionTrack?.startAt ?? transitionStartAt
     const handoffRetryDelay = () => Math.min(FILL_LOCK_MS, Math.max(5_000, transitionStartAt - Date.now()))
     const liveTrack: Track = {
       uid: liveUid,
       src: DZMM_STREAM_URL,
-      startAt: dzmmWindow.startAt,
-      duration: (dzmmWindow.endAt - dzmmWindow.startAt) / 1000,
+      startAt: dzmmWindow.liveStartAt,
+      duration: (dzmmWindow.endAt - dzmmWindow.liveStartAt) / 1000,
       fadeIn: 0,
       fadeOut: CROSSFADE_SECONDS,
       kind: 'live',
@@ -371,7 +394,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
     if (tracksChanged) state.tracks = nextTracks
 
     const hasHandoffTrack = state.tracks.some((track) =>
-      (track.kind === 'music' || track.kind === 'dj-mic') && track.startAt >= announcementStartAt,
+      track.kind === 'music' && track.startAt >= transitionStartAt,
     )
     if (!hasHandoffTrack && state.fillingUntil < now) {
       const fillLock = now + FILL_LOCK_MS
@@ -384,7 +407,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
 
           if (latest.failedDzmmWindowStart !== dzmmWindow.startAt
             && latest.tracks.some((track) => track.uid === liveUid)
-            && !latest.tracks.some((track) => (track.kind === 'music' || track.kind === 'dj-mic') && track.startAt >= announcementStartAt)) {
+            && !latest.tracks.some((track) => track.kind === 'music' && track.startAt >= transitionStartAt)) {
             const requests = latest.requestQueue
             latest.requestQueue = []
             try {
@@ -425,10 +448,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
       serverTime: Date.now(),
       offAir: false,
       nextOnAir: null,
-      tracks: state.tracks.map((track) => ({
-        ...track,
-        src: `/api/audio?src=${encodeURIComponent(track.src)}`,
-      })),
+      tracks: state.tracks.map(toClientTrack),
       bassBoostDb: settings.bassBoostDb,
     }
   }
@@ -448,10 +468,7 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
     serverTime: Date.now(),
     offAir: false,
     nextOnAir: null,
-    tracks: state.tracks.map((track) => ({
-      ...track,
-      src: `/api/audio?src=${encodeURIComponent(track.src)}`,
-    })),
+    tracks: state.tracks.map(toClientTrack),
     bassBoostDb: settings.bassBoostDb,
   }
 }
