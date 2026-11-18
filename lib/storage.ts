@@ -286,6 +286,8 @@ export async function getAverageListenerCount() {
 
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = 'station/state-v2.json'
+/** RJ FM 105.5 Cebu — music-only queue while main RJ FM is on DZMM. */
+export const CEBU_STATE_PATH = 'station/state-cebu-v2.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
