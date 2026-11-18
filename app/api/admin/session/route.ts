@@ -14,7 +14,14 @@ export async function POST(request: NextRequest) {
   }
   const { token, maxAge } = createSessionToken()
   const store = await cookies()
-  store.set(ADMIN_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge })
+  // Same-site onRender host: Lax works on mobile Safari/Chrome over HTTPS.
+  store.set(ADMIN_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge,
+  })
   return NextResponse.json({ admin: true })
 }
 

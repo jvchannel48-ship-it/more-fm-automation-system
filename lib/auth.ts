@@ -5,14 +5,15 @@ import { cookies } from 'next/headers'
 export const ADMIN_COOKIE = 'morefm_admin'
 const SESSION_DAYS = 30
 
+/** Default admin password used when ADMIN_PASSWORD env is not set on Render. */
+const DEFAULT_ADMIN_PASSWORD = '09485054936'
+
 function adminPassword() {
-  return process.env.ADMIN_PASSWORD?.trim() || null
+  return process.env.ADMIN_PASSWORD?.trim() || DEFAULT_ADMIN_PASSWORD
 }
 
 function secret() {
-  const value = process.env.ADMIN_SECRET?.trim() || adminPassword()
-  if (!value) throw new Error('ADMIN_PASSWORD or ADMIN_SECRET must be configured.')
-  return value
+  return process.env.ADMIN_SECRET?.trim() || adminPassword()
 }
 
 function sign(payload: string) {
