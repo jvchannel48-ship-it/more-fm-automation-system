@@ -6,7 +6,7 @@ export const privateJsonHeaders = { 'Cache-Control': 'no-store, max-age=0' }
 export async function requireAccount(request: NextRequest) {
   try {
     const user = await getAccountFromToken(request.cookies.get(USER_SESSION_COOKIE)?.value)
-    if (!user) return { user: null, response: NextResponse.json({ error: 'Mag-login muna sa account mo.' }, { status: 401, headers: privateJsonHeaders }) }
+    if (!user) return { user: null, response: NextResponse.json({ error: 'Hindi pa na-link ang phone device. Buksan ulit ang station para auto-link.' }, { status: 401, headers: privateJsonHeaders }) }
     return { user, response: null }
   } catch (error) {
     console.error('[morefm] account database unavailable', error instanceof Error ? error.message : 'unknown error')
