@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
-import type { AdminStatus } from '@/lib/types'
+import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -119,8 +119,8 @@ export function AdminPanel() {
 
   const saveBassBoost = () => {
     const value = Number(bassBoostInput)
-    if (!Number.isFinite(value) || value < 0 || value > 14) {
-      setError('Enter a bass boost from 0 to +14 dB.')
+    if (!Number.isFinite(value) || value < 0 || value > MAX_BASS_BOOST_DB) {
+      setError(`Enter a bass boost from 0 to +${MAX_BASS_BOOST_DB} dB.`)
       return
     }
     void send('PUT', { bassBoostDb: value })
@@ -217,7 +217,7 @@ export function AdminPanel() {
             id="bass-boost-db"
             type="number"
             min={0}
-            max={14}
+            max={MAX_BASS_BOOST_DB}
             step={0.5}
             value={bassBoostInput}
             onChange={(event) => setBassBoostInput(event.target.value)}
@@ -231,7 +231,7 @@ export function AdminPanel() {
           </Button>
         </div>
         <p id="bass-boost-help" className="text-xs text-muted-foreground">
-          Set 0–14 dB. 0 dB is neutral; the player applies a low-frequency boost up to +14 dB.
+          Set 0–{MAX_BASS_BOOST_DB} dB. 0 dB is neutral; 12 dB is the safe maximum with automatic headroom and a gentle limiter to prevent muddy or buried sound.
         </p>
       </div>
 

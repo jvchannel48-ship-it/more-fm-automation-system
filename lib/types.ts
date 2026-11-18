@@ -1,3 +1,5 @@
+export const MAX_BASS_BOOST_DB = 12
+
 export interface Track {
   uid: string
   src: string

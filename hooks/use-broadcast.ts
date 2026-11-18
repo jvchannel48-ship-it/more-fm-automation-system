@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { NowResponse, Track } from '@/lib/types'
+import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 const PRELOAD_AHEAD_MS = 120_000
@@ -16,6 +16,7 @@ interface Slot {
   src: string | null
   synced: boolean
   bassFilter: BiquadFilterNode | null
+  bassHeadroom: GainNode | null
   activeWaitSince: number | null
   lastRetryAt: number
   lastPlayAttemptAt: number
@@ -30,6 +31,7 @@ interface PlaybackState {
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const curve = (n: number) => Math.sin((clamp01(n) * Math.PI) / 2)
+const bassHeadroomFor = (db: number) => Math.pow(10, -(db * 0.25) / 20)
 
 function trackGain(track: Track, now: number) {
   const elapsed = (now - track.startAt) / 1000
@@ -53,11 +55,13 @@ export function useBroadcast(
   const [state, setState] = useState<PlaybackState>({ onAir: false, buffering: false, playbackIssue: null })
 
   useEffect(() => {
-    const nextDb = Math.min(14, Math.max(0, data?.bassBoostDb ?? 0))
+    const nextDb = Math.min(MAX_BASS_BOOST_DB, Math.max(0, data?.bassBoostDb ?? 0))
     bassDb.current = nextDb
     for (const slot of slots.current) {
       const filter = slot.bassFilter
       if (filter) filter.gain.setTargetAtTime(nextDb, filter.context.currentTime, 0.08)
+      const headroom = slot.bassHeadroom
+      if (headroom) headroom.gain.setTargetAtTime(bassHeadroomFor(nextDb), headroom.context.currentTime, 0.08)
     }
   }, [data?.bassBoostDb])
 
@@ -81,22 +85,26 @@ export function useBroadcast(
       const el = new Audio()
       el.preload = 'auto'
       let bassFilter: BiquadFilterNode | null = null
+      let bassHeadroom: GainNode | null = null
       if (context) {
         try {
           const source = context.createMediaElementSource(el)
+          bassHeadroom = context.createGain()
+          bassHeadroom.gain.value = bassHeadroomFor(bassDb.current)
           bassFilter = context.createBiquadFilter()
           bassFilter.type = 'lowshelf'
           bassFilter.frequency.value = 120
           bassFilter.gain.value = bassDb.current
           const limiter = context.createDynamicsCompressor()
-          limiter.threshold.value = -3
-          limiter.knee.value = 3
-          limiter.ratio.value = 10
-          limiter.attack.value = 0.003
-          limiter.release.value = 0.25
-          source.connect(bassFilter).connect(limiter).connect(context.destination)
+          limiter.threshold.value = -6
+          limiter.knee.value = 18
+          limiter.ratio.value = 4
+          limiter.attack.value = 0.005
+          limiter.release.value = 0.35
+          source.connect(bassHeadroom).connect(bassFilter).connect(limiter).connect(context.destination)
         } catch {
           bassFilter = null
+          bassHeadroom = null
         }
       }
       el.src = SILENT_WAV
@@ -107,6 +115,7 @@ export function useBroadcast(
         src: null,
         synced: false,
         bassFilter,
+        bassHeadroom,
         activeWaitSince: null,
         lastRetryAt: 0,
         lastPlayAttemptAt: 0,

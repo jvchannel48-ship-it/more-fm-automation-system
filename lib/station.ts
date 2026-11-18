@@ -301,7 +301,7 @@ async function fill(
         startAt: songStart + song.duration * 1000,
         duration: announcementSeconds,
         fadeIn: 0,
-        fadeOut: 0,
+        fadeOut: CROSSFADE_SECONDS,
         kind: 'dj-mic',
         title: announcementSchedule.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_TITLE : WEEKDAY_ANNOUNCEMENT_TITLE,
         artist: 'RJ FM',
@@ -337,7 +337,11 @@ async function loadState(now: number) {
       return trackEnd(t) >= now - 1000
     }
     const schedule = dailyAnnouncementScheduleAt(now)
-    return Boolean(schedule && now >= schedule.availableFrom && now < schedule.expiresAt && trackEnd(t) >= now - 1000)
+    const isActive = t.startAt <= now && trackEnd(t) > now
+    return Boolean(
+      (schedule && now >= schedule.availableFrom && now < schedule.expiresAt || isActive)
+      && trackEnd(t) >= now - 1000,
+    )
   })
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }

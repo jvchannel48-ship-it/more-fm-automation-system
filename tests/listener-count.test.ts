@@ -43,7 +43,7 @@ async function main() {
     await writeJson(SETTINGS_PATH, { bassBoostDb: 6.5 })
     assert.equal((await getSettings()).bassBoostDb, 6.5, 'admin bass boost accepts and persists a numeric dB value')
     await writeJson(SETTINGS_PATH, { bassBoostDb: 16 })
-    assert.equal((await getSettings()).bassBoostDb, 14, 'bass boost is capped at +14 dB')
+    assert.equal((await getSettings()).bassBoostDb, 12, 'bass boost is capped at the safe +12 dB maximum')
     await writeJson(SETTINGS_PATH, { bassBoostDb: -2 })
     assert.equal((await getSettings()).bassBoostDb, 0, 'bass boost cannot be set below neutral 0 dB')
 

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
 import { getAdminStatus, refreshQueue } from '@/lib/station'
 import { getSettings, SETTINGS_PATH, writeJson } from '@/lib/storage'
+import { MAX_BASS_BOOST_DB } from '@/lib/types'
 
 const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
 
@@ -32,7 +33,7 @@ export async function PUT(request: NextRequest) {
       ? body.newTagalogOpmEnabled
       : current.newTagalogOpmEnabled,
     bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
-      ? Math.min(14, Math.max(0, body.bassBoostDb))
+      ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
     blockedGenres,
   }

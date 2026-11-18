@@ -3,6 +3,7 @@ import { get, put } from '@vercel/blob'
 import type { StationSettings } from './types'
 
 const memoryFallback = new Map<string, string>()
+const MAX_BASS_BOOST_DB = 12
 const BLOB_RETRY_DELAY_MS = 15_000
 let retryBlobAfter = 0
 let warnedAboutFallback = false
@@ -170,7 +171,7 @@ export async function getSettings(): Promise<StationSettings> {
     sundayScheduleEnabled: typeof saved.sundayScheduleEnabled === 'boolean' ? saved.sundayScheduleEnabled : true,
     newTagalogOpmEnabled: typeof saved.newTagalogOpmEnabled === 'boolean' ? saved.newTagalogOpmEnabled : true,
     bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb)
-      ? Math.min(14, Math.max(0, saved.bassBoostDb))
+      ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, saved.bassBoostDb))
       : 0,
     blockedGenres: Array.isArray(saved.blockedGenres)
       ? [...new Set(saved.blockedGenres.filter((genre): genre is string => typeof genre === 'string').map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
