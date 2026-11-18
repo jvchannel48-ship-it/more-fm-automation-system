@@ -1,6 +1,7 @@
 import { AdminMenu } from '@/components/station/admin-menu'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
+import { AccountMenu } from '@/components/station/account-menu'
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         </span>
         <div className="flex items-center gap-1">
           <NotificationCenter />
+          <AccountMenu />
           <AdminMenu />
         </div>
       </header>

@@ -6,11 +6,13 @@ export const ADMIN_COOKIE = 'morefm_admin'
 const SESSION_DAYS = 30
 
 function adminPassword() {
-  return process.env.ADMIN_PASSWORD ?? '09485054936'
+  return process.env.ADMIN_PASSWORD?.trim() || null
 }
 
 function secret() {
-  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.BLOB_READ_WRITE_TOKEN ?? 'morefm'}`
+  const value = process.env.ADMIN_SECRET?.trim() || adminPassword()
+  if (!value) throw new Error('ADMIN_PASSWORD or ADMIN_SECRET must be configured.')
+  return value
 }
 
 function sign(payload: string) {
@@ -23,8 +25,13 @@ function safeEqual(a: string, b: string) {
   return ab.length === bb.length && timingSafeEqual(ab, bb)
 }
 
+export function isAdminConfigured() {
+  return Boolean(adminPassword())
+}
+
 export function checkPassword(input: string) {
-  return safeEqual(input.trim(), adminPassword())
+  const configuredPassword = adminPassword()
+  return Boolean(configuredPassword && safeEqual(input.trim(), configuredPassword))
 }
 
 export function createSessionToken() {
@@ -41,5 +48,9 @@ export async function isAdmin() {
   if (parts.length !== 3) return false
   const [role, exp, sig] = parts
   if (role !== 'admin' || Number(exp) < Date.now()) return false
-  return safeEqual(sig, sign(`${role}.${exp}`))
+  try {
+    return safeEqual(sig, sign(`${role}.${exp}`))
+  } catch {
+    return false
+  }
 }

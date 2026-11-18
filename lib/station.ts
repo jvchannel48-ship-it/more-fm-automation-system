@@ -347,12 +347,24 @@ async function loadState(now: number) {
   return { state, changed: state.tracks.length !== before }
 }
 
-export async function enqueueSongRequest(title: string, artist: string) {
+let songRequestQueue: Promise<void> = Promise.resolve()
+
+async function withSongRequestLock<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = songRequestQueue
+  let release!: () => void
+  songRequestQueue = new Promise<void>((resolve) => { release = resolve })
+  await previous
+  try { return await operation() } finally { release() }
+}
+
+export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>) {
+  return withSongRequestLock(async () => {
   const now = Date.now()
   const { state } = await loadState(now)
   if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
   const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue)
   if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
+  await beforeEnqueue?.()
   const request: SongRequest = {
     requestId: crypto.randomUUID(),
     title,
@@ -363,6 +375,7 @@ export async function enqueueSongRequest(title: string, artist: string) {
   state.requestQueue.push(request)
   await writeJson(STATE_PATH, state)
   return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
+  })
 }
 
 export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promise<NowResponse> {
