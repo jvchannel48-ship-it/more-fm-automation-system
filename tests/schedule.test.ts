@@ -84,9 +84,9 @@ assert.equal(mondayMorning?.liveStartAt, mondayMorning?.startAt, 'morning DZMM h
 assert.equal(dzmmWindowAt(manilaTime(16, 6, 59)), null, 'weekday music remains on before 7:00 AM')
 const mondayNoonDzmm = dzmmWindowAt(manilaTime(16, 12))
 assert.equal(mondayNoonDzmm?.startAt, manilaTime(16, 12), 'weekday noon DZMM starts at 12:00 PM')
-assert.equal(mondayNoonDzmm?.endAt, manilaTime(16, 16), 'weekday noon DZMM ends at 4:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 15, 59))?.endAt, manilaTime(16, 16), 'DZMM remains on through 3:59 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 16)), null, 'RJ FM music resumes at 4:00 PM')
+assert.equal(mondayNoonDzmm?.endAt, manilaTime(16, 13), 'weekday noon DZMM ends at 1:00 PM')
+assert.equal(dzmmWindowAt(manilaTime(16, 12, 59))?.endAt, manilaTime(16, 13), 'DZMM remains on through 12:59 PM')
+assert.equal(dzmmWindowAt(manilaTime(16, 13)), null, 'RJ FM music resumes at 1:00 PM')
 assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only at noon')
 assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.endAt, manilaTime(16, 20), 'weekday TV Patrol runs until 8:00 PM')
 assert.equal(dzmmWindowAt(manilaTime(21, 18, 30))?.endAt, manilaTime(21, 20), 'Saturday TV Patrol ends at 8:00 PM')
@@ -116,7 +116,7 @@ assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only'
 assert.equal(dzmmWindowAt(manilaTime(15, 14)), null, 'Sunday afternoon remains music-only')
 
 const mondayAfternoonDzmm = dzmmWindowAt(manilaTime(16, 14))
-assert.equal(mondayAfternoonDzmm?.startAt, manilaTime(16, 12), 'DZMM runs during the noon-to-afternoon block')
+assert.equal(mondayAfternoonDzmm, null, 'RJ FM music runs after the noon DZMM block')
 assert.equal(dzmmWindowAt(manilaTime(16, 8, 1)), null, 'MOR music resumes at 8:01 AM')
 assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'MOR music remains on before the 10:00 PM DZMM return')
 
