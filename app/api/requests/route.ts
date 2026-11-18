@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { enqueueSongRequest } from '@/lib/station'
 import { privateJsonHeaders, requireAccount } from '@/lib/account-api'
 import { chargeSongRequest, refundSongRequest } from '@/lib/account-store'
+import { SONG_REQUEST_CREDIT_COST } from '@/lib/credit-math'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -30,7 +31,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...result, creditsRemaining }, { status: 202, headers: privateJsonHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'CREDITS_EMPTY') {
-      return NextResponse.json({ error: `You have ${creditsRemaining ?? 0} credits; 20 are needed per request. Try again tomorrow after your daily credits reset.`, creditsRemaining: creditsRemaining ?? 0, creditEmpty: true }, { status: 402, headers: privateJsonHeaders })
+      const remaining = creditsRemaining ?? 0
+      const zeroMessage = "YOUR CREDIT IT'S 0 TRY AGAIN TOMORROW FREE DAILY"
+      const lowMessage = `You have ${remaining} credits; ${SONG_REQUEST_CREDIT_COST} are needed per song (${SONG_REQUEST_CREDIT_COST * 2} for 2 songs). Try again tomorrow after your free daily credits reset.`
+      return NextResponse.json({ error: remaining <= 0 ? zeroMessage : lowMessage, creditsRemaining: remaining, creditEmpty: true }, { status: 402, headers: privateJsonHeaders })
     }
     if (error instanceof Error && error.message === 'CREDITS_UNAVAILABLE') {
       return NextResponse.json({ error: 'Credits are temporarily unavailable. Please try again later.' }, { status: 503, headers: privateJsonHeaders })
