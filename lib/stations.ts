@@ -83,7 +83,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Cagayan de Oro',
     frequency: '102.7',
     description: 'Music only · own songs',
-n    mode: 'music',
+    mode: 'music',
     shellClass: 'station-cdo',
     modeLabel: 'Music',
     signOffHour: 2,
