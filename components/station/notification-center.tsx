@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { Bell, FileText, Image as ImageIcon, Inbox, Megaphone, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Bell, Image as ImageIcon, Inbox, Megaphone, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
@@ -49,6 +49,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<string[]>([])
   const [dismissedIds, setDismissedIds] = useState<string[]>([])
+  const [selectedNotification, setSelectedNotification] = useState<StationNotification | null>(null)
   const notifications = data?.notifications ?? []
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function NotificationCenter() {
   return (
     <Sheet open={open} onOpenChange={(next) => {
       setOpen(next)
+      if (!next) setSelectedNotification(null)
       if (next) markAllRead()
     }}>
       <SheetTrigger render={<Button variant="ghost" size="icon" aria-label={unreadCount ? `${unreadCount} unread notifications` : 'Open notifications'} className="relative" />}>
@@ -104,10 +106,18 @@ export function NotificationCenter() {
               {unreadCount ? `${unreadCount} new` : 'RJ FM updates'}
             </span>
           </div>
-          <SheetTitle className="mt-4 flex items-center gap-2 text-xl"><Bell className="size-4 text-primary" />Notifications</SheetTitle>
+          <SheetTitle className="mt-4 flex items-center gap-2 text-xl">
+            {selectedNotification ? (
+              <Button type="button" variant="ghost" size="sm" className="-ml-2 h-8 px-2" onClick={() => setSelectedNotification(null)}>
+                <ArrowLeft className="size-4" /> Back
+              </Button>
+            ) : (
+              <><Bell className="size-4 text-primary" />Notifications</>
+            )}
+          </SheetTitle>
           <SheetDescription>Mga bagong announcement at updates para sa listeners ng RJ FM 93.5.</SheetDescription>
         </SheetHeader>
-        {visibleNotifications.length > 0 && (
+        {!selectedNotification && visibleNotifications.length > 0 && (
           <div className="flex items-center justify-between px-5 pt-4">
             <p className="text-xs text-muted-foreground">{visibleNotifications.length} update{visibleNotifications.length === 1 ? '' : 's'}</p>
             <Button type="button" variant="ghost" size="sm" aria-label="Clear all notifications" onClick={clearAll} className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
@@ -117,6 +127,26 @@ export function NotificationCenter() {
           </div>
         )}
         <div className="flex flex-col gap-3 px-5 pb-6 pt-4">
+          {selectedNotification ? (
+            <article className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight">{selectedNotification.title}</h3>
+                  <p className="mt-2 flex items-center gap-1 text-xs font-medium text-foreground/80">
+                    {selectedNotification.senderName} <BadgeCheck className="size-3.5 fill-sky-500 text-white" aria-label="Verified account" />
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(selectedNotification.createdAt)}</p>
+                </div>
+              </div>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{selectedNotification.message}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {(selectedNotification.attachments ?? (selectedNotification.attachment ? [selectedNotification.attachment] : [])).map((attachment) => (
+                  <img key={attachment.name} src={attachment.dataUrl} alt={attachment.name} className="max-h-80 w-full rounded-lg border border-border object-contain" />
+                ))}
+              </div>
+            </article>
+          ) : (
+          <>
           {visibleNotifications.length === 0 ? (
             <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-dashed border-primary/25 bg-gradient-to-b from-primary/5 to-card px-4 py-12 text-center text-muted-foreground">
               <Sparkles className="absolute right-4 top-4 size-4 text-primary/40" aria-hidden="true" />
@@ -128,26 +158,20 @@ export function NotificationCenter() {
               </p>
             </div>
           ) : visibleNotifications.map((item) => (
-            <article key={item.id} className="group rounded-2xl border border-border/80 border-l-2 border-l-primary/70 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm transition-colors hover:border-primary/40">
+            <article key={item.id} role="button" tabIndex={0} onClick={() => setSelectedNotification(item)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedNotification(item) }} className="group cursor-pointer rounded-2xl border border-border/80 border-l-2 border-l-primary/70 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm transition-colors hover:border-primary/40">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold tracking-tight">{item.title}</h3>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(item.createdAt)}</p>
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">{item.senderName} {item.senderVerified && <BadgeCheck className="size-3 fill-sky-500 text-white" aria-label="Verified account" />} · {formatDate(item.createdAt)}</p>
                 </div>
                 <span className="rounded-full bg-primary/10 p-1.5 text-primary" aria-hidden="true"><Bell className="size-3.5" /></span>
               </div>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{item.message}</p>
-              {item.attachment?.type.startsWith('image/') && (
-                <img src={item.attachment.dataUrl} alt={item.attachment.name} className="mt-3 max-h-64 w-full rounded-lg border border-border object-contain" />
-              )}
-              {item.attachment && !item.attachment.type.startsWith('image/') && (
-                <a href={item.attachment.dataUrl} download={item.attachment.name} className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-primary hover:bg-secondary/80">
-                  {item.attachment.type.startsWith('text/') ? <FileText className="size-4" /> : <ImageIcon className="size-4" />}
-                  {item.attachment.name}
-                </a>
-              )}
+              <p className="mt-3 line-clamp-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{item.message}</p>
+              {(item.attachments?.length ?? (item.attachment ? 1 : 0)) > 0 && <p className="mt-2 flex items-center gap-1 text-xs text-primary"><ImageIcon className="size-3.5" />{item.attachments?.length ?? 1} image{(item.attachments?.length ?? 1) === 1 ? '' : 's'}</p>}
             </article>
           ))}
+          </>
+          )}
         </div>
       </SheetContent>
     </Sheet>

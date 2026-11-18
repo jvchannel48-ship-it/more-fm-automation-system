@@ -5,6 +5,7 @@ import { readJson, writeJson } from './storage'
 export const NOTIFICATIONS_PATH = 'station/notifications.json'
 export const MAX_NOTIFICATIONS = 50
 export const MAX_ATTACHMENT_BYTES = 1_500_000
+export const MAX_NOTIFICATION_ATTACHMENTS = 3
 
 export interface NotificationAttachment {
   name: string
@@ -17,6 +18,9 @@ export interface StationNotification {
   title: string
   message: string
   createdAt: number
+  senderName: string
+  senderVerified: boolean
+  attachments?: NotificationAttachment[]
   attachment?: NotificationAttachment
 }
 
@@ -32,6 +36,14 @@ function normalizeNotification(value: unknown): StationNotification | null {
     title: item.title.slice(0, 120),
     message: item.message.slice(0, 3000),
     createdAt: item.createdAt,
+    senderName: typeof item.senderName === 'string' ? item.senderName.slice(0, 80) : 'RJ FM 93.5',
+    senderVerified: item.senderVerified !== false,
+    ...(Array.isArray(item.attachments)
+      ? { attachments: item.attachments
+        .filter((attachment) => attachment && typeof attachment.name === 'string' && typeof attachment.type === 'string' && typeof attachment.dataUrl === 'string')
+        .slice(0, MAX_NOTIFICATION_ATTACHMENTS)
+        .map((attachment) => ({ name: attachment.name.slice(0, 160), type: attachment.type.slice(0, 100), dataUrl: attachment.dataUrl })) }
+      : {}),
     ...(attachment && typeof attachment.name === 'string' && typeof attachment.type === 'string' && typeof attachment.dataUrl === 'string'
       ? { attachment: { name: attachment.name.slice(0, 160), type: attachment.type.slice(0, 100), dataUrl: attachment.dataUrl } }
       : {}),

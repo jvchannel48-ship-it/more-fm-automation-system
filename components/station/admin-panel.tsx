@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { Megaphone, RefreshCw, Send } from 'lucide-react'
+import { BadgeCheck, ImagePlus, Megaphone, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
+import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -32,7 +33,7 @@ export function AdminPanel() {
   const [bassBoostInput, setBassBoostInput] = useState('0')
   const [notificationTitle, setNotificationTitle] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
-  const [notificationFile, setNotificationFile] = useState<File | null>(null)
+  const [notificationFiles, setNotificationFiles] = useState<File[]>([])
   const [blockedGenres, setBlockedGenres] = useState<string[]>([])
   const [genreInput, setGenreInput] = useState('')
 
@@ -124,6 +125,10 @@ export function AdminPanel() {
     updateBlockedGenres([...blockedGenres, ...genres])
   }
 
+  const applyStrictClassicLoveFilter = () => {
+    updateBlockedGenres([...new Set([...blockedGenres, ...STRICT_CLASSIC_LOVE_GENRES])])
+  }
+
   const sendNotification = async () => {
     if (!notificationTitle.trim() || !notificationMessage.trim()) {
       setError('Maglagay ng title at message bago mag-send ng notification.')
@@ -138,13 +143,13 @@ export function AdminPanel() {
       form.set('title', notificationTitle.trim())
       form.set('message', notificationMessage.trim())
       form.set('confirmed', 'true')
-      if (notificationFile) form.set('file', notificationFile)
+      for (const file of notificationFiles) form.append('files', file)
       const response = await fetch('/api/notifications', { method: 'POST', body: form })
       const result = await response.json().catch(() => ({})) as { error?: string; persistenceConfigured?: boolean }
       if (!response.ok) throw new Error(result.error ?? 'Hindi na-send ang notification.')
       setNotificationTitle('')
       setNotificationMessage('')
-      setNotificationFile(null)
+      setNotificationFiles([])
       setMessage(result.persistenceConfigured === false
         ? 'Na-send ang notification, pero pansamantala lang ito sa server memory.'
         : 'Na-send na ang notification sa lahat ng listeners.')
@@ -217,9 +222,12 @@ export function AdminPanel() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
-        <div>
-          <Label htmlFor="blocked-genre">Genre filter / block</Label>
-          <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco, dance, rock. Puwedeng comma-separated.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Label htmlFor="blocked-genre">Genre filter / block</Label>
+            <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco, dance, rock. Puwedeng comma-separated.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={applyStrictClassicLoveFilter}>Strict classic love</Button>
         </div>
         <div className="flex gap-2">
           <input
@@ -264,8 +272,11 @@ export function AdminPanel() {
             <Megaphone className="size-5" aria-hidden="true" />
           </div>
           <div>
-            <Label htmlFor="notification-title" className="text-base">Send all notification</Label>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Mag-send ng text announcement sa lahat ng listeners. Optional lang ang image o .txt attachment.</p>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="notification-title" className="text-base">RJ FM 93.5</Label>
+              <BadgeCheck className="size-4 fill-sky-500 text-white" aria-label="Verified account" />
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Send a short announcement to all listeners. You can attach up to 3 images.</p>
           </div>
         </div>
         <input
@@ -288,13 +299,14 @@ export function AdminPanel() {
         />
         <input
           type="file"
-          accept="image/*,.txt,text/plain"
-          onChange={(event) => setNotificationFile(event.target.files?.[0] ?? null)}
+          accept="image/*"
+          multiple
+          onChange={(event) => setNotificationFiles(Array.from(event.target.files ?? []).slice(0, 3))}
           disabled={busy}
           className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
         />
         <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-          <span>{notificationFile ? `Attached: ${notificationFile.name}` : 'Text-only notification'}</span>
+          <span className="flex items-center gap-1.5"><ImagePlus className="size-3.5" />{notificationFiles.length ? `${notificationFiles.length}/3 image${notificationFiles.length === 1 ? '' : 's'} attached` : 'No images attached'}</span>
           <span>{notificationMessage.length}/3000</span>
         </div>
         <Button type="button" disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()} onClick={sendNotification} className="h-11 shadow-lg shadow-primary/15">
@@ -311,11 +323,12 @@ export function AdminPanel() {
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       {message && <p className="text-xs text-emerald-300" role="status">{message}</p>}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
         <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
+        <Stat label="Average listeners" value={data?.averageListeners ?? '–'} />
       </div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>

@@ -14,6 +14,12 @@ const EXCLUDED_GENRE_RULE =
 const CLASSIC_LOVE_EXCLUSION_RULE =
   /\b(?:club|party|funk\w*|groov\w*|boogie|house|techno|edm|electro|electronic|trance|dubstep|drum and bass|hardstyle|up ?tempo|fast(?:er)?|extended|mix|edit|clubmix|dancemix|housemix)\b/i
 
+export const STRICT_CLASSIC_LOVE_GENRES = [
+  'pop', 'dance', 'disco', 'rock', 'metal', 'punk', 'grunge', 'club', 'party',
+  'funk', 'groove', 'boogie', 'house', 'techno', 'edm', 'electro', 'trance',
+  'dubstep', 'remix', 'cover', 'karaoke', 'ai',
+] as const
+
 const NON_MUSIC_OR_ALTERNATE_RULE =
   /\b(?:full album|nonstop|non-stop|reaction|tutorial|sped ?up|slowed|nightcore|8d|reverb|bass ?boost|playlist|compilation|1 hour|loop|ringtone|lesson|chords|sing-?along|with lyrics in|version by|rendition)\b/i
 

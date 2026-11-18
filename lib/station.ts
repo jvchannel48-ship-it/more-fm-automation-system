@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, writeJson } from './storage'
 import {
   isOffAir,
   DZMM_STREAM_URL,
@@ -535,12 +535,13 @@ export async function getNowPlaying(options: { skipFill?: boolean } = {}): Promi
 
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [{ state }, settings, listenersNow] = await Promise.all([loadState(now), getSettings(), getActiveListenerCount()])
+  const [{ state }, settings, listenersNow, averageListeners] = await Promise.all([loadState(now), getSettings(), getActiveListenerCount(), getAverageListenerCount()])
   const hourArtists = new Set(state.history.filter((h) => h.t > now - ARTIST_WINDOW_MS).map((h) => h.artist))
   return {
     ...settings,
     persistenceConfigured: isBlobStorageAvailable(),
     listenersNow,
+    averageListeners,
     songsThisWeek: state.history.length,
     artistsThisHour: hourArtists.size,
     queued: state.tracks.filter((t) => t.startAt > now).length,

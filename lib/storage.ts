@@ -94,13 +94,33 @@ export async function writeJson(pathname: string, data: unknown) {
 }
 
 export const LISTENERS_PATH = 'station/listeners.json'
+export const LISTENER_METRICS_PATH = 'station/listener-metrics.json'
 const LISTENER_TTL_MS = 60_000
+const LISTENER_METRIC_WINDOW_MS = 24 * 60 * 60 * 1000
 const LISTENER_ID_PATTERN = /^[a-zA-Z0-9-]{16,80}$/
 let listenerQueue: Promise<void> = Promise.resolve()
 
 interface ListenerSnapshot {
   listeners: Record<string, number>
   changed: boolean
+}
+
+interface ListenerMetric {
+  t: number
+  count: number
+}
+
+async function recordListenerMetric(count: number, now: number) {
+  const saved = await readJson<unknown>(LISTENER_METRICS_PATH, [])
+  const metrics = Array.isArray(saved)
+    ? saved.filter((item): item is ListenerMetric => Boolean(item) && typeof item === 'object'
+      && typeof (item as ListenerMetric).t === 'number'
+      && typeof (item as ListenerMetric).count === 'number'
+      && Number.isFinite((item as ListenerMetric).t)
+      && Number.isFinite((item as ListenerMetric).count))
+    : []
+  metrics.push({ t: now, count: Math.max(0, Math.round(count)) })
+  await writeJson(LISTENER_METRICS_PATH, metrics.filter((item) => item.t >= now - LISTENER_METRIC_WINDOW_MS).slice(-720))
 }
 
 async function withListenerLock<T>(operation: () => Promise<T>): Promise<T> {
@@ -141,6 +161,7 @@ export async function recordListener(id: string, active: boolean) {
     if (active) snapshot.listeners[id] = now
     else delete snapshot.listeners[id]
     const persistenceConfigured = await writeJson(LISTENERS_PATH, snapshot.listeners)
+    await recordListenerMetric(Object.keys(snapshot.listeners).length, now)
     return { listenersNow: Object.keys(snapshot.listeners).length, persistenceConfigured }
   })
 }
@@ -151,6 +172,21 @@ export async function getActiveListenerCount() {
     if (snapshot.changed) await writeJson(LISTENERS_PATH, snapshot.listeners)
     return Object.keys(snapshot.listeners).length
   })
+}
+
+export async function getAverageListenerCount() {
+  const now = Date.now()
+  const saved = await readJson<unknown>(LISTENER_METRICS_PATH, [])
+  const metrics = Array.isArray(saved)
+    ? saved.filter((item): item is ListenerMetric => Boolean(item) && typeof item === 'object'
+      && typeof (item as ListenerMetric).t === 'number'
+      && typeof (item as ListenerMetric).count === 'number'
+      && Number.isFinite((item as ListenerMetric).t)
+      && Number.isFinite((item as ListenerMetric).count)
+      && (item as ListenerMetric).t >= now - LISTENER_METRIC_WINDOW_MS)
+    : []
+  if (metrics.length === 0) return 0
+  return Math.round(metrics.reduce((total, item) => total + item.count, 0) / metrics.length)
 }
 
 export const SETTINGS_PATH = 'station/settings.json'

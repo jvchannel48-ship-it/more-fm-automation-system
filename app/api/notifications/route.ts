@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
-import { addNotification, getNotifications, MAX_ATTACHMENT_BYTES } from '@/lib/notifications'
+import { addNotification, getNotifications, MAX_ATTACHMENT_BYTES, MAX_NOTIFICATION_ATTACHMENTS } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,30 +19,41 @@ export async function POST(request: Request) {
   const title = String(form.get('title') ?? '').trim()
   const message = String(form.get('message') ?? '').trim()
   const confirmed = form.get('confirmed') === 'true'
-  const file = form.get('file')
+  const files = form.getAll('files').filter((value): value is File => value instanceof File && value.size > 0)
+  const legacyFile = form.get('file')
+  if (files.length === 0 && legacyFile instanceof File && legacyFile.size > 0) files.push(legacyFile)
 
   if (!confirmed) return NextResponse.json({ error: 'Confirm the notification before sending.' }, { status: 400, ...noStore })
   if (!title || title.length > 120) return NextResponse.json({ error: 'Title is required and must be 120 characters or less.' }, { status: 400, ...noStore })
   if (!message || message.length > 3000) return NextResponse.json({ error: 'Message is required and must be 3000 characters or less.' }, { status: 400, ...noStore })
 
-  let attachment: { name: string; type: string; dataUrl: string } | undefined
-  if (file instanceof File && file.size > 0) {
+  if (files.length > MAX_NOTIFICATION_ATTACHMENTS) {
+    return NextResponse.json({ error: `You can attach up to ${MAX_NOTIFICATION_ATTACHMENTS} images.` }, { status: 400, ...noStore })
+  }
+  let attachments: { name: string; type: string; dataUrl: string }[] = []
+  for (const file of files) {
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      return NextResponse.json({ error: 'Attachment is too large. Maximum size is 1.5 MB.' }, { status: 400, ...noStore })
+      return NextResponse.json({ error: 'Each image must be 1.5 MB or smaller.' }, { status: 400, ...noStore })
     }
-    if (!file.type.startsWith('image/') && !file.type.startsWith('text/')) {
-      return NextResponse.json({ error: 'Only image or text file attachments are supported.' }, { status: 400, ...noStore })
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'Only image attachments are supported.' }, { status: 400, ...noStore })
     }
     const bytes = Buffer.from(await file.arrayBuffer())
-    attachment = {
+    attachments.push({
       name: file.name.slice(0, 160),
       type: file.type || 'application/octet-stream',
       dataUrl: `data:${file.type || 'application/octet-stream'};base64,${bytes.toString('base64')}`,
-    }
+    })
   }
 
   try {
-    const result = await addNotification({ title, message, ...(attachment ? { attachment } : {}) })
+    const result = await addNotification({
+      title,
+      message,
+      senderName: 'RJ FM 93.5',
+      senderVerified: true,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    })
     return NextResponse.json(result, noStore)
   } catch (error) {
     console.error('[morefm] notification send failed', error)

@@ -42,6 +42,7 @@ export interface NowResponse {
 export interface AdminStatus extends StationSettings {
   persistenceConfigured: boolean
   listenersNow: number
+  averageListeners: number
   songsThisWeek: number
   artistsThisHour: number
   queued: number
