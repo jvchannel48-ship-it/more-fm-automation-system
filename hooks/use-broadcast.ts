@@ -7,8 +7,6 @@ const STREAM_URL = '/api/stream'
 
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const bassFilterRef = useRef<BiquadFilterNode | null>(null)
   const [state, setState] = useState({ onAir: false, buffering: false })
 
   const unlock = useCallback(() => {
@@ -19,32 +17,16 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     audio.setAttribute('playsinline', '')
     audio.removeAttribute('controls')
     if (!audio.src) audio.src = STREAM_URL
-    try {
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!AudioContextClass) return
-      const context = audioContextRef.current ?? new AudioContextClass()
-      audioContextRef.current = context
-      if (!bassFilterRef.current) {
-        const source = context.createMediaElementSource(audio)
-        const filter = context.createBiquadFilter()
-        filter.type = 'lowshelf'
-        filter.frequency.value = 120
-        source.connect(filter).connect(context.destination)
-        bassFilterRef.current = filter
-      }
-      void context.resume()
-    } catch {
-      // Native playback remains available if Web Audio is unsupported or blocked.
-    }
   }, [])
 
-  useEffect(() => {
-    const filter = bassFilterRef.current
-    const context = audioContextRef.current
-    if (!filter || !context) return
-    const bassDb = Math.min(14, Math.max(0, data?.bassBoostDb ?? 0))
-    filter.gain.setTargetAtTime(bassDb, context.currentTime, 0.08)
-  }, [data?.bassBoostDb])
+  const playNow = useCallback(() => {
+    unlock()
+    const audio = audioRef.current
+    if (!audio) return
+    void audio.play().catch(() => {
+      setState((previous) => ({ ...previous, buffering: false, onAir: false }))
+    })
+  }, [unlock])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -66,9 +48,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       audio.removeEventListener('error', onError)
       audio.pause()
       audio.removeAttribute('src')
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') void audioContextRef.current.close()
-      audioContextRef.current = null
-      bassFilterRef.current = null
     }
   }, [])
 
@@ -88,12 +67,9 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       return
     }
 
-    if (!audio.src) audio.src = STREAM_URL
-    void audio.play().catch(() => {
-      setState((previous) => ({ ...previous, buffering: false, onAir: false }))
-    })
+    playNow()
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'
-  }, [data?.offAir, playing])
+  }, [data?.offAir, playing, playNow])
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
@@ -104,9 +80,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       album: 'More Music',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })
-    navigator.mediaSession.setActionHandler('play', () => {
-      void audioRef.current?.play()
-    })
+    navigator.mediaSession.setActionHandler('play', playNow)
     navigator.mediaSession.setActionHandler('pause', () => {
       audioRef.current?.pause()
     })
@@ -120,7 +94,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
       navigator.mediaSession.setActionHandler('pause', null)
       navigator.mediaSession.setActionHandler('stop', null)
     }
-  }, [])
+  }, [playNow])
 
   useEffect(() => {
     setState((previous) => ({
@@ -133,5 +107,6 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     ...state,
     audioRef,
     unlock,
+    playNow,
   }
 }

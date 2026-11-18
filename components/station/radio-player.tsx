@@ -32,7 +32,7 @@ export function RadioPlayer() {
     keepPreviousData: true,
   })
   const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
-  const { buffering, unlock, audioRef } = useBroadcast(data, playing, muted ? 0 : nightVolume)
+  const { buffering, unlock, playNow, audioRef } = useBroadcast(data, playing, muted ? 0 : nightVolume)
 
   useEffect(() => {
     const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
@@ -80,7 +80,8 @@ export function RadioPlayer() {
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir
   const togglePlay = () => {
-    unlock()
+    if (!playing) playNow()
+    else unlock()
     setPlaying((p) => !p)
   }
 
