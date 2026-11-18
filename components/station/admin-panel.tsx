@@ -51,6 +51,9 @@ export function AdminPanel() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [bassBoostInput, setBassBoostInput] = useState('0')
+  const [notificationTitle, setNotificationTitle] = useState('')
+  const [notificationMessage, setNotificationMessage] = useState('')
+  const [notificationFile, setNotificationFile] = useState<File | null>(null)
 
   useEffect(() => {
     if (data) setBassBoostInput(String(data.bassBoostDb ?? 0))
@@ -113,6 +116,37 @@ export function AdminPanel() {
     void send('PUT', { bassBoostDb: value })
   }
 
+  const sendNotification = async () => {
+    if (!notificationTitle.trim() || !notificationMessage.trim()) {
+      setError('Maglagay ng title at message bago mag-send ng notification.')
+      return
+    }
+    if (!window.confirm('I-send ang notification na ito sa lahat ng listeners?')) return
+    setBusy(true)
+    setError('')
+    setMessage('')
+    try {
+      const form = new FormData()
+      form.set('title', notificationTitle.trim())
+      form.set('message', notificationMessage.trim())
+      form.set('confirmed', 'true')
+      if (notificationFile) form.set('file', notificationFile)
+      const response = await fetch('/api/notifications', { method: 'POST', body: form })
+      const result = await response.json().catch(() => ({})) as { error?: string; persistenceConfigured?: boolean }
+      if (!response.ok) throw new Error(result.error ?? 'Hindi na-send ang notification.')
+      setNotificationTitle('')
+      setNotificationMessage('')
+      setNotificationFile(null)
+      setMessage(result.persistenceConfigured === false
+        ? 'Na-send ang notification, pero pansamantala lang ito sa server memory.'
+        : 'Na-send na ang notification sa lahat ng listeners.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Hindi na-send ang notification.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3">
@@ -172,6 +206,42 @@ export function AdminPanel() {
         <p id="bass-boost-help" className="text-xs text-muted-foreground">
           Set 0–14 dB. 0 dB is neutral; the player applies a low-frequency boost up to +14 dB.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
+        <div>
+          <Label htmlFor="notification-title">Send all notification</Label>
+          <p className="mt-1 text-xs text-muted-foreground">Mag-send ng announcement na makikita ng lahat sa bell button.</p>
+        </div>
+        <input
+          id="notification-title"
+          value={notificationTitle}
+          onChange={(event) => setNotificationTitle(event.target.value)}
+          maxLength={120}
+          placeholder="Notification title"
+          disabled={busy}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        />
+        <textarea
+          value={notificationMessage}
+          onChange={(event) => setNotificationMessage(event.target.value)}
+          maxLength={3000}
+          rows={4}
+          placeholder="Message para sa listeners"
+          disabled={busy}
+          className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <input
+          type="file"
+          accept="image/*,.txt,text/plain"
+          onChange={(event) => setNotificationFile(event.target.files?.[0] ?? null)}
+          disabled={busy}
+          className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
+        />
+        {notificationFile && <p className="text-xs text-muted-foreground">Attached: {notificationFile.name}</p>}
+        <Button type="button" disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()} onClick={sendNotification}>
+          Send all notification
+        </Button>
       </div>
 
       {data?.persistenceConfigured === false && (

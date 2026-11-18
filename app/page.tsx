@@ -1,5 +1,6 @@
 import { AdminMenu } from '@/components/station/admin-menu'
 import { RadioPlayer } from '@/components/station/radio-player'
+import { NotificationCenter } from '@/components/station/notification-center'
 
 export default function Home() {
   return (
@@ -12,7 +13,10 @@ export default function Home() {
         <span className="station-mark font-mono text-sm font-bold tracking-[0.28em]">
           MOR <span className="text-primary">93.5</span>
         </span>
-        <AdminMenu />
+        <div className="flex items-center gap-1">
+          <NotificationCenter />
+          <AdminMenu />
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
