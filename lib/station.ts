@@ -105,7 +105,7 @@ function isBlockedProgram(program: Program, blockedGenres: string[]) {
 
 function songKey(title: string) {
   return normalize(title.replace(/\(.*?\)|\[.*?\]/g, ' '))
-    .replace(/\b(official|music|video|lyric|lyrics|audio|remastered|remaster|hd|hq|4k|with|mv)\b/g, ' ')
+    .replace(/\b(official|music|video|lyric|lyrics|audio|remastered|remaster|hd|hq|4k|with|mv|live|acoustic|unplugged|radio|edit|single|version|alternate|alt|session|performance)\b/g, ' ')
     .split(' ')
     .filter(Boolean)
     .sort()

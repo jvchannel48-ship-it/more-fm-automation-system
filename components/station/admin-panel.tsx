@@ -127,20 +127,22 @@ export function AdminPanel() {
   }
 
   const updateBlockedGenres = (next: string[]) => {
-    const normalized = [...new Set(next.map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
+    const normalized = [...new Set(
+      next.flatMap((genre) => genre.split(',').map((item) => item.trim().toLowerCase())).filter(Boolean),
+    )].slice(0, 30)
     setBlockedGenres(normalized)
     void send('PUT', { blockedGenres: normalized })
   }
 
   const addBlockedGenre = () => {
-    const genre = genreInput.trim().toLowerCase()
-    if (!genre) return
-    if (blockedGenres.includes(genre)) {
+    const genres = genreInput.split(',').map((genre) => genre.trim().toLowerCase()).filter(Boolean)
+    if (genres.length === 0) return
+    if (genres.every((genre) => blockedGenres.includes(genre))) {
       setGenreInput('')
       return
     }
     setGenreInput('')
-    updateBlockedGenres([...blockedGenres, genre])
+    updateBlockedGenres([...blockedGenres, ...genres])
   }
 
   const sendNotification = async () => {
@@ -238,7 +240,7 @@ export function AdminPanel() {
       <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <div>
           <Label htmlFor="blocked-genre">Genre filter / block</Label>
-          <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco o dance.</p>
+          <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco, dance, rock. Puwedeng comma-separated.</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -251,7 +253,7 @@ export function AdminPanel() {
                 addBlockedGenre()
               }
             }}
-            placeholder="Enter genre to block"
+            placeholder="disco, dance, rock"
             disabled={busy}
             className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"
           />
@@ -344,7 +346,7 @@ export function AdminPanel() {
       </Button>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Mellow easy-listening sa regular rotation; espesyal ang Sunday schedule kapag naka-ON. Walang AI, covers, o rock; iwas-ulit ng kanta sa loob ng 7 araw.
+        Mellow easy-listening sa regular rotation; espesyal ang Sunday schedule kapag naka-ON. Walang AI o cover/remix; duplicate song uploads ay iniiwasan sa loob ng 7 araw.
       </p>
     </div>
   )
