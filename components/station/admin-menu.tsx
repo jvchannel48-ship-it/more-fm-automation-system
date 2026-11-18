@@ -81,7 +81,6 @@ export function AdminMenu() {
               <p className="text-muted-foreground">DZMM: 7:00–8:00 AM · 6:30–8:00 PM · 10:00 PM–3:00 AM</p>
               <p className="text-muted-foreground">MOR music: 8:01 AM–6:29 PM · 8:01–9:59 PM</p>
               <p className="text-muted-foreground">MOR signs on at 4:00 AM after the 3:00 AM sign-off</p>
-              <p className="mt-2 text-muted-foreground">created by DWLC · this app enjoy the music</p>
             </div>
           </section>
 

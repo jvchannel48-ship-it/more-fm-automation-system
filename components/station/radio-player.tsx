@@ -115,9 +115,9 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="MOR 93.5 live player" className="flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label="MOR 93.5 live player" className="radio-player flex w-full flex-col items-center gap-8 text-center">
       <span
-        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
+        className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
         }`}
       >
@@ -128,25 +128,28 @@ export function RadioPlayer() {
         {offAir ? 'Off Air' : 'Live'}
       </span>
 
-      <div className="relative flex size-64 items-center justify-center sm:size-72">
+      <div className="vinyl-stage relative flex size-64 items-center justify-center sm:size-72">
         <div
           className="absolute inset-0 rounded-full border border-primary/25"
           style={{ animation: live ? 'ring-pulse 2.4s ease-out infinite' : 'none' }}
           aria-hidden="true"
         />
         <div
-          className="absolute inset-3 rounded-full bg-[repeating-radial-gradient(circle,var(--secondary)_0_2px,var(--card)_2px_5px)] shadow-2xl shadow-black/50"
+          className="vinyl-record absolute inset-3 rounded-full"
           style={{ animation: live ? 'spin 6s linear infinite' : 'none' }}
           aria-hidden="true"
         />
-        <div className="absolute inset-[28%] rounded-full bg-gradient-to-br from-primary to-primary/70" aria-hidden="true" />
+        <div className="vinyl-label absolute inset-[28%] rounded-full" aria-hidden="true">
+          <span className="vinyl-label-mark">MOR</span>
+        </div>
+        <div className="vinyl-hole absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-hidden="true" />
 
         <Button
           size="icon"
           onClick={togglePlay}
           disabled={offAir}
           aria-label={playing ? 'Pause MOR 93.5' : 'Play MOR 93.5'}
-          className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
+          className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
             <Moon aria-hidden="true" />
@@ -161,14 +164,16 @@ export function RadioPlayer() {
       </div>
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
-        <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+        <h2 className="player-title text-balance text-3xl font-bold tracking-tight sm:text-4xl">
           MOR <span className="text-primary">93.5</span>
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           No. 1 Bicol Region · ABS-CBN Complex
         </p>
         <div className="mt-2">
-          <Equalizer active={live} />
+          <div className="signal-bars">
+            <Equalizer active={live} />
+          </div>
         </div>
         {offAir && (
           <p className="text-sm text-muted-foreground">
@@ -187,13 +192,13 @@ export function RadioPlayer() {
         )}
       </div>
 
-      <div className="flex w-full max-w-xs items-center gap-3">
+      <div className="volume-deck flex w-full max-w-xs items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setMuted((m) => !m)}
           aria-label={muted ? 'Unmute' : 'Mute'}
-          className="shrink-0 text-muted-foreground"
+          className="shrink-0 text-muted-foreground hover:text-primary"
         >
           {muted || volume === 0 ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
         </Button>

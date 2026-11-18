@@ -20,10 +20,6 @@ export default function Home() {
         <RadioPlayer />
       </main>
 
-      <footer className="mx-auto flex flex-col items-center gap-1 px-4 pb-8 text-center">
-        <p className="text-sm font-medium">created by DWLC</p>
-        <p className="text-xs text-muted-foreground">this app enjoy the music</p>
-      </footer>
     </div>
   )
 }
