@@ -8,13 +8,16 @@ Date.now = () => clock
 
 async function main() {
   try {
-    const { getActiveListenerCount, getSettings, isBlobStorageAvailable, recordListener, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
+    const { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, recordListener, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
 
     const first = await recordListener('listener-test-000001', true)
     assert.equal(first.listenersNow, 1, 'a playing browser is counted')
     assert.equal(first.persistenceConfigured, false, 'memory fallback is not reported as durable storage')
     await recordListener('listener-test-000002', true)
     assert.equal(await getActiveListenerCount(), 2, 'the dashboard counts both active listener IDs')
+    await recordListener('listener-test-000002', true)
+    assert.equal(await getActiveListenerCount(), 2, 'a repeated heartbeat does not inflate the total listener count')
+    assert.ok((await getAverageListenerCount()) >= 1, 'listener monitoring records the active listener average')
 
     await recordListener('listener-test-000001', false)
     assert.equal(await getActiveListenerCount(), 1, 'pausing playback removes that listener')

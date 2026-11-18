@@ -327,7 +327,7 @@ export function AdminPanel() {
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
-        <Stat label="Listeners now" value={data?.listenersNow ?? '–'} />
+        <Stat label="Total listeners" value={data?.listenersNow ?? '–'} />
         <Stat label="Average listeners" value={data?.averageListeners ?? '–'} />
       </div>
 
