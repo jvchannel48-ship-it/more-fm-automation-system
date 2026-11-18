@@ -1,20 +1,43 @@
-# RJ FM private Blob storage
+# RJ FM durable station storage (Supabase + optional Vercel Blob)
 
-The app stores station settings (including the Broadcast switch), AutoDJ state, and active-listener heartbeat data as private JSON objects in Vercel Blob. Objects are read and written server-side with private access; the Blob token must never be exposed to browser code or committed to Git.
+The app stores station settings (including the Broadcast switch), AutoDJ state, and active-listener heartbeat data as private JSON objects. **Primary backend is Supabase Storage.** Vercel Blob remains a fallback when Supabase is not configured.
 
-## Connect a Blob store
+## Supabase (active)
 
-1. In the Vercel project that deploys RJ FM, create or attach a Blob store under **Storage**.
-2. Connect that store to the deployment so Vercel injects `BLOB_READ_WRITE_TOKEN`. The app also recognizes the Vercel OIDC setup when both `VERCEL_OIDC_TOKEN` and `BLOB_STORE_ID` are available.
-3. Redeploy the app after connecting the store or changing environment variables.
-4. Open the Admin Panel. It should stop showing the temporary-storage warning after a successful Blob read/write. Toggle Broadcast and confirm it remains in the chosen state after reloading.
+Configured project:
 
-For local development, put `BLOB_READ_WRITE_TOKEN` in `.env.local`; do not commit the file or paste the token into chat.
+| Setting | Value |
+|---------|--------|
+| Project URL | `https://lbzsosywniqvdroimbwd.supabase.co` |
+| Publishable key | set via `SUPABASE_PUBLISHABLE_KEY` / defaults in code |
+| Bucket | `morefm-station` |
+
+### One-time setup in Supabase Dashboard
+
+1. Open **Storage** → **New bucket**.
+2. Name: **`morefm-station`**
+3. Make it **Public** *or* add policies that allow the publishable key to `SELECT`, `INSERT`, `UPDATE` on this bucket (required for server writes with the publishable key).
+4. Optional (recommended for production): create a **service role** key and set `SUPABASE_SERVICE_ROLE_KEY` on Render instead of relying on the publishable key.
+
+### Render environment (optional overrides)
+
+| Key | Purpose |
+|-----|---------|
+| `SUPABASE_URL` | Project URL (defaults to the URL above) |
+| `SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_ANON_KEY` | Client/publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Prefer this server-side for private buckets |
+| `SUPABASE_STORAGE_BUCKET` | Defaults to `morefm-station` |
+
+Redeploy after changing env vars.
+
+## Vercel Blob (optional fallback)
+
+If no Supabase credentials are present, the app uses `BLOB_READ_WRITE_TOKEN` / OIDC + `BLOB_STORE_ID` when available.
+
+## Behavior without durable storage
+
+Without working credentials, settings and listener counts continue in process memory so the station remains usable, but they are temporary and may differ between server instances. The Admin Panel warns about this state.
 
 ## Listener counter behavior
 
-While playback is active, each browser sends a heartbeat every 30 seconds. A listener is removed when playback stops and otherwise expires after 60 seconds without a heartbeat. The admin dashboard refreshes the active listener total periodically. Blob JSON saves preserve the count across a normal redeploy, but simultaneous writes from multiple server instances are not atomic; use a database with atomic updates if strict multi-instance listener accounting is required.
-
-Without working Blob credentials, settings and listener counts continue in process memory so the station remains usable, but they are temporary and may differ between server instances. The Admin Panel warns about this state.
-
-Blob storage limits and included usage depend on the current Vercel plan. Check the project's current usage and plan before relying on it as a no-cost, unlimited database.
+While playback is active, each browser sends a heartbeat every 30 seconds. A listener is removed when playback stops and otherwise expires after 60 seconds without a heartbeat. JSON saves preserve the count across a normal redeploy, but simultaneous writes from multiple server instances are not atomic.
