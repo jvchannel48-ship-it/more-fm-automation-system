@@ -384,6 +384,11 @@ export function dzmmWindowAt(ms: number): DzmmWindow | null {
     return { startAt, liveStartAt: startAt, endAt: dayStart + 480 * 60_000 }
   }
 
+  if (day >= 1 && day <= 6 && minuteOfDay >= 720 && minuteOfDay < 781) {
+    const startAt = dayStart + 720 * 60_000
+    return { startAt, liveStartAt: startAt, endAt: dayStart + 781 * 60_000 }
+  }
+
   if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
     const startAt = dayStart + 1110 * 60_000
     return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }

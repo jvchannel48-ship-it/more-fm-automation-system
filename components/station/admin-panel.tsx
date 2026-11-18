@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { RefreshCw } from 'lucide-react'
+import { Megaphone, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -277,10 +277,15 @@ export function AdminPanel() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
-        <div>
-          <Label htmlFor="notification-title">Send all notification</Label>
-          <p className="mt-1 text-xs text-muted-foreground">Mag-send ng announcement na makikita ng lahat sa bell button.</p>
+      <div className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-secondary/40 to-card p-4 shadow-inner shadow-primary/5">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <Megaphone className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <Label htmlFor="notification-title" className="text-base">Send all notification</Label>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Mag-send ng text announcement sa lahat ng listeners. Optional lang ang image o .txt attachment.</p>
+          </div>
         </div>
         <input
           id="notification-title"
@@ -296,7 +301,7 @@ export function AdminPanel() {
           onChange={(event) => setNotificationMessage(event.target.value)}
           maxLength={3000}
           rows={4}
-          placeholder="Message para sa listeners"
+          placeholder="I-type dito ang message para sa lahat ng listeners..."
           disabled={busy}
           className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
@@ -307,8 +312,12 @@ export function AdminPanel() {
           disabled={busy}
           className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
         />
-        {notificationFile && <p className="text-xs text-muted-foreground">Attached: {notificationFile.name}</p>}
-        <Button type="button" disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()} onClick={sendNotification}>
+        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+          <span>{notificationFile ? `Attached: ${notificationFile.name}` : 'Text-only notification'}</span>
+          <span>{notificationMessage.length}/3000</span>
+        </div>
+        <Button type="button" disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()} onClick={sendNotification} className="h-11 shadow-lg shadow-primary/15">
+          <Send aria-hidden="true" />
           Send all notification
         </Button>
       </div>

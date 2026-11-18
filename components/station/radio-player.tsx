@@ -167,9 +167,6 @@ export function RadioPlayer() {
         <h2 className="player-title text-balance text-3xl font-bold tracking-tight sm:text-4xl">
           MOR <span className="text-primary">93.5</span>
         </h2>
-        <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          No. 1 Bicol Region · ABS-CBN Complex
-        </p>
         <div className="mt-2">
           <div className="signal-bars">
             <Equalizer active={live} />

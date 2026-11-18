@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { Bell, FileText, Image as ImageIcon, Inbox, Trash2 } from 'lucide-react'
+import { Bell, FileText, Image as ImageIcon, Inbox, Megaphone, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
@@ -94,34 +94,44 @@ export function NotificationCenter() {
           </span>
         )}
       </SheetTrigger>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2"><Bell className="size-4 text-primary" />Notifications</SheetTitle>
-          <SheetDescription>Mga bagong announcement mula sa MOR 93.5 Naga.</SheetDescription>
+      <SheetContent side="right" className="w-full overflow-y-auto border-l border-primary/20 bg-background/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-sm">
+        <SheetHeader className="border-b border-border/70 bg-gradient-to-br from-primary/15 via-card to-background px-5 pb-5 pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-inner shadow-primary/20">
+              <Megaphone className="size-5" aria-hidden="true" />
+            </div>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+              {unreadCount ? `${unreadCount} new` : 'RJ FM updates'}
+            </span>
+          </div>
+          <SheetTitle className="mt-4 flex items-center gap-2 text-xl"><Bell className="size-4 text-primary" />Notifications</SheetTitle>
+          <SheetDescription>Mga bagong announcement at updates para sa listeners ng MOR 93.5 Naga.</SheetDescription>
         </SheetHeader>
         {visibleNotifications.length > 0 && (
-          <div className="flex justify-end px-4">
+          <div className="flex items-center justify-between px-5 pt-4">
+            <p className="text-xs text-muted-foreground">{visibleNotifications.length} update{visibleNotifications.length === 1 ? '' : 's'}</p>
             <Button type="button" variant="ghost" size="sm" aria-label="Clear all notifications" onClick={clearAll} className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
               <Trash2 aria-hidden="true" />
               Clear all
             </Button>
           </div>
         )}
-        <div className="flex flex-col gap-3 px-4 pb-6">
+        <div className="flex flex-col gap-3 px-5 pb-6 pt-4">
           {visibleNotifications.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
-              <Inbox className="size-7" aria-hidden="true" />
-              <p className="text-sm">
+            <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-dashed border-primary/25 bg-gradient-to-b from-primary/5 to-card px-4 py-12 text-center text-muted-foreground">
+              <Sparkles className="absolute right-4 top-4 size-4 text-primary/40" aria-hidden="true" />
+              <Inbox className="size-8 text-primary/70" aria-hidden="true" />
+              <p className="text-sm font-medium text-foreground/80">
                 {notifications.length === 0
                   ? 'Walang notification sa ngayon.'
                   : 'Na-clear mo na ang lahat ng notification sa browser na ito.'}
               </p>
             </div>
           ) : visibleNotifications.map((item) => (
-            <article key={item.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <article key={item.id} className="group rounded-2xl border border-border/80 border-l-2 border-l-primary/70 bg-gradient-to-br from-card via-card to-primary/[0.04] p-4 shadow-sm transition-colors hover:border-primary/40">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold">{item.title}</h3>
+                  <h3 className="font-semibold tracking-tight">{item.title}</h3>
                   <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(item.createdAt)}</p>
                 </div>
                 <span className="rounded-full bg-primary/10 p-1.5 text-primary" aria-hidden="true"><Bell className="size-3.5" /></span>
