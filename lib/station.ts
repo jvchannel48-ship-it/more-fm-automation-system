@@ -5,8 +5,11 @@ import {
   isOffAir,
   DZMM_STREAM_URL,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
+  dailyAnnouncementCutoffAt,
+  dailyAnnouncementWindowEndAt,
   dzmmWindowAt,
   languageForSlot,
+  manilaDateKey,
   manilaTime,
   nextSignOn,
   programAt,
@@ -26,6 +29,9 @@ const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
 const EVENING_TRANSITION_SECONDS = 12.2
 const LOVE_CONNECT_IDENT_SRC = '/audio/dzmm-love-connect-10pm.mp3'
 const TRANSITION_LOOKAHEAD_MS = 120_000
+const DAILY_ANNOUNCEMENT_SRC = '/audio/rj-fm-daily-announcement.mp3'
+const DAILY_ANNOUNCEMENT_SECONDS = 13.636
+const DAILY_ANNOUNCEMENT_TITLE = 'RJ FM daily announcement'
 
 interface HistoryEntry {
   id: string
@@ -41,10 +47,14 @@ interface StationState {
   fillingUntil: number
   requestQueue: SongRequest[]
   failedDzmmWindowStart: number | null
+  dailyAnnouncementDay: string | null
+  dailyAnnouncementSongCount: number
+  dailyAnnouncementPlayed: boolean
 }
 
 const EMPTY_STATE: StationState = {
   tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [], failedDzmmWindowStart: null,
+  dailyAnnouncementDay: null, dailyAnnouncementSongCount: 0, dailyAnnouncementPlayed: false,
 }
 
 interface SearchItem {
@@ -269,6 +279,28 @@ async function fill(
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
+    const windowStartAt = dailyAnnouncementCutoffAt(songStart)
+    const windowEndAt = dailyAnnouncementWindowEndAt(songStart)
+    const inAnnouncementWindow = songStart >= windowStartAt && songStart < windowEndAt
+    if (inAnnouncementWindow) state.dailyAnnouncementSongCount++
+    const announcementEndAt = songStart + song.duration * 1000 + DAILY_ANNOUNCEMENT_SECONDS * 1000
+    if (!state.dailyAnnouncementPlayed
+      && state.dailyAnnouncementSongCount >= 3
+      && inAnnouncementWindow
+      && announcementEndAt <= windowEndAt) {
+      state.tracks.push({
+        uid: `rj-fm-daily-announcement-${state.dailyAnnouncementDay}`,
+        src: DAILY_ANNOUNCEMENT_SRC,
+        startAt: songStart + song.duration * 1000,
+        duration: DAILY_ANNOUNCEMENT_SECONDS,
+        fadeIn: 0,
+        fadeOut: 0,
+        kind: 'dj-mic',
+        title: DAILY_ANNOUNCEMENT_TITLE,
+        artist: 'RJ FM',
+      })
+      state.dailyAnnouncementPlayed = true
+    }
   }
 }
 
@@ -279,10 +311,27 @@ async function loadState(now: number) {
     ...saved,
     failedDzmmWindowStart: typeof saved.failedDzmmWindowStart === 'number' ? saved.failedDzmmWindowStart : null,
     requestQueue: Array.isArray(saved.requestQueue) ? saved.requestQueue : [],
+    dailyAnnouncementDay: typeof saved.dailyAnnouncementDay === 'string' ? saved.dailyAnnouncementDay : null,
+    dailyAnnouncementSongCount: typeof saved.dailyAnnouncementSongCount === 'number' ? saved.dailyAnnouncementSongCount : 0,
+    dailyAnnouncementPlayed: saved.dailyAnnouncementPlayed === true,
   }
+  const today = manilaDateKey(now)
+  if (state.dailyAnnouncementDay !== today) {
+    state.dailyAnnouncementDay = today
+    state.dailyAnnouncementSongCount = 0
+    state.dailyAnnouncementPlayed = false
+  }
+  if (now >= dailyAnnouncementWindowEndAt(now)) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
-  // Remove any announcement tracks left by an older persisted station state.
-  state.tracks = state.tracks.filter((t) => (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-')) && trackEnd(t) >= now - 1000)
+  // Remove stale scheduled audio, including this daily clip outside the 9:48–10:00 PM window.
+  state.tracks = state.tracks.filter((t) => {
+    if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) {
+      return trackEnd(t) >= now - 1000
+    }
+    return now >= dailyAnnouncementCutoffAt(now)
+      && now < dailyAnnouncementWindowEndAt(now)
+      && trackEnd(t) >= now - 1000
+  })
   state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
   return { state, changed: state.tracks.length !== before }
 }

@@ -334,6 +334,25 @@ export function manilaTime(ms: number): ManilaTime {
   return { hour: d.getUTCHours(), day: d.getUTCDay(), minute: d.getUTCMinutes() }
 }
 
+/** Stable Manila calendar key used for once-per-day automation state. */
+export function manilaDateKey(ms: number): string {
+  return new Date(ms + MANILA_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+/** The daily RJ FM announcement window starts at 9:48 PM Manila time. */
+export function dailyAnnouncementCutoffAt(ms: number): number {
+  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
+  localDayStart.setUTCHours(21, 48, 0, 0)
+  return localDayStart.getTime() - MANILA_OFFSET_MS
+}
+
+/** The announcement window ends when the 10:00 PM DZMM handoff begins. */
+export function dailyAnnouncementWindowEndAt(ms: number): number {
+  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
+  localDayStart.setUTCHours(22, 0, 0, 0)
+  return localDayStart.getTime() - MANILA_OFFSET_MS
+}
+
 /** Returns a scheduled DZMM window, or null when the station should play its own music. */
 export function dzmmWindowAt(ms: number): DzmmWindow | null {
   const { hour, minute, day } = manilaTime(ms)
