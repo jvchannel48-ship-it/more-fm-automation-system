@@ -5,7 +5,10 @@ import {
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
+  dailyAnnouncementCutoffAt,
+  dailyAnnouncementWindowEndAt,
   dzmmWindowAt,
+  manilaDateKey,
   nextSignOn,
   PROGRAMS,
   programAt,
@@ -111,5 +114,12 @@ const mondayAfternoonDzmm = dzmmWindowAt(manilaTime(16, 14))
 assert.equal(mondayAfternoonDzmm, null, 'MOR music runs during the afternoon')
 assert.equal(dzmmWindowAt(manilaTime(16, 8, 1)), null, 'MOR music resumes at 8:01 AM')
 assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'MOR music remains on before the 10:00 PM DZMM return')
+
+const mondayAnnouncementCutoff = dailyAnnouncementCutoffAt(manilaTime(16, 21, 48))
+assert.equal(mondayAnnouncementCutoff, manilaTime(16, 21, 48), 'daily announcement cutoff is 9:48 PM Manila time')
+assert.equal(dailyAnnouncementCutoffAt(manilaTime(16, 21, 49)), mondayAnnouncementCutoff, 'cutoff stays fixed for the same Manila day')
+assert.equal(dailyAnnouncementWindowEndAt(manilaTime(16, 21, 48)), manilaTime(16, 22), 'daily announcement window ends at the 10 PM handoff')
+assert.notEqual(dailyAnnouncementCutoffAt(manilaTime(17, 21, 48)), mondayAnnouncementCutoff, 'the next Manila day gets a new cutoff')
+assert.equal(manilaDateKey(manilaTime(16, 21, 48)), '2026-11-16', 'daily automation uses the Manila calendar date')
 
 console.log('schedule: DZMM morning/evening/overnight windows and 3 AM sign-off / 4 AM sign-on all pass')
