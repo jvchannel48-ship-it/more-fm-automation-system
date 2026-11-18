@@ -41,18 +41,28 @@ export function AdminMenu() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await fetch('/api/admin/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    setLoading(false)
-    if (!res.ok) {
-      setError('Mali ang password. Subukan ulit.')
-      return
+    try {
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password.trim() }),
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string; admin?: boolean }
+      if (!res.ok) {
+        setError(
+          res.status === 503
+            ? (data.error ?? 'Admin login is not configured. Set ADMIN_PASSWORD on Render.')
+            : (data.error === 'Mali ang password' ? 'Mali ang password. Subukan ulit.' : (data.error ?? 'Mali ang password. Subukan ulit.')),
+        )
+        return
+      }
+      setPassword('')
+      await mutate({ admin: true })
+    } catch {
+      setError('Hindi maka-connect sa server. Subukan ulit.')
+    } finally {
+      setLoading(false)
     }
-    setPassword('')
-    mutate({ admin: true })
   }
 
   const logout = async () => {

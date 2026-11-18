@@ -51,11 +51,17 @@ export function AccountMenu() {
 
   useEffect(() => {
     let active = true
+    let first = true
     const refresh = async () => {
       if (!active || document.visibilityState !== 'visible') return
-      setProfileLoading(true)
+      // Only block the form UI on the first load — background polls must not
+      // replace the signup/login inputs with "Checking account…" (kills typing).
+      if (first) setProfileLoading(true)
       await refreshProfile(open)
-      if (active) setProfileLoading(false)
+      if (active && first) {
+        setProfileLoading(false)
+        first = false
+      }
     }
     void refresh()
     const timer = window.setInterval(() => { void refresh() }, 3000)
@@ -145,7 +151,7 @@ export function AccountMenu() {
           </div>
           <div className="flex flex-col gap-2"><Label htmlFor="profile-name">Name</Label><div className="flex gap-2"><Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} /><Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button></div></div>
           <div className="flex flex-col gap-2"><Label htmlFor="profile-email">Change email</Label><Input id="profile-email" type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /><Input aria-label="Current password to change email" type="password" autoComplete="current-password" placeholder="Current password" value={currentEmailPassword} onChange={(event) => setCurrentEmailPassword(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateSecurity('email')} disabled={busy || !newEmail.trim() || newEmail.trim() === profile.email || !currentEmailPassword}>Update email</Button></div>
-          <div className="flex flex-col gap-2"><Label htmlFor="profile-password">Change password</Label><Input aria-label="Current password to change password" type="password" autoComplete="current-password" placeholder="Current password" value={currentChangePassword} onChange={(event) => setCurrentChangePassword(event.target.value)} /><Input id="profile-password" type="password" autoComplete="new-password" placeholder="New password (at least 8 characters)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateSecurity('password')} disabled={busy || newPassword.length < 8 || !currentChangePassword}>Update password</Button></div>
+          <div className="flex flex-col gap-2"><Label htmlFor="profile-password">Change password</Label><Input id="profile-password" type="password" minLength={8} autoComplete="new-password" placeholder="New password (min 8)" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><Input aria-label="Current password to change password" type="password" autoComplete="current-password" placeholder="Current password" value={currentChangePassword} onChange={(event) => setCurrentChangePassword(event.target.value)} /><Button type="button" variant="secondary" onClick={() => updateSecurity('password')} disabled={busy || newPassword.length < 8 || !currentChangePassword}>Update password</Button></div>
           <div className="flex flex-col gap-2"><Label htmlFor="profile-avatar">Profile picture (JPEG/PNG/WebP, max 1 MB)</Label><input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" /><Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button></div>
           <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Log out</Button>
         </div> : profileLoading ? <p className="mt-5 text-sm text-muted-foreground" role="status">Checking account…</p> : <form onSubmit={doAuth} className="mt-5 flex flex-col gap-4">
