@@ -259,10 +259,11 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       getSettings(),
       loadState(now, STATE_PATH),
     ])
-    const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour) || !settings.broadcastEnabled
+    // The admin Broadcast toggle belongs to RJ FM Manila 93.5 only; regional stations stay live.
+    const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
     if (offAir) {
       if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
-      return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOnAtHour(now, stationMeta.signOnHour) : null, tracks: [], bassBoostDb: settings.bassBoostDb }
+      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     // Block titles currently on main so the two stations do not play the same song.

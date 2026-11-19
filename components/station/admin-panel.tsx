@@ -178,11 +178,11 @@ export function AdminPanel() {
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
-          <Label htmlFor="broadcast">Broadcast</Label>
+          <Label htmlFor="broadcast">Manila 93.5 Broadcast</Label>
           <span className="text-xs text-muted-foreground">
             {data?.broadcastEnabled === false
-              ? `Naka-off ang livestream · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`
-              : `Mellow easy-listening · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`}
+              ? `RJ FM Manila 93.5 lang ang naka-off · regional stations stay live · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`
+              : `RJ FM Manila 93.5 + DZMM schedule · regional stations stay live · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`}
           </span>
         </div>
         <Switch
