@@ -153,6 +153,8 @@ export async function getProfile(accountId: string) {
 }
 
 async function refreshDailyCredits(client: PoolClient, accountId: string) {
+  // Daily credits are replaced with the current allowance on the next Manila date;
+  // only bonus credits persist, so unused daily credits never roll over.
   const today = manilaTodaySql()
   const { rows } = await client.query<AccountSession & { daily_allowance: number }>(
     `SELECT a.id, a.email, a.display_name, a.avatar_mime, a.avatar_data, a.daily_credits, a.bonus_credits,

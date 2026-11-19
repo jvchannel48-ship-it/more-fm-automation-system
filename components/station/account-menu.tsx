@@ -140,6 +140,7 @@ export function AccountMenu() {
                   <p className="text-xs text-muted-foreground">Your credits · live update</p>
                   <p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p>
                   <p className="text-xs text-muted-foreground">{profile.dailyCredits} daily + {profile.bonusCredits} bonus · free daily {profile.dailyAllowance}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Daily credits reset kinabukasan sa Manila time; unused daily credits do not accumulate. Bonus credits are separate.</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="profile-name">Display name</Label>
