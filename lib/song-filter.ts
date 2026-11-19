@@ -69,7 +69,7 @@ export const GENRE_BLOCK_PRESETS = [
  * `import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'`
  * (Vercel build failed on b15a06a when this export was missing.)
  */
-export const STRICT_CLASSIC_LOVE_GENRES = DEFAULT_BLOCKED_GENRES
+export const STRICT_CLASSIC_LOVE_GENRES = [...DEFAULT_BLOCKED_GENRES, 'dance', 'disco'] as const
 
 function normalize(value: string) {
   return value
@@ -128,6 +128,14 @@ export function matchesBlockedGenre(value: string, blockedGenres: string[]) {
     if (normalized.includes(` ${needle} `)) return true
     return normalized.startsWith(` ${needle} `) || normalized.endsWith(` ${needle} `)
   })
+}
+
+/** A blocked dance-family genre disables the whole disco program, not just tagged results. */
+export function isBlockedProgramGenre(programId: string, blockedGenres: string[]) {
+  const normalizedProgram = programId.replaceAll('-', ' ')
+  if (matchesBlockedGenre(normalizedProgram, blockedGenres)) return true
+  return normalize(programId) === 'disco'
+    && blockedGenres.some((genre) => ['disco', 'dance', 'eurodance', 'pop'].includes(normalize(genre)))
 }
 
 /**

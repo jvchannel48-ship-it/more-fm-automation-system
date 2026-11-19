@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
-import { isBlockedByTitleRules, isOriginalArtistTrack } from '../lib/song-filter.ts'
+import { isBlockedByTitleRules, isBlockedProgramGenre, isOriginalArtistTrack } from '../lib/song-filter.ts'
+import { PROGRAMS } from '../lib/schedule.ts'
+
+assert.equal(isBlockedProgramGenre(PROGRAMS.disco.id, ['disco']), true, 'an explicit disco filter blocks the complete disco program')
+assert.equal(isBlockedProgramGenre(PROGRAMS.disco.id, ['dance']), true, 'a dance filter also blocks the complete disco program')
 
 const whitney = { name: 'Whitney Houston', match: 'Whitney Houston' }
 const dionela = { name: 'Dionela', match: 'dionela' }

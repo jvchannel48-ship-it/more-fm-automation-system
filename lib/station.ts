@@ -19,7 +19,7 @@ import {
   type Artist,
   type Program,
 } from './schedule'
-import { isOriginalArtistTrack } from './song-filter'
+import { isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -70,7 +70,7 @@ function matchesBlockedGenre(value: string, blockedGenres: string[]) {
   })
 }
 function isBlockedProgram(program: Program, blockedGenres: string[]) {
-  return matchesBlockedGenre(program.id.replaceAll('-', ' '), blockedGenres)
+  return isBlockedProgramGenre(program.id, blockedGenres)
 }
 function songKey(title: string) {
   return normalize(title.replace(/\(.*?\)|\[.*?\]/g, ' '))
