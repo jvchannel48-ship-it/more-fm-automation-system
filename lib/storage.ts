@@ -289,6 +289,7 @@ export const STATE_PATH = 'station/state-v2.json'
 /** RJ FM 105.5 Cebu — independent music queue. */
 export const CEBU_STATE_PATH = 'station/state-cebu-v2.json'
 export const GENSAN_STATE_PATH = 'station/state-gensan-v2.json'
+export const CDO_STATE_PATH = 'station/state-cdo-v2.json'
 export const NAGA_STATE_PATH = 'station/state-naga-v2.json'
 export const ILOILO_STATE_PATH = 'station/state-iloilo-v2.json'
 export const DAVAO_STATE_PATH = 'station/state-davao-v2.json'
