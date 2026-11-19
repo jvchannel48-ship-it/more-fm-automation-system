@@ -11,6 +11,7 @@ import {
   nextSignOn,
   PROGRAMS,
   programAt,
+  nagaProgramAt,
   SIGN_OFF_HOUR,
   SIGN_ON_HOUR,
 } from '../lib/schedule.ts'
@@ -48,6 +49,9 @@ assert.equal(programAt(manilaTime(16, 11, 59)).id, 'love-mix', 'weekday pre-noon
 assert.equal(programAt(manilaTime(16, 12)).id, 'daytime-love', 'weekday noon starts daytime love songs')
 assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
 assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')
+assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'disco', 'RJ FM Naga starts its distinct dance/pop rotation at 4:00 AM')
+assert.equal(nagaProgramAt(manilaTime(16, 11, 59)).id, 'disco', 'RJ FM Naga keeps the dance/pop rotation before noon')
+assert.equal(nagaProgramAt(manilaTime(16, 12)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 12:00 PM')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', 'noon starts with English love songs')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', 'noon keeps English as the main language')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', 'noon keeps English as the main language')

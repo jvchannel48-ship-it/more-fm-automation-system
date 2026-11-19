@@ -143,7 +143,7 @@ export function RadioPlayer() {
         <Button type="button" variant="ghost" size="icon-sm" aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((m) => !m)}>
           {muted || volume === 0 ? <VolumeX /> : <Volume2 />}
         </Button>
-        <Slider value={[muted ? 0 : volume * 100]} onValueChange={(v) => { setMuted(false); setVolume((v[0] ?? 70) / 100) }} max={100} step={1} aria-label="Volume" />
+        <Slider value={[muted ? 0 : volume * 100]} onValueChange={(v) => { const next = typeof v === 'number' ? v : v[0]; setMuted(false); setVolume((next ?? 70) / 100) }} max={100} step={1} aria-label="Volume" />
       </div>
 
       <div className="flex flex-col items-center gap-1">

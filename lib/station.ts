@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, CEBU_STATE_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
   isOffAir,
@@ -12,6 +12,7 @@ import {
   manilaDateKey,
   manilaTime,
   nextSignOn,
+  nagaProgramAt,
   programAt,
   type Artist,
   type Program,
@@ -105,7 +106,7 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const fresh = allowed.filter((a) => !recent.has(a.name))
   return shuffle(fresh.length >= 3 ? fresh : allowed)
 }
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, blockedGenres: string[]) {
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, blockedGenres: string[], station: StationId = 'main') {
   if (isBlockedProgram(program, blockedGenres)) return null
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
@@ -119,7 +120,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      if (!isOriginalArtistTrack(item.title, artist)) return false
+      const allowDancePop = station === 'naga' && program.id === 'disco'
+      if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
@@ -156,17 +158,17 @@ function nextStart(state: StationState, now: number) {
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
-async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[]) {
+async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main') {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
     if (isOffAir(startAt)) break
-    const program = programAt(startAt, sundayScheduleEnabled)
+    const program = station === 'naga' ? nagaProgramAt(startAt) : programAt(startAt, sundayScheduleEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt, blockedGenres)
+      : await findSong(program, state.songCount, state.history, startAt, blockedGenres, station)
     if (!song) break
     if (request) state.requestQueue.shift()
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -231,18 +233,19 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
   })
 }
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
-  const station: StationId = options.station === 'cebu' ? 'cebu' : 'main'
+  const station: StationId = options.station ?? 'main'
   const now = Date.now()
-  if (station === 'cebu') {
-    // Always independent music queue — never mirror main (different songs).
+  if (station === 'cebu' || station === 'naga') {
+    // Independent music queues — never mirror main (different songs).
+    const statePath = station === 'naga' ? NAGA_STATE_PATH : CEBU_STATE_PATH
     const [{ state, changed }, settings, mainSnap] = await Promise.all([
-      loadState(now, CEBU_STATE_PATH),
+      loadState(now, statePath),
       getSettings(),
       loadState(now, STATE_PATH),
     ])
     const offAir = isOffAir(now) || !settings.broadcastEnabled
     if (offAir) {
-      if (state.tracks.length > 0) { state.tracks = []; await writeJson(CEBU_STATE_PATH, state) }
+      if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
       return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
@@ -250,7 +253,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const mainLiveKeys = new Set(
       mainSnap.state.tracks
         .filter((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now)
-        .map((track) => songKey(track.title)),
+        .map((track) => songKey(track.title ?? '')),
     )
     if (mainLiveKeys.size) {
       state.history = [
@@ -261,11 +264,11 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const needsFill = state.tracks.filter((track) => track.startAt > now).length < 1
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
       state.fillingUntil = now + FILL_LOCK_MS
-      await writeJson(CEBU_STATE_PATH, state)
-      await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres)
+      await writeJson(statePath, state)
+      await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres, station)
       state.fillingUntil = 0
-      await writeJson(CEBU_STATE_PATH, state)
-    } else if (changed) { await writeJson(CEBU_STATE_PATH, state) }
+      await writeJson(statePath, state)
+    } else if (changed) { await writeJson(statePath, state) }
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
@@ -305,7 +308,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
           if (latest.failedDzmmWindowStart !== dzmmWindow.startAt && latest.tracks.some((track) => track.uid === liveUid) && !latest.tracks.some((track) => track.kind === 'music' && track.startAt >= transitionStartAt)) {
             const requests = latest.requestQueue
             latest.requestQueue = []
-            try { await fill(latest, transitionStartAt, settings.sundayScheduleEnabled, settings.blockedGenres) } finally { latest.requestQueue = requests }
+            try { await fill(latest, transitionStartAt, settings.sundayScheduleEnabled, settings.blockedGenres, 'main') } finally { latest.requestQueue = requests }
           }
           const { state: current } = await loadState(Date.now())
           if (current.fillingUntil !== fillLock || current.failedDzmmWindowStart === dzmmWindow.startAt) return
@@ -330,7 +333,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (needsFill && state.fillingUntil < now && !options.skipFill) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres)
+    await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres, 'main')
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) { await writeJson(STATE_PATH, state) }
@@ -344,14 +347,16 @@ export async function getAdminStatus(): Promise<AdminStatus> {
 }
 export async function refreshQueue() {
   const now = Date.now()
-  const { state } = await loadState(now)
-  state.tracks = state.tracks.filter((t) => t.startAt <= now)
-  state.fillingUntil = 0
-  await writeJson(STATE_PATH, state)
+  for (const path of [STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH]) {
+    const { state } = await loadState(now, path)
+    state.tracks = state.tracks.filter((track) => track.startAt <= now)
+    state.fillingUntil = 0
+    await writeJson(path, state)
+  }
 }
 export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}): Promise<NowResponse> {
-  const station: StationId = options.station === 'cebu' ? 'cebu' : 'main'
-  if (station === 'cebu') return getNowPlaying({ station: 'cebu' })
+  const station: StationId = options.station ?? 'main'
+  if (station === 'cebu' || station === 'naga') return getNowPlaying({ station })
   const now = Date.now()
   const [{ state }, settings] = await Promise.all([loadState(now), getSettings()])
   const failed = state.tracks.find((track) => track.uid === uid)
@@ -366,7 +371,7 @@ export async function recoverFailedTrack(uid: string, options: { station?: Stati
   state.fillingUntil = 0
   const hasCurrentMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now)
   const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
-  if (!hasCurrentMusic && !hasUpcomingMusic) await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres)
+  if (!hasCurrentMusic && !hasUpcomingMusic) await fill(state, now, settings.sundayScheduleEnabled, settings.blockedGenres, 'main')
   await writeJson(STATE_PATH, state)
   return getNowPlaying({ skipFill: true, station })
 }

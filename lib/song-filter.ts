@@ -9,14 +9,14 @@ const AI_OR_NON_ORIGINAL_RULE =
 
 /**
  * Hard-blocked genres for RJ FM love rotation.
- * Intentionally does NOT match bare "pop" so classic love / soft pop still plays.
+ * Bare "pop" is blocked here; the Naga morning program opts into its own controlled exception.
  */
 const EXCLUDED_GENRE_RULE =
-  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie\s*rock|punk(?:\s*rock)?|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:\s*hits?|\s*mix|\s*pop)?|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger)\b/i
+  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie\s*rock|punk(?:\s*rock)?|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:\s*hits?|\s*mix|\s*pop)?|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger|pop)\b/i
 
 /** Extra club / party terms that often appear without the word "dance". */
 const CLASSIC_LOVE_EXCLUSION_RULE =
-  /\b(?:club|party|boogie|groove|up\s?tempo|faster|extended\s*mix|clubmix|dancemix|housemix|dj\s*mix|nonstop\s*mix|fitness|workout|aerobics)\b/i
+  /\b(?:club|party|boogie|groove|up\s?tempo|faster|extended\s*mix|clubmix|dancemix|housemix|dj\s*mix|radio\s*edit|edit|nonstop\s*mix|fitness|workout|aerobics)\b/i
 
 /** Live / concert / news / non-song media. */
 const LIVE_CONCERT_NEWS_RULE =
@@ -29,6 +29,7 @@ const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
 const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
+const NAGA_MORNING_HARD_BLOCK_RULE = /\b(?:rock|metal|punk|grunge|emo|screamo|hardcore|headbang|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|reggaeton|dubstep|drum\s*and\s*bass|dnb)\b/i
 
 /** Built-in admin defaults — always applied even if settings.blockedGenres is empty. */
 export const DEFAULT_BLOCKED_GENRES = [
@@ -92,20 +93,22 @@ function hasArtistCreditAttribution(title: string, artist: ArtistTrackCredit) {
 }
 
 /** Title fails hard genre / media rules (independent of admin list). */
-export function isBlockedByTitleRules(title: string) {
+export function isBlockedByTitleRules(title: string, options: { allowDancePop?: boolean } = {}) {
   if (!title || NON_LATIN.test(title)) return true
   const normalizedTitle = normalize(title)
   if (AI_OR_NON_ORIGINAL_RULE.test(title)) return true
-  if (EXCLUDED_GENRE_RULE.test(title) || EXCLUDED_GENRE_RULE.test(normalizedTitle)) return true
-  if (CLASSIC_LOVE_EXCLUSION_RULE.test(normalizedTitle)) return true
+  if (options.allowDancePop
+    ? NAGA_MORNING_HARD_BLOCK_RULE.test(title) || NAGA_MORNING_HARD_BLOCK_RULE.test(normalizedTitle)
+    : EXCLUDED_GENRE_RULE.test(title) || EXCLUDED_GENRE_RULE.test(normalizedTitle)) return true
+  if (!options.allowDancePop && CLASSIC_LOVE_EXCLUSION_RULE.test(normalizedTitle)) return true
   if (LIVE_CONCERT_NEWS_RULE.test(title) || LIVE_CONCERT_NEWS_RULE.test(normalizedTitle)) return true
   if (NON_MUSIC_OR_ALTERNATE_RULE.test(title) || FOREIGN_RULE.test(title)) return true
   return false
 }
 
 /** Accept an original track only when the scheduled artist is credited and title is clean. */
-export function isOriginalArtistTrack(title: string, artist: ArtistTrackCredit) {
-  if (isBlockedByTitleRules(title)) return false
+export function isOriginalArtistTrack(title: string, artist: ArtistTrackCredit, options: { allowDancePop?: boolean } = {}) {
+  if (isBlockedByTitleRules(title, options)) return false
   return hasArtistCreditAttribution(title, artist)
 }
 

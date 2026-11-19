@@ -19,6 +19,11 @@ assert.equal(
   true,
   'Dionela Marilag original is eligible for the new Tagalog OPM feature',
 )
+assert.equal(
+  isOriginalArtistTrack('Whitney Houston - I Wanna Dance With Somebody', whitney, { allowDancePop: true }),
+  true,
+  'Naga morning may use a clean artist-credited dance/pop original',
+)
 
 for (const title of [
   'Whitney Houston - I Wanna Dance With Somebody',

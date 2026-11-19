@@ -476,6 +476,14 @@ export function programAt(ms: number, sundayScheduleEnabled = true): Program {
   return PROGRAMS['love-mix']
 }
 
+/** RJ FM Naga 92.3 has its own morning dance/pop rotation, then love songs from noon. */
+export function nagaProgramAt(ms: number): Program {
+  const { hour } = manilaTime(ms)
+  if (hour >= 4 && hour < 12) return PROGRAMS.disco
+  if (hour >= 12 && hour < 20) return PROGRAMS['daytime-love']
+  return PROGRAMS['love-mix']
+}
+
 /** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */
 export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'

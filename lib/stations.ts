@@ -1,4 +1,4 @@
-export type StationId = 'main' | 'cebu' | 'gensan' | 'cdo' | 'davao' | 'iloilo'
+export type StationId = 'main' | 'naga' | 'cebu' | 'gensan' | 'cdo' | 'davao' | 'iloilo'
 
 /** How this station builds its playlist / live windows. */
 export type StationMode =
@@ -45,6 +45,21 @@ export const STATIONS: Record<StationId, StationMeta> = {
     signOnHour: 4,
     statePath: 'station/state-v2.json',
     vinylMark: 'RJ FM',
+  },
+  naga: {
+    id: 'naga',
+    name: 'RJ FM Naga',
+    shortName: 'RJ FM Naga',
+    city: 'Naga',
+    frequency: '92.3',
+    description: 'Independent music · dance/pop mornings · love songs from noon',
+    mode: 'music',
+    shellClass: 'station-naga',
+    modeLabel: 'Music',
+    signOffHour: 3,
+    signOnHour: 4,
+    statePath: 'station/state-naga-v2.json',
+    vinylMark: 'NAGA',
   },
   cebu: {
     id: 'cebu',
@@ -123,7 +138,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
   },
 }
 
-export const STATION_ORDER: StationId[] = ['main', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo']
+export const STATION_ORDER: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo']
 
 export function isStationId(value: unknown): value is StationId {
   return typeof value === 'string' && value in STATIONS
