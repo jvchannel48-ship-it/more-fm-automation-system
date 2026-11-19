@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isOriginalArtistTrack } from '../lib/song-filter.ts'
+import { isBlockedByTitleRules, isOriginalArtistTrack } from '../lib/song-filter.ts'
 
 const whitney = { name: 'Whitney Houston', match: 'Whitney Houston' }
 const dionela = { name: 'Dionela', match: 'dionela' }
@@ -55,5 +55,7 @@ assert.equal(
   true,
   'a classic ballad remains eligible',
 )
+assert.equal(isBlockedByTitleRules('Whitney Houston - Christmas Worship'), true, 'seasonal worship tracks stay blocked on standard stations')
+assert.equal(isBlockedByTitleRules('Whitney Houston - I Wanna Dance With Somebody', { allowDancePop: true }), false, 'Naga morning still permits clean dance/pop originals')
 
 console.log('song filter: only artist-credited originals pass; dance/pop/rock and cover/remix results are rejected')

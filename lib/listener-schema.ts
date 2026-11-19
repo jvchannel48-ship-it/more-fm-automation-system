@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS morefm_listener_accounts (
   daily_credits integer NOT NULL DEFAULT 0 CHECK (daily_credits >= 0),
   bonus_credits integer NOT NULL DEFAULT 0 CHECK (bonus_credits >= 0),
   credit_date date NOT NULL DEFAULT ((now() AT TIME ZONE 'Asia/Manila')::date),
-  avatar_mime text,
-  avatar_data bytea,
-  created_at timestamptz NOT NULL DEFAULT now(),
+	  avatar_mime text,
+	  avatar_data bytea,
+	  last_active_at timestamptz,
+	  created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT listener_account_avatar_pair CHECK (
     (avatar_mime IS NULL AND avatar_data IS NULL) OR (avatar_mime IS NOT NULL AND avatar_data IS NOT NULL)
@@ -35,11 +36,21 @@ CREATE TABLE IF NOT EXISTS morefm_listener_sessions (
 );
 CREATE INDEX IF NOT EXISTS listener_sessions_expiry_idx ON morefm_listener_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS listener_sessions_account_idx ON morefm_listener_sessions(account_id);
-CREATE TABLE IF NOT EXISTS morefm_credit_settings (
+	CREATE TABLE IF NOT EXISTS morefm_credit_settings (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
   daily_allowance integer NOT NULL DEFAULT 0 CHECK (daily_allowance >= 0),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+	  updated_at timestamptz NOT NULL DEFAULT now()
+	);
+	CREATE TABLE IF NOT EXISTS morefm_credit_usage (
+	  account_id uuid NOT NULL REFERENCES morefm_listener_accounts(id) ON DELETE CASCADE,
+	  usage_date date NOT NULL,
+	  credits_used integer NOT NULL DEFAULT 0 CHECK (credits_used >= 0),
+	  requests_count integer NOT NULL DEFAULT 0 CHECK (requests_count >= 0),
+	  updated_at timestamptz NOT NULL DEFAULT now(),
+	  PRIMARY KEY (account_id, usage_date)
+	);
+	ALTER TABLE morefm_listener_accounts ADD COLUMN IF NOT EXISTS last_active_at timestamptz;
+	CREATE INDEX IF NOT EXISTS listener_accounts_active_idx ON morefm_listener_accounts(last_active_at);
 INSERT INTO morefm_credit_settings(id, daily_allowance)
 VALUES (true, 0)
 ON CONFLICT (id) DO NOTHING;

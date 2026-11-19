@@ -11,7 +11,7 @@ const SESSION_DAYS = 30
 export const USER_SESSION_COOKIE = 'morefm_user'
 const PASSWORD_BYTES = 64
 
-type AccountSession = { id: string; email: string; display_name: string; avatar_mime: string | null; avatar_data: Buffer | null; daily_credits: number; bonus_credits: number; credit_date: string; updated_at: string }
+type AccountSession = { id: string; email: string; display_name: string; avatar_mime: string | null; avatar_data: Buffer | null; daily_credits: number; bonus_credits: number; credit_date: string; updated_at: string; last_active_at: string | null }
 
 function passwordIsValid(password: string) { return password.length >= 8 && password.length <= 256 }
 async function hashPassword(password: string, saltHex = randomBytes(16).toString('hex')) {
@@ -142,12 +142,21 @@ export async function removeSession(token: string | undefined) {
 }
 
 export async function getProfile(accountId: string) {
+  await ensureListenerSchema()
   const client = await getDb().connect()
   try {
     await client.query('BEGIN')
     const profile = await refreshDailyCredits(client, accountId)
+    const usage = await client.query<{ usage_date: string; credits_used: number; requests_count: number }>(
+      `SELECT usage_date::text AS usage_date, credits_used, requests_count
+       FROM morefm_credit_usage
+       WHERE account_id = $1
+         AND usage_date >= (date_trunc('week', timezone('Asia/Manila', now()))::date)
+         AND usage_date <= (date_trunc('week', timezone('Asia/Manila', now()))::date + 5)
+       ORDER BY usage_date`, [accountId],
+    )
     await client.query('COMMIT')
-    return profile
+    return profile ? { ...profile, usage: usage.rows } : null
   } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error }
   finally { client.release() }
 }
@@ -158,7 +167,7 @@ async function refreshDailyCredits(client: PoolClient, accountId: string) {
   const today = manilaTodaySql()
   const { rows } = await client.query<AccountSession & { daily_allowance: number }>(
     `SELECT a.id, a.email, a.display_name, a.avatar_mime, a.avatar_data, a.daily_credits, a.bonus_credits,
-            a.credit_date::text AS credit_date, a.updated_at::text AS updated_at,
+            a.credit_date::text AS credit_date, a.updated_at::text AS updated_at, a.last_active_at::text AS last_active_at,
             COALESCE(s.daily_allowance,0) AS daily_allowance
      FROM morefm_listener_accounts a CROSS JOIN morefm_credit_settings s
      WHERE a.id = $1 AND s.id = true FOR UPDATE OF a`, [accountId],
@@ -173,6 +182,7 @@ async function refreshDailyCredits(client: PoolClient, accountId: string) {
 }
 
 export async function chargeSongRequest(accountId: string) {
+  await ensureListenerSchema()
   const client = await getDb().connect()
   try {
     await client.query('BEGIN')
@@ -184,6 +194,14 @@ export async function chargeSongRequest(accountId: string) {
       return { accepted: false, creditsRemaining: spent.creditsRemaining }
     }
     await client.query('UPDATE morefm_listener_accounts SET daily_credits = $2, bonus_credits = $3, updated_at = now() WHERE id = $1', [accountId, spent.dailyCredits, spent.bonusCredits])
+    await client.query(
+      `INSERT INTO morefm_credit_usage(account_id, usage_date, credits_used, requests_count)
+       VALUES ($1, ${manilaTodaySql()}, $2, 1)
+       ON CONFLICT (account_id, usage_date) DO UPDATE SET
+         credits_used = morefm_credit_usage.credits_used + EXCLUDED.credits_used,
+         requests_count = morefm_credit_usage.requests_count + 1,
+         updated_at = now()`, [accountId, SONG_REQUEST_CREDIT_COST],
+    )
     await client.query('COMMIT')
     return { accepted: true, creditsRemaining: spent.creditsRemaining }
   } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error }
@@ -253,9 +271,14 @@ export async function getAdminCreditData() {
   )
   const [{ rows: settings }, { rows: users }] = await Promise.all([
     getDb().query<{ daily_allowance: number }>('SELECT daily_allowance FROM morefm_credit_settings WHERE id=true'),
-    getDb().query<{ id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string }>(
-      'SELECT id,email,display_name,daily_credits,bonus_credits,credit_date::text AS credit_date FROM morefm_listener_accounts ORDER BY created_at DESC',
+    getDb().query<{ id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string; last_active_at: string | null; credits_used: number; requests_count: number }>(
+      `SELECT a.id,a.email,a.display_name,a.daily_credits,a.bonus_credits,a.credit_date::text AS credit_date,
+              a.last_active_at::text AS last_active_at,
+              COALESCE(u.credits_used,0) AS credits_used, COALESCE(u.requests_count,0) AS requests_count
+       FROM morefm_listener_accounts a
+       LEFT JOIN morefm_credit_usage u ON u.account_id = a.id AND u.usage_date = ${today}
+       ORDER BY a.created_at DESC`,
     ),
   ])
-  return { dailyAllowance: settings[0]?.daily_allowance ?? 0, profiles: users.map((user) => ({ user_id: user.id, email: user.email, display_name: user.display_name, daily_credits: user.daily_credits, bonus_credits: user.bonus_credits, credit_date: user.credit_date })) }
+  return { dailyAllowance: settings[0]?.daily_allowance ?? 0, profiles: users.map((user) => ({ user_id: user.id, email: user.email, display_name: user.display_name, daily_credits: user.daily_credits, bonus_credits: user.bonus_credits, credit_date: user.credit_date, credits_used: user.credits_used, requests_count: user.requests_count, last_active_at: user.last_active_at, active_now: Boolean(user.last_active_at && Date.now() - new Date(user.last_active_at).getTime() < 75_000) })) }
 }

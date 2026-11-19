@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
       bonusCredits: profile.bonus_credits,
       dailyAllowance: profile.daily_allowance,
       creditsRemaining: profile.daily_credits + profile.bonus_credits,
+      usage: profile.usage.map((item) => ({
+        date: item.usage_date,
+        creditsUsed: item.credits_used,
+        requests: item.requests_count,
+      })),
     }, { headers: privateJsonHeaders })
   } catch (error) {
     console.error('[morefm] profile fetch failed', error instanceof Error ? error.message : 'unknown error')

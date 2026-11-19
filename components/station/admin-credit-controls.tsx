@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-type AdminCredits = { dailyAllowance: number; profiles: Array<{ user_id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string }> }
+type AdminCredits = { dailyAllowance: number; profiles: Array<{ user_id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string; credits_used?: number; requests_count?: number; last_active_at?: string | null; active_now?: boolean }> }
 
 export function AdminCreditControls() {
   const [data, setData] = useState<AdminCredits | null>(null)
@@ -77,7 +77,7 @@ export function AdminCreditControls() {
   return <section className="flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
     <div>
       <h3 className="flex items-center gap-2 font-semibold"><Users className="size-4" /> Listener accounts & credits</h3>
-      <p className="mt-1 text-xs text-muted-foreground">15 credits per song request (30 for 2 songs). Free daily credits apply to all users every Manila midnight. Balances auto-refresh every 3 seconds.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Monitor credits and current listening activity. The list refreshes every 3 seconds.</p>
     </div>
     <div className="flex flex-col gap-2">
       <Label htmlFor="daily-credit-allowance">Free daily credits per user</Label>
@@ -104,11 +104,16 @@ export function AdminCreditControls() {
         <div key={profile.user_id} className="flex items-center justify-between gap-3 border-b border-border/60 px-2 py-2 last:border-0">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{profile.display_name || profile.email || 'Listener'}</p>
-            <p className="truncate text-[11px] text-muted-foreground">{profile.email}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{profile.email.endsWith('@device.local') ? 'Phone device' : profile.email}</p>
+            <p className={`mt-1 text-[10px] ${profile.active_now ? 'text-emerald-300' : 'text-muted-foreground'}`}>
+              <span className={`mr-1 inline-block size-1.5 rounded-full ${profile.active_now ? 'bg-emerald-400' : 'bg-muted-foreground/60'}`} />
+              {profile.active_now ? 'Active listening now' : profile.last_active_at ? `Last seen ${new Date(profile.last_active_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}` : 'Not listening'}
+            </p>
           </div>
           <p className="shrink-0 text-right text-xs tabular-nums">
             {profile.daily_credits + profile.bonus_credits}
-            <span className="block text-[10px] text-muted-foreground">daily {profile.daily_credits} · bonus {profile.bonus_credits}</span>
+            <span className="block text-[10px] text-muted-foreground">available</span>
+            <span className="block text-[10px] text-emerald-300">used today {profile.credits_used ?? 0}</span>
           </p>
         </div>
       ))}

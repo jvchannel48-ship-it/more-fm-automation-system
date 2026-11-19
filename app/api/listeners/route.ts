@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordListener } from '@/lib/storage'
+import { getAccountFromToken, USER_SESSION_COOKIE } from '@/lib/account-store'
+import { getDb } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +15,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    return NextResponse.json(await recordListener(id, body.active), noStore)
+    const result = await recordListener(id, body.active)
+    // The anonymous listener count remains available, while an authenticated
+    // phone session also gets a short-lived active-listening marker for admins.
+    const token = request.cookies.get(USER_SESSION_COOKIE)?.value
+    const account = await getAccountFromToken(token).catch(() => null)
+    if (account) {
+      await getDb().query('UPDATE morefm_listener_accounts SET last_active_at = $2, updated_at = now() WHERE id = $1', [account.id, body.active ? new Date() : null])
+    }
+    return NextResponse.json(result, noStore)
   } catch (error) {
     console.error('[morefm] listener heartbeat failed', error)
     return NextResponse.json({ error: 'Could not update listener count.' }, { status: 503, ...noStore })
