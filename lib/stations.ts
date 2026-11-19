@@ -14,6 +14,7 @@ export interface StationMeta {
   city: string
   frequency: string
   description: string
+  notificationTagline: string
   mode: StationMode
   /** CSS class on the app shell */
   shellClass: string
@@ -38,6 +39,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Manila',
     frequency: '93.5',
     description: 'Main station',
+    notificationTagline: 'RJ FM Manila 93.5',
     mode: 'main-dzmm',
     shellClass: 'station-main',
     modeLabel: 'Main',
@@ -52,7 +54,8 @@ export const STATIONS: Record<StationId, StationMeta> = {
     shortName: 'RJ FM Naga',
     city: 'Naga',
     frequency: '92.3',
-    description: 'Independent music · dance/pop mornings · love songs from noon',
+    description: 'Independent music · disco/dance until 1 PM · love songs after 1 PM',
+    notificationTagline: 'RJ FM Naga 92.3 · No. 1 Bicol Region',
     mode: 'music',
     shellClass: 'station-naga',
     modeLabel: 'Music',
@@ -68,6 +71,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Cebu',
     frequency: '105.5',
     description: 'Music only',
+    notificationTagline: 'RJ FM Cebu 105.5',
     mode: 'music',
     shellClass: 'station-cebu',
     modeLabel: 'Music',
@@ -83,6 +87,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'General Santos',
     frequency: '96.3',
     description: 'Music only',
+    notificationTagline: 'RJ FM GenSan 96.3',
     mode: 'music',
     shellClass: 'station-gensan',
     modeLabel: 'Music',
@@ -98,6 +103,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Cagayan de Oro',
     frequency: '102.7',
     description: 'Music only · own songs',
+    notificationTagline: 'RJ FM CDO 102.7',
     mode: 'music',
     shellClass: 'station-cdo',
     modeLabel: 'Music',
@@ -113,6 +119,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Davao',
     frequency: '104.6',
     description: 'Music only · own songs',
+    notificationTagline: 'RJ FM Davao 104.6',
     mode: 'music',
     shellClass: 'station-davao',
     modeLabel: 'Music',
@@ -128,6 +135,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     city: 'Iloilo',
     frequency: '92.3',
     description: 'Regional',
+    notificationTagline: 'RJ FM Iloilo 92.3',
     mode: 'iloilo-dzmm',
     shellClass: 'station-iloilo',
     modeLabel: 'Regional',

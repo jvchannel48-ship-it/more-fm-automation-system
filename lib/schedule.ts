@@ -472,7 +472,7 @@ export function iloiloDzmmWindowAt(ms: number): DzmmWindow | null {
   return null
 }
 
-/** Own programming stays on classic love songs; DZMM windows are handled separately. */
+/** Own programming uses disco/dance until 1 PM, then love songs; DZMM windows are handled separately. */
 export function programAt(ms: number, sundayScheduleEnabled = true): Program {
   const { hour, day } = manilaTime(ms)
   if (sundayScheduleEnabled && day === 0) {
@@ -481,16 +481,16 @@ export function programAt(ms: number, sundayScheduleEnabled = true): Program {
     if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
     if (hour >= 20) return PROGRAMS['sunday-english-love']
   }
-  if (hour >= 4 && hour < 12) return PROGRAMS.disco
-  if (hour >= 12 && hour < 20) return PROGRAMS['daytime-love']
+  if (hour >= 4 && hour < 13) return PROGRAMS.disco
+  if (hour >= 13 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
 }
 
-/** RJ FM Naga 92.3 has its own morning dance/pop rotation, then love songs from noon. */
+/** RJ FM Naga 92.3 has its own disco/dance rotation until 1 PM, then love songs. */
 export function nagaProgramAt(ms: number): Program {
   const { hour } = manilaTime(ms)
-  if (hour >= 4 && hour < 12) return PROGRAMS.disco
-  if (hour >= 12 && hour < 20) return PROGRAMS['daytime-love']
+  if (hour >= 4 && hour < 13) return PROGRAMS.disco
+  if (hour >= 13 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
 }
 

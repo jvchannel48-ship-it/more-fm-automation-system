@@ -33,7 +33,7 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  const expectedNormalProgram = hour >= 4 && hour < 12 ? 'disco' : hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
+  const expectedNormalProgram = hour >= 4 && hour < 13 ? 'disco' : hour >= 13 && hour < 20 ? 'daytime-love' : 'love-mix'
   assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedNormalProgram, `Sunday ${hour}:00 uses the expected normal rotation when Sunday schedule is OFF`)
   assert.equal(programAt(manilaTime(16, hour)).id, expectedNormalProgram, `Monday ${hour}:00 selects the expected regular program`)
 
@@ -45,16 +45,16 @@ for (let hour = 0; hour < 24; hour++) {
   }
 }
 
-assert.equal(programAt(manilaTime(16, 11, 59)).id, 'disco', 'weekday pre-noon stays on the disco dance mix')
-assert.equal(programAt(manilaTime(16, 12)).id, 'daytime-love', 'weekday noon starts daytime love songs')
+assert.equal(programAt(manilaTime(16, 12, 59)).id, 'disco', 'weekday pre-1 PM stays on the disco dance mix')
+assert.equal(programAt(manilaTime(16, 13)).id, 'daytime-love', 'weekday 1 PM starts daytime love songs')
 assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
 assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')
 assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'disco', 'RJ FM Naga starts its distinct dance/pop rotation at 4:00 AM')
-assert.equal(nagaProgramAt(manilaTime(16, 11, 59)).id, 'disco', 'RJ FM Naga keeps the dance/pop rotation before noon')
-assert.equal(nagaProgramAt(manilaTime(16, 12)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 12:00 PM')
-assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', 'noon starts with English love songs')
-assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', 'noon keeps English as the main language')
-assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', 'noon keeps English as the main language')
+assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'disco', 'RJ FM Naga keeps the dance/pop rotation before 1 PM')
+assert.equal(nagaProgramAt(manilaTime(16, 13)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 1:00 PM')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', '1 PM starts with English love songs')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', '1 PM keeps English as the main language')
+assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', '1 PM keeps English as the main language')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 3), 'tagalog', 'a Tagalog love song appears occasionally')
 
 assert.ok(PROGRAMS['love-mix'].pools.english.length > 0, 'mellow rotation includes English songs')

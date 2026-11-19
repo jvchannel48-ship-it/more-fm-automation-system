@@ -6,6 +6,8 @@ import { ArrowLeft, BadgeCheck, Bell, Image as ImageIcon, Inbox, Megaphone, Spar
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
+import { STATIONS, type StationId } from '@/lib/stations'
+import { getStoredStation } from './station-selector'
 import {
   clearAllNotificationState,
   filterVisibleNotifications,
@@ -13,8 +15,8 @@ import {
   mergeNotificationIds,
 } from '@/lib/notification-state'
 
-const READ_KEY = 'mor-935-read-notifications'
-const DISMISSED_KEY = 'mor-935-dismissed-notifications'
+const READ_KEY = 'rj-fm-read-notifications'
+const DISMISSED_KEY = 'rj-fm-dismissed-notifications'
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then((response) => response.json() as Promise<{ notifications: StationNotification[] }>)
 
 function readStoredIds(key: string) {
@@ -50,11 +52,14 @@ export function NotificationCenter() {
   const [readIds, setReadIds] = useState<string[]>([])
   const [dismissedIds, setDismissedIds] = useState<string[]>([])
   const [selectedNotification, setSelectedNotification] = useState<StationNotification | null>(null)
+  const [stationId, setStationId] = useState<StationId>('main')
   const notifications = data?.notifications ?? []
+  const station = STATIONS[stationId]
 
   useEffect(() => {
     setReadIds(readStoredIds(READ_KEY))
     setDismissedIds(readStoredIds(DISMISSED_KEY))
+    setStationId(getStoredStation())
   }, [])
 
   const visibleNotifications = useMemo(
@@ -103,7 +108,7 @@ export function NotificationCenter() {
               <Megaphone className="size-5" aria-hidden="true" />
             </div>
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-              {unreadCount ? `${unreadCount} new` : 'RJ FM OFFICIAL'}
+              {unreadCount ? `${unreadCount} new` : station.shortName}
             </span>
           </div>
           <SheetTitle className="mt-4 flex items-center gap-2 text-xl">
@@ -115,7 +120,7 @@ export function NotificationCenter() {
               <><Bell className="size-4 text-primary" />Notifications</>
             )}
           </SheetTitle>
-          <SheetDescription>Mga verified announcement at updates mula sa RJ FM OFFICIAL.</SheetDescription>
+          <SheetDescription>{station.notificationTagline} · Mga verified announcement at updates mula sa RJ FM OFFICIAL.</SheetDescription>
         </SheetHeader>
         {!selectedNotification && visibleNotifications.length > 0 && (
           <div className="flex items-center justify-between px-5 pt-4">

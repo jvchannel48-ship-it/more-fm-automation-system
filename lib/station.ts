@@ -1,7 +1,7 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, writeJson } from './storage'
-import type { StationId } from './stations'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, writeJson } from './storage'
+import { STATIONS, type StationId } from './stations'
 import {
   isOffAir,
   DZMM_STREAM_URL,
@@ -12,6 +12,8 @@ import {
   manilaDateKey,
   manilaTime,
   nextSignOn,
+  nextSignOnAtHour,
+  isOffAirHours,
   nagaProgramAt,
   programAt,
   type Artist,
@@ -120,7 +122,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      const allowDancePop = (station === 'main' || station === 'naga' || station === 'cebu') && program.id === 'disco'
+      const allowDancePop = ['main', 'naga', 'cebu', 'davao', 'iloilo'].includes(station) && program.id === 'disco'
       if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
@@ -235,18 +237,25 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
   const station: StationId = options.station ?? 'main'
   const now = Date.now()
-  if (station === 'cebu' || station === 'naga') {
-    // Independent music queues — never mirror main (different songs).
-    const statePath = station === 'naga' ? NAGA_STATE_PATH : CEBU_STATE_PATH
+  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo') {
+    // Independent music queues — never mirror main (different songs and state paths).
+    const statePath = station === 'naga'
+      ? NAGA_STATE_PATH
+      : station === 'cebu'
+        ? CEBU_STATE_PATH
+        : station === 'davao'
+          ? DAVAO_STATE_PATH
+          : ILOILO_STATE_PATH
+    const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([
       loadState(now, statePath),
       getSettings(),
       loadState(now, STATE_PATH),
     ])
-    const offAir = isOffAir(now) || !settings.broadcastEnabled
+    const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour) || !settings.broadcastEnabled
     if (offAir) {
       if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
-      return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb }
+      return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOnAtHour(now, stationMeta.signOnHour) : null, tracks: [], bassBoostDb: settings.bassBoostDb }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     // Block titles currently on main so the two stations do not play the same song.
@@ -347,7 +356,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
 }
 export async function refreshQueue() {
   const now = Date.now()
-  for (const path of [STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH]) {
+  for (const path of [STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH]) {
     const { state } = await loadState(now, path)
     state.tracks = state.tracks.filter((track) => track.startAt <= now)
     state.fillingUntil = 0
@@ -356,7 +365,7 @@ export async function refreshQueue() {
 }
 export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}): Promise<NowResponse> {
   const station: StationId = options.station ?? 'main'
-  if (station === 'cebu' || station === 'naga') return getNowPlaying({ station })
+  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo') return getNowPlaying({ station })
   const now = Date.now()
   const [{ state }, settings] = await Promise.all([loadState(now), getSettings()])
   const failed = state.tracks.find((track) => track.uid === uid)

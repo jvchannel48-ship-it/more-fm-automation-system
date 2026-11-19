@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Gift, Power, RefreshCw, RotateCcw, Users } from 'lucide-react'
+import { Gift, Power, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -101,8 +101,8 @@ export function AdminCreditControls() {
 
   return <section className="flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
     <div>
-      <h3 className="flex items-center gap-2 font-semibold"><Users className="size-4" /> Listener accounts & credits</h3>
-      <p className="mt-1 text-xs text-muted-foreground">Monitor credits and current listening activity. The list refreshes every 3 seconds.</p>
+      <h3 className="font-semibold">Listener credits</h3>
+      <p className="mt-1 text-xs text-muted-foreground">Manage credits for all device accounts without displaying the device-user list.</p>
     </div>
     <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
       <Button type="button" variant={data?.creditsEnabled === false ? 'outline' : 'secondary'} disabled={busy || !data || data.creditsEnabled !== false} onClick={() => void toggleCredits(true)}><Power />Credits ON</Button>
@@ -124,31 +124,6 @@ export function AdminCreditControls() {
         <Button type="button" onClick={openGrantConfirm} disabled={busy || !grantInput}><Gift />Send to all</Button>
       </div>
       <p className="text-xs text-muted-foreground">Added immediately as bonus credits for every registered account (not a daily reset).</p>
-    </div>
-    <div className="flex items-center justify-between">
-      <h4 className="text-sm font-medium">Users ({data?.profiles.length ?? 0})</h4>
-      <Button type="button" variant="ghost" size="sm" onClick={() => void load()} disabled={busy}><RefreshCw className="size-3.5" />Refresh</Button>
-    </div>
-    <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/70 bg-background/50 p-2">
-      {data?.profiles.map((profile) => (
-        <div key={profile.user_id} className="flex items-center justify-between gap-3 border-b border-border/60 px-2 py-2 last:border-0">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{profile.display_name || profile.email || 'Listener'}</p>
-            <p className="truncate text-[11px] text-muted-foreground">{profile.email.endsWith('@device.local') ? 'Phone device' : profile.email}</p>
-            <p className={`mt-1 text-[10px] ${profile.active_now ? 'text-emerald-300' : 'text-muted-foreground'}`}>
-              <span className={`mr-1 inline-block size-1.5 rounded-full ${profile.active_now ? 'bg-emerald-400' : 'bg-muted-foreground/60'}`} />
-              {profile.active_now ? 'Active listening now' : profile.last_active_at ? `Last seen ${new Date(profile.last_active_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}` : 'Not listening'}
-            </p>
-          </div>
-          <p className="shrink-0 text-right text-xs tabular-nums">
-            {data?.creditsEnabled === false ? '—' : profile.daily_credits + profile.bonus_credits}
-            <span className="block text-[10px] text-muted-foreground">{data?.creditsEnabled === false ? 'hidden' : 'available'}</span>
-            {data?.creditsEnabled !== false && <span className="block text-[10px] text-emerald-300">used today {profile.credits_used ?? 0}</span>}
-          </p>
-        </div>
-      ))}
-      {data && data.profiles.length === 0 && <p className="p-3 text-center text-xs text-muted-foreground">No linked devices / users yet.</p>}
-      {!data && !error && <p className="p-3 text-center text-xs text-muted-foreground">Loading account list…</p>}
     </div>
     {message && <p className="rounded-md bg-emerald-500/10 p-2 text-xs text-emerald-200" role="status">{message}</p>}
     {error && <p className="rounded-md bg-destructive/10 p-2 text-xs text-destructive" role="alert">{error}</p>}
