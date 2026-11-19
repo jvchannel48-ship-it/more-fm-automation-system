@@ -15,6 +15,7 @@ export type ProgramId =
   | 'disco'
   | 'night-love'
   | 'love-mix'
+  | 'masbate-tagalog'
   | 'off-air'
 
 export type Language = 'english' | 'tagalog'
@@ -268,6 +269,19 @@ const DISCO_VARIANTS = [
 ]
 const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', 'original audio', 'greatest hits']
 const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
+const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
+  'BINI',
+  'SB19',
+  'Maki',
+  'Cup of Joe',
+  'Lola Amour',
+  'Sunkissed Lola',
+  'Hev Abi',
+  'Flow G',
+  'Kiyo',
+])
+const MASBATE_TAGALOG = [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...MASBATE_CURRENT_TAGALOG]
+const MASBATE_TAGALOG_VARIANTS = ['latest 2026 OPM Tagalog song', 'new Filipino love song', 'modern Tagalog song', 'official audio', 'original audio']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
@@ -313,6 +327,12 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     id: 'night-love',
     pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+  },
+  'masbate-tagalog': {
+    id: 'masbate-tagalog',
+    pools: { english: [], tagalog: MASBATE_TAGALOG },
+    variants: { english: [], tagalog: MASBATE_TAGALOG_VARIANTS },
+    tagalogOnly: true,
   },
   'love-mix': {
     id: 'love-mix',
@@ -492,6 +512,11 @@ export function nagaProgramAt(ms: number): Program {
   if (hour >= 4 && hour < 13) return PROGRAMS.disco
   if (hour >= 13 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
+}
+
+/** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
+export function masbateProgramAt(_ms: number): Program {
+  return PROGRAMS['masbate-tagalog']
 }
 
 /** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */

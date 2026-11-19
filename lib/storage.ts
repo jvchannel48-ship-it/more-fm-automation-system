@@ -292,6 +292,7 @@ export const GENSAN_STATE_PATH = 'station/state-gensan-v2.json'
 export const NAGA_STATE_PATH = 'station/state-naga-v2.json'
 export const ILOILO_STATE_PATH = 'station/state-iloilo-v2.json'
 export const DAVAO_STATE_PATH = 'station/state-davao-v2.json'
+export const MASBATE_STATE_PATH = 'station/state-masbate-v2.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,

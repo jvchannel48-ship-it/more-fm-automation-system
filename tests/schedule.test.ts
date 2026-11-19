@@ -12,6 +12,7 @@ import {
   PROGRAMS,
   programAt,
   nagaProgramAt,
+  masbateProgramAt,
   SIGN_OFF_HOUR,
   SIGN_ON_HOUR,
 } from '../lib/schedule.ts'
@@ -52,6 +53,10 @@ assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to t
 assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'disco', 'RJ FM Naga starts its distinct dance/pop rotation at 4:00 AM')
 assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'disco', 'RJ FM Naga keeps the dance/pop rotation before 1 PM')
 assert.equal(nagaProgramAt(manilaTime(16, 13)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 1:00 PM')
+assert.equal(masbateProgramAt(manilaTime(16, 10)).id, 'masbate-tagalog', 'RJ FM Masbate stays on its Tagalog-only program')
+assert.equal(languageForSlot(masbateProgramAt(manilaTime(16, 10)), 0), 'tagalog', 'RJ FM Masbate never selects English songs')
+assert.equal(masbateProgramAt(manilaTime(16, 10)).pools.english.length, 0, 'RJ FM Masbate has no English artist pool')
+assert.ok(!masbateProgramAt(manilaTime(16, 10)).variants.tagalog.some((variant) => /christmas|holiday|carol/i.test(variant)), 'RJ FM Masbate search variants exclude Christmas')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', '1 PM starts with English love songs')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', '1 PM keeps English as the main language')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', '1 PM keeps English as the main language')

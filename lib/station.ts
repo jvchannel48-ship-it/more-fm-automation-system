@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, writeJson } from './storage'
 import { STATIONS, type StationId } from './stations'
 import {
   isOffAir,
@@ -14,6 +14,7 @@ import {
   nextSignOn,
   nextSignOnAtHour,
   isOffAirHours,
+  masbateProgramAt,
   nagaProgramAt,
   programAt,
   type Artist,
@@ -165,7 +166,11 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
     if (isOffAir(startAt)) break
-    const program = station === 'naga' ? nagaProgramAt(startAt) : programAt(startAt, sundayScheduleEnabled)
+    const program = station === 'naga'
+      ? nagaProgramAt(startAt)
+      : station === 'masbate'
+        ? masbateProgramAt(startAt)
+        : programAt(startAt, sundayScheduleEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const request = state.requestQueue[0]
     const song = request
@@ -237,7 +242,7 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
   const station: StationId = options.station ?? 'main'
   const now = Date.now()
-  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo') {
+  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
     // Independent music queues — never mirror main (different songs and state paths).
     const statePath = station === 'naga'
       ? NAGA_STATE_PATH
@@ -245,7 +250,9 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         ? CEBU_STATE_PATH
         : station === 'davao'
           ? DAVAO_STATE_PATH
-          : ILOILO_STATE_PATH
+        : station === 'iloilo'
+          ? ILOILO_STATE_PATH
+          : MASBATE_STATE_PATH
     const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([
       loadState(now, statePath),
@@ -356,7 +363,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
 }
 export async function refreshQueue() {
   const now = Date.now()
-  for (const path of [STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH]) {
+  for (const path of [STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH]) {
     const { state } = await loadState(now, path)
     state.tracks = state.tracks.filter((track) => track.startAt <= now)
     state.fillingUntil = 0
@@ -365,7 +372,7 @@ export async function refreshQueue() {
 }
 export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}): Promise<NowResponse> {
   const station: StationId = options.station ?? 'main'
-  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo') return getNowPlaying({ station })
+  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo' || station === 'masbate') return getNowPlaying({ station })
   const now = Date.now()
   const [{ state }, settings] = await Promise.all([loadState(now), getSettings()])
   const failed = state.tracks.find((track) => track.uid === uid)
