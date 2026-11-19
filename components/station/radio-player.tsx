@@ -105,6 +105,17 @@ export function RadioPlayer() {
     : null
   const meta = STATIONS[station]
 
+  useEffect(() => {
+    document.title = `${meta.name} ${meta.frequency} — Live Radio`
+    if ('mediaSession' in navigator && typeof MediaMetadata !== 'undefined') {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${meta.name} ${meta.frequency}`,
+        artist: meta.notificationTagline,
+        album: 'RJ FM Live Radio',
+      })
+    }
+  }, [meta])
+
   return (
     <section aria-label={`${meta.name} ${meta.frequency} live player`} className="radio-player radio-player-card flex w-full flex-col items-center gap-8 text-center">
       <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>

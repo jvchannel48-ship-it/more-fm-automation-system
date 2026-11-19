@@ -202,7 +202,7 @@ export function useBroadcast(
         setState((previous) => ({
           ...previous,
           playbackIssue: track.kind === 'live'
-            ? 'Nagkaproblema ang live stream; susubukan ang MOR 93.5 music.'
+            ? 'Nagkaproblema ang live stream; susubukan ang RJ FM music.'
             : 'Nagkaproblema ang source; lilipat sa susunod na kanta.',
         }))
         onStreamError?.(track.uid)

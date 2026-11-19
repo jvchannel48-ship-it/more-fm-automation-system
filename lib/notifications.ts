@@ -10,9 +10,9 @@ export const AUTO_NOTIFICATION_PATH = 'station/notification-automation.json'
 export const RJ_AUTO_INTERVAL_MS = 8 * 60 * 1000
 
 const DEFAULT_RJ_MESSAGES = [
-  'Hello, listeners! Keep the music playing and enjoy RJ FM 93.5.',
+  'Hello, listeners! Keep the music playing and enjoy RJ FM live radio.',
   'Hello music lovers! Stay tuned—your next favorite song is on the way.',
-  'Hello! Keep the music on and let RJ FM 93.5 brighten your day.',
+  'Hello! Keep the music on and let RJ FM live radio brighten your day.',
   'Hello, RJ FM family! Thank you for listening with us today.',
 ]
 
@@ -42,12 +42,14 @@ function normalizeNotification(value: unknown): StationNotification | null {
     return null
   }
   const attachment = item.attachment
+  const legacySafeMessage = item.message.replaceAll('MOR 93.5', 'RJ FM').replaceAll('RJ FM 93.5', 'RJ FM')
+  const legacySafeSender = typeof item.senderName === 'string' ? item.senderName.slice(0, 80) : 'RJ FM OFFICIAL'
   return {
     id: item.id,
     title: item.title.slice(0, 120),
-    message: item.message.slice(0, 3000),
+    message: legacySafeMessage.slice(0, 3000),
     createdAt: item.createdAt,
-    senderName: typeof item.senderName === 'string' ? item.senderName.slice(0, 80) : 'RJ FM 93.5',
+    senderName: legacySafeSender === 'MOR 93.5' || legacySafeSender === 'RJ FM 93.5' ? 'RJ FM OFFICIAL' : legacySafeSender,
     senderVerified: item.senderVerified !== false,
     ...(Array.isArray(item.attachments)
       ? { attachments: item.attachments
