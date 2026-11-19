@@ -257,6 +257,15 @@ const TAGALOG_DISCO = artists('tagalog', [
 ])
 
 const LOVE_VARIANTS = ['classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
+const DISCO_VARIANTS = [
+  '',
+  'official audio',
+  '80s eurodisco',
+  'classic disco dance hit',
+  'new 2026 dance hit',
+  'latest 2026 disco pop song',
+  '2026 dance music official audio',
+]
 const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', 'original audio', 'greatest hits']
 const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
 
@@ -298,7 +307,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   disco: {
     id: 'disco',
     pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
-    variants: { english: ['', 'official audio', 'hits', 'official video'], tagalog: ['', 'official audio', 'disco'] },
+    variants: { english: DISCO_VARIANTS, tagalog: DISCO_VARIANTS },
   },
   'night-love': {
     id: 'night-love',
@@ -472,6 +481,7 @@ export function programAt(ms: number, sundayScheduleEnabled = true): Program {
     if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
     if (hour >= 20) return PROGRAMS['sunday-english-love']
   }
+  if (hour >= 4 && hour < 12) return PROGRAMS.disco
   if (hour >= 12 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
 }

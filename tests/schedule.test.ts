@@ -33,7 +33,7 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  const expectedNormalProgram = hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
+  const expectedNormalProgram = hour >= 4 && hour < 12 ? 'disco' : hour >= 12 && hour < 20 ? 'daytime-love' : 'love-mix'
   assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedNormalProgram, `Sunday ${hour}:00 uses the expected normal rotation when Sunday schedule is OFF`)
   assert.equal(programAt(manilaTime(16, hour)).id, expectedNormalProgram, `Monday ${hour}:00 selects the expected regular program`)
 
@@ -45,7 +45,7 @@ for (let hour = 0; hour < 24; hour++) {
   }
 }
 
-assert.equal(programAt(manilaTime(16, 11, 59)).id, 'love-mix', 'weekday pre-noon stays on the normal mix')
+assert.equal(programAt(manilaTime(16, 11, 59)).id, 'disco', 'weekday pre-noon stays on the disco dance mix')
 assert.equal(programAt(manilaTime(16, 12)).id, 'daytime-love', 'weekday noon starts daytime love songs')
 assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
 assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')

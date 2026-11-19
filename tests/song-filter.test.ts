@@ -24,6 +24,11 @@ assert.equal(
   true,
   'Naga morning may use a clean artist-credited dance/pop original',
 )
+assert.equal(
+  isOriginalArtistTrack("Modern Talking - You're My Heart, You're My Soul (Official Audio)", { name: 'Modern Talking', match: 'modern talking' }, { allowDancePop: true }),
+  true,
+  'regional disco rotation allows a clean Modern Talking original',
+)
 
 for (const title of [
   'Whitney Houston - I Wanna Dance With Somebody',

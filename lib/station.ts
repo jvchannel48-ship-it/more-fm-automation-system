@@ -120,7 +120,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
-      const allowDancePop = station === 'naga' && program.id === 'disco'
+      const allowDancePop = (station === 'main' || station === 'naga' || station === 'cebu') && program.id === 'disco'
       if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))

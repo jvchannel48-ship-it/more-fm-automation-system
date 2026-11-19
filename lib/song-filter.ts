@@ -34,8 +34,6 @@ const NAGA_MORNING_HARD_BLOCK_RULE = /\b(?:rock|metal|punk|grunge|emo|screamo|ha
 /** Built-in admin defaults — always applied even if settings.blockedGenres is empty. */
 export const DEFAULT_BLOCKED_GENRES = [
   'rock',
-  'dance',
-  'disco',
   'remix',
   'metal',
   'punk',
