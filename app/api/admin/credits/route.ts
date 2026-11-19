@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
-import { addCreditsToAll, getAdminCreditData, setDailyAllowance } from '@/lib/account-store'
+import { addCreditsToAll, getAdminCreditData, resetAllCredits, setCreditsEnabled, setDailyAllowance } from '@/lib/account-store'
 
 export const dynamic = 'force-dynamic'
 const headers = { 'Cache-Control': 'no-store, max-age=0' }
@@ -12,13 +12,22 @@ export async function GET() {
   } catch (error) {
     // Soft-fail: do not surface DATABASE_URL/migration errors in the admin panel.
     console.error('[morefm] admin credit read failed', error instanceof Error ? error.message : 'unknown error')
-    return NextResponse.json({ dailyAllowance: 0, profiles: [] }, { headers })
+    return NextResponse.json({ creditsEnabled: true, dailyAllowance: 0, profiles: [] }, { headers })
   }
 }
 
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
-  const body = await request.json().catch(() => ({})) as { dailyAllowance?: unknown }
+  const body = await request.json().catch(() => ({})) as { dailyAllowance?: unknown; creditsEnabled?: unknown }
+  if (typeof body.creditsEnabled === 'boolean' && body.dailyAllowance === undefined) {
+    try {
+      await setCreditsEnabled(body.creditsEnabled)
+      return NextResponse.json(await getAdminCreditData(), { headers })
+    } catch (error) {
+      console.error('[morefm] credits toggle failed', error instanceof Error ? error.message : 'unknown error')
+      return NextResponse.json({ error: 'Hindi ma-toggle ang credits ngayon. Subukan ulit.' }, { status: 503, headers })
+    }
+  }
   if (!Number.isInteger(body.dailyAllowance) || (body.dailyAllowance as number) < 0 || (body.dailyAllowance as number) > 1_000_000) {
     return NextResponse.json({ error: 'Daily credits must be a whole number from 0 to 1,000,000.' }, { status: 400, headers })
   }
@@ -41,5 +50,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[morefm] add-credit-all failed', error instanceof Error ? error.message : 'unknown error')
     return NextResponse.json({ error: 'Hindi ma-send ngayon. Subukan ulit.' }, { status: 503, headers })
+  }
+}
+
+export async function DELETE() {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
+  try {
+    const accountsReset = await resetAllCredits()
+    return NextResponse.json({ ...(await getAdminCreditData()), accountsReset }, { headers })
+  } catch (error) {
+    console.error('[morefm] reset-all-credits failed', error instanceof Error ? error.message : 'unknown error')
+    return NextResponse.json({ error: 'Hindi ma-reset ang credits ngayon. Subukan ulit.' }, { status: 503, headers })
   }
 }

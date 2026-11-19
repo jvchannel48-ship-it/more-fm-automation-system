@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       catch { throw new Error('CREDITS_UNAVAILABLE') }
       creditsRemaining = creditResult.creditsRemaining
       if (!creditResult.accepted) throw new Error('CREDITS_EMPTY')
-      charged = true
+      charged = creditResult.creditsRemaining !== undefined
     })
     return NextResponse.json({ ...result, creditsRemaining }, { status: 202, headers: privateJsonHeaders })
   } catch (error) {

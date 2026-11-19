@@ -15,15 +15,18 @@ export async function GET(request: NextRequest) {
       email: profile.email,
       displayName: profile.display_name,
       avatarUrl: profile.avatar_data ? `/api/account/avatar?v=${encodeURIComponent(profile.updated_at)}` : null,
-      dailyCredits: profile.daily_credits,
-      bonusCredits: profile.bonus_credits,
-      dailyAllowance: profile.daily_allowance,
-      creditsRemaining: profile.daily_credits + profile.bonus_credits,
-      usage: profile.usage.map((item) => ({
-        date: item.usage_date,
-        creditsUsed: item.credits_used,
-        requests: item.requests_count,
-      })),
+      creditsEnabled: profile.credits_enabled,
+      ...(profile.credits_enabled ? {
+        dailyCredits: profile.daily_credits,
+        bonusCredits: profile.bonus_credits,
+        dailyAllowance: profile.daily_allowance,
+        creditsRemaining: profile.daily_credits + profile.bonus_credits,
+        usage: profile.usage.map((item) => ({
+          date: item.usage_date,
+          creditsUsed: item.credits_used,
+          requests: item.requests_count,
+        })),
+      } : {}),
     }, { headers: privateJsonHeaders })
   } catch (error) {
     console.error('[morefm] profile fetch failed', error instanceof Error ? error.message : 'unknown error')

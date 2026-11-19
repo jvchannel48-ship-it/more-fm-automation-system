@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Gift, RefreshCw, Users } from 'lucide-react'
+import { Gift, Power, RefreshCw, RotateCcw, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-type AdminCredits = { dailyAllowance: number; profiles: Array<{ user_id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string; credits_used?: number; requests_count?: number; last_active_at?: string | null; active_now?: boolean }> }
+type AdminCredits = { creditsEnabled: boolean; dailyAllowance: number; profiles: Array<{ user_id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string; credits_used?: number; requests_count?: number; last_active_at?: string | null; active_now?: boolean }> }
 
 export function AdminCreditControls() {
   const [data, setData] = useState<AdminCredits | null>(null)
@@ -23,16 +23,16 @@ export function AdminCreditControls() {
       const result = await response.json().catch(() => ({})) as AdminCredits & { error?: string }
       if (!response.ok) {
         setError('')
-        setData({ dailyAllowance: 0, profiles: [] })
+        setData({ creditsEnabled: true, dailyAllowance: 0, profiles: [] })
         if (syncAllowanceInput) setDailyInput('0')
         return
       }
       setError('')
-      setData({ dailyAllowance: result.dailyAllowance ?? 0, profiles: Array.isArray(result.profiles) ? result.profiles : [] })
+      setData({ creditsEnabled: result.creditsEnabled !== false, dailyAllowance: result.dailyAllowance ?? 0, profiles: Array.isArray(result.profiles) ? result.profiles : [] })
       if (syncAllowanceInput) setDailyInput(String(result.dailyAllowance ?? 0))
     } catch {
       setError('')
-      setData({ dailyAllowance: 0, profiles: [] })
+      setData({ creditsEnabled: true, dailyAllowance: 0, profiles: [] })
       if (syncAllowanceInput) setDailyInput('0')
     }
   }
@@ -74,10 +74,40 @@ export function AdminCreditControls() {
     void update('POST', { addCredits: amount })
   }
 
+  const toggleCredits = async (enabled: boolean) => {
+    setBusy(true); setError(''); setMessage('')
+    try {
+      const response = await fetch('/api/admin/credits', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ creditsEnabled: enabled }) })
+      const result = await response.json().catch(() => ({})) as AdminCredits & { error?: string }
+      if (!response.ok) throw new Error(result.error ?? 'Could not update credits.')
+      setData({ creditsEnabled: result.creditsEnabled !== false, dailyAllowance: result.dailyAllowance ?? 0, profiles: Array.isArray(result.profiles) ? result.profiles : [] })
+      setMessage(enabled ? 'Credits are ON for all devices.' : 'Credits are OFF; balances are hidden from listener profiles.')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not update credits.') }
+    finally { setBusy(false) }
+  }
+
+  const resetAll = async () => {
+    if (!window.confirm('Reset all daily and bonus credits for every device? This cannot be undone.')) return
+    setBusy(true); setError(''); setMessage('')
+    try {
+      const response = await fetch('/api/admin/credits', { method: 'DELETE' })
+      const result = await response.json().catch(() => ({})) as AdminCredits & { accountsReset?: number; error?: string }
+      if (!response.ok) throw new Error(result.error ?? 'Could not reset credits.')
+      setData({ creditsEnabled: result.creditsEnabled !== false, dailyAllowance: result.dailyAllowance ?? 0, profiles: Array.isArray(result.profiles) ? result.profiles : [] })
+      setMessage(`Reset complete for ${result.accountsReset ?? 0} device accounts.`)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not reset credits.') }
+    finally { setBusy(false) }
+  }
+
   return <section className="flex flex-col gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
     <div>
       <h3 className="flex items-center gap-2 font-semibold"><Users className="size-4" /> Listener accounts & credits</h3>
       <p className="mt-1 text-xs text-muted-foreground">Monitor credits and current listening activity. The list refreshes every 3 seconds.</p>
+    </div>
+    <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
+      <Button type="button" variant={data?.creditsEnabled === false ? 'outline' : 'secondary'} disabled={busy || !data || data.creditsEnabled !== false} onClick={() => void toggleCredits(true)}><Power />Credits ON</Button>
+      <Button type="button" variant={data?.creditsEnabled === false ? 'secondary' : 'outline'} disabled={busy || !data || data.creditsEnabled === false} onClick={() => void toggleCredits(false)}><Power />Credits OFF</Button>
+      <Button type="button" variant="outline" className="ml-auto" disabled={busy || !data} onClick={() => void resetAll()}><RotateCcw />Reset all credits</Button>
     </div>
     <div className="flex flex-col gap-2">
       <Label htmlFor="daily-credit-allowance">Free daily credits per user</Label>
@@ -111,9 +141,9 @@ export function AdminCreditControls() {
             </p>
           </div>
           <p className="shrink-0 text-right text-xs tabular-nums">
-            {profile.daily_credits + profile.bonus_credits}
-            <span className="block text-[10px] text-muted-foreground">available</span>
-            <span className="block text-[10px] text-emerald-300">used today {profile.credits_used ?? 0}</span>
+            {data?.creditsEnabled === false ? '—' : profile.daily_credits + profile.bonus_credits}
+            <span className="block text-[10px] text-muted-foreground">{data?.creditsEnabled === false ? 'hidden' : 'available'}</span>
+            {data?.creditsEnabled !== false && <span className="block text-[10px] text-emerald-300">used today {profile.credits_used ?? 0}</span>}
           </p>
         </div>
       ))}

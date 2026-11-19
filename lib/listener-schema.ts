@@ -37,8 +37,9 @@ CREATE TABLE IF NOT EXISTS morefm_listener_sessions (
 CREATE INDEX IF NOT EXISTS listener_sessions_expiry_idx ON morefm_listener_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS listener_sessions_account_idx ON morefm_listener_sessions(account_id);
 	CREATE TABLE IF NOT EXISTS morefm_credit_settings (
-  id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
-  daily_allowance integer NOT NULL DEFAULT 0 CHECK (daily_allowance >= 0),
+	  id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
+	  daily_allowance integer NOT NULL DEFAULT 0 CHECK (daily_allowance >= 0),
+	  credits_enabled boolean NOT NULL DEFAULT true,
 	  updated_at timestamptz NOT NULL DEFAULT now()
 	);
 	CREATE TABLE IF NOT EXISTS morefm_credit_usage (
@@ -50,6 +51,7 @@ CREATE INDEX IF NOT EXISTS listener_sessions_account_idx ON morefm_listener_sess
 	  PRIMARY KEY (account_id, usage_date)
 	);
 	ALTER TABLE morefm_listener_accounts ADD COLUMN IF NOT EXISTS last_active_at timestamptz;
+	ALTER TABLE morefm_credit_settings ADD COLUMN IF NOT EXISTS credits_enabled boolean NOT NULL DEFAULT true;
 	CREATE INDEX IF NOT EXISTS listener_accounts_active_idx ON morefm_listener_accounts(last_active_at);
 INSERT INTO morefm_credit_settings(id, daily_allowance)
 VALUES (true, 0)

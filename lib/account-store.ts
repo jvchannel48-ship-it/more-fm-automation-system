@@ -165,10 +165,10 @@ async function refreshDailyCredits(client: PoolClient, accountId: string) {
   // Daily credits are replaced with the current allowance on the next Manila date;
   // only bonus credits persist, so unused daily credits never roll over.
   const today = manilaTodaySql()
-  const { rows } = await client.query<AccountSession & { daily_allowance: number }>(
+  const { rows } = await client.query<AccountSession & { daily_allowance: number; credits_enabled: boolean }>(
     `SELECT a.id, a.email, a.display_name, a.avatar_mime, a.avatar_data, a.daily_credits, a.bonus_credits,
             a.credit_date::text AS credit_date, a.updated_at::text AS updated_at, a.last_active_at::text AS last_active_at,
-            COALESCE(s.daily_allowance,0) AS daily_allowance
+            COALESCE(s.daily_allowance,0) AS daily_allowance, COALESCE(s.credits_enabled,true) AS credits_enabled
      FROM morefm_listener_accounts a CROSS JOIN morefm_credit_settings s
      WHERE a.id = $1 AND s.id = true FOR UPDATE OF a`, [accountId],
   )
@@ -188,6 +188,10 @@ export async function chargeSongRequest(accountId: string) {
     await client.query('BEGIN')
     const row = await refreshDailyCredits(client, accountId)
     if (!row) throw new Error('Account not found.')
+    if (!row.credits_enabled) {
+      await client.query('COMMIT')
+      return { accepted: true, creditsRemaining: undefined }
+    }
     const spent = spendCredits(row.daily_credits, row.bonus_credits, SONG_REQUEST_CREDIT_COST)
     if (!spent.accepted) {
       await client.query('COMMIT')
@@ -262,15 +266,27 @@ export async function addCreditsToAll(amount: number) {
   return rowCount ?? 0
 }
 
+export async function setCreditsEnabled(enabled: boolean) {
+  await ensureListenerSchema()
+  await getDb().query('UPDATE morefm_credit_settings SET credits_enabled=$1,updated_at=now() WHERE id=true', [enabled])
+  return enabled
+}
+
+export async function resetAllCredits() {
+  await ensureListenerSchema()
+  const { rowCount } = await getDb().query('UPDATE morefm_listener_accounts SET daily_credits=0,bonus_credits=0,updated_at=now()')
+  return rowCount ?? 0
+}
+
 export async function getAdminCreditData() {
   await ensureListenerSchema()
   const today = manilaTodaySql()
   await getDb().query(
     `UPDATE morefm_listener_accounts a SET daily_credits=s.daily_allowance,credit_date=${today},updated_at=now()
-     FROM morefm_credit_settings s WHERE s.id=true AND a.credit_date < ${today}`,
+     FROM morefm_credit_settings s WHERE s.id=true AND s.credits_enabled=true AND a.credit_date < ${today}`,
   )
   const [{ rows: settings }, { rows: users }] = await Promise.all([
-    getDb().query<{ daily_allowance: number }>('SELECT daily_allowance FROM morefm_credit_settings WHERE id=true'),
+    getDb().query<{ daily_allowance: number; credits_enabled: boolean }>('SELECT daily_allowance,credits_enabled FROM morefm_credit_settings WHERE id=true'),
     getDb().query<{ id: string; email: string; display_name: string; daily_credits: number; bonus_credits: number; credit_date: string; last_active_at: string | null; credits_used: number; requests_count: number }>(
       `SELECT a.id,a.email,a.display_name,a.daily_credits,a.bonus_credits,a.credit_date::text AS credit_date,
               a.last_active_at::text AS last_active_at,
@@ -280,5 +296,5 @@ export async function getAdminCreditData() {
        ORDER BY a.created_at DESC`,
     ),
   ])
-  return { dailyAllowance: settings[0]?.daily_allowance ?? 0, profiles: users.map((user) => ({ user_id: user.id, email: user.email, display_name: user.display_name, daily_credits: user.daily_credits, bonus_credits: user.bonus_credits, credit_date: user.credit_date, credits_used: user.credits_used, requests_count: user.requests_count, last_active_at: user.last_active_at, active_now: Boolean(user.last_active_at && Date.now() - new Date(user.last_active_at).getTime() < 75_000) })) }
+  return { creditsEnabled: settings[0]?.credits_enabled ?? true, dailyAllowance: settings[0]?.daily_allowance ?? 0, profiles: users.map((user) => ({ user_id: user.id, email: user.email, display_name: user.display_name, daily_credits: user.daily_credits, bonus_credits: user.bonus_credits, credit_date: user.credit_date, credits_used: user.credits_used, requests_count: user.requests_count, last_active_at: user.last_active_at, active_now: Boolean(user.last_active_at && Date.now() - new Date(user.last_active_at).getTime() < 75_000) })) }
 }
