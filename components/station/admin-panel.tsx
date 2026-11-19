@@ -37,11 +37,13 @@ export function AdminPanel() {
   const [notificationFiles, setNotificationFiles] = useState<File[]>([])
   const [blockedGenres, setBlockedGenres] = useState<string[]>([])
   const [genreInput, setGenreInput] = useState('')
+  const [rjAutoMessage, setRjAutoMessage] = useState('')
 
   useEffect(() => {
     if (data) {
       setBassBoostInput(String(data.bassBoostDb ?? 0))
       setBlockedGenres(data.blockedGenres ?? [])
+      setRjAutoMessage(data.rjOfficialAutoMessage ?? '')
     }
   }, [data?.bassBoostDb, data?.blockedGenres])
 
@@ -65,6 +67,8 @@ export function AdminPanel() {
         newTagalogOpmEnabled?: boolean
         bassBoostDb?: number
         blockedGenres?: string[]
+        rjOfficialAutoEnabled?: boolean
+        rjOfficialAutoMessage?: string
       } | undefined
       if (method === 'POST') {
         setMessage('Na-refresh ang music rotation.')
@@ -90,6 +94,10 @@ export function AdminPanel() {
         setMessage(status.persistenceConfigured
           ? 'Na-save ang blocked genre filter at ni-refresh ang rotation.'
           : 'Na-update ang blocked genre filter, pero pansamantala lang ito sa server memory.')
+      } else if (typeof values?.rjOfficialAutoEnabled === 'boolean' || typeof values?.rjOfficialAutoMessage === 'string') {
+        setMessage(status.persistenceConfigured
+          ? 'Na-save ang RJ FM OFFICIAL auto-message settings.'
+          : 'Na-save ang auto-message settings para sa server session lamang.')
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
@@ -128,6 +136,10 @@ export function AdminPanel() {
 
   const applyStrictClassicLoveFilter = () => {
     updateBlockedGenres([...new Set([...blockedGenres, ...STRICT_CLASSIC_LOVE_GENRES])])
+  }
+
+  const saveRjAutoMessage = () => {
+    void send('PUT', { rjOfficialAutoMessage: rjAutoMessage })
   }
 
   const sendNotification = async () => {
@@ -275,7 +287,7 @@ export function AdminPanel() {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="notification-title" className="text-base">RJ FM 93.5</Label>
+              <Label htmlFor="notification-title" className="text-base">RJ FM OFFICIAL</Label>
               <BadgeCheck className="size-4 fill-sky-500 text-white" aria-label="Verified account" />
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Send a short announcement to all listeners. You can attach up to 3 images.</p>
@@ -315,6 +327,37 @@ export function AdminPanel() {
           <Send aria-hidden="true" />
           Send all notification
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-sky-400/25 bg-gradient-to-br from-sky-400/10 via-secondary/40 to-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="rj-official-auto">RJ FM OFFICIAL auto message</Label>
+              <BadgeCheck className="size-4 fill-sky-500 text-white" aria-label="Verified account" />
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Kapag naka-ON, magpapadala ng varied Hello / Keep the music message bawat 8 minuto sa active listeners.</p>
+          </div>
+          <Switch
+            id="rj-official-auto"
+            checked={data?.rjOfficialAutoEnabled ?? false}
+            disabled={!data || busy}
+            onCheckedChange={(checked) => send('PUT', { rjOfficialAutoEnabled: checked })}
+          />
+        </div>
+        <textarea
+          value={rjAutoMessage}
+          onChange={(event) => setRjAutoMessage(event.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="Optional custom message. Leave blank for varied Hello messages."
+          disabled={busy}
+          className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[11px] text-muted-foreground">Blank = automatic varied messages.</span>
+          <Button type="button" variant="secondary" disabled={!data || busy} onClick={saveRjAutoMessage}>Save auto message</Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}

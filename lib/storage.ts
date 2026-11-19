@@ -298,6 +298,8 @@ export const DEFAULT_SETTINGS: StationSettings = {
   newTagalogOpmEnabled: true,
   bassBoostDb: 0,
   blockedGenres: [],
+  rjOfficialAutoEnabled: false,
+  rjOfficialAutoMessage: '',
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -312,5 +314,7 @@ export async function getSettings(): Promise<StationSettings> {
     blockedGenres: Array.isArray(saved.blockedGenres)
       ? [...new Set(saved.blockedGenres.filter((genre): genre is string => typeof genre === 'string').map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
       : [],
+    rjOfficialAutoEnabled: typeof saved.rjOfficialAutoEnabled === 'boolean' ? saved.rjOfficialAutoEnabled : false,
+    rjOfficialAutoMessage: typeof saved.rjOfficialAutoMessage === 'string' ? saved.rjOfficialAutoMessage.trim().slice(0, 500) : '',
   }
 }

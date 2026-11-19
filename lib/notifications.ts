@@ -1,11 +1,22 @@
 import 'server-only'
 
-import { readJson, writeJson } from './storage'
+import { getSettings, readJson, writeJson } from './storage'
 
 export const NOTIFICATIONS_PATH = 'station/notifications.json'
 export const MAX_NOTIFICATIONS = 50
 export const MAX_ATTACHMENT_BYTES = 1_500_000
 export const MAX_NOTIFICATION_ATTACHMENTS = 3
+export const AUTO_NOTIFICATION_PATH = 'station/notification-automation.json'
+export const RJ_AUTO_INTERVAL_MS = 8 * 60 * 1000
+
+const DEFAULT_RJ_MESSAGES = [
+  'Hello, listeners! Keep the music playing and enjoy RJ FM 93.5.',
+  'Hello music lovers! Stay tuned—your next favorite song is on the way.',
+  'Hello! Keep the music on and let RJ FM 93.5 brighten your day.',
+  'Hello, RJ FM family! Thank you for listening with us today.',
+]
+
+let autoNotificationPromise: Promise<unknown> | null = null
 
 export interface NotificationAttachment {
   name: string
@@ -65,4 +76,37 @@ export async function addNotification(notification: Omit<StationNotification, 'i
   }
   const persistenceConfigured = await writeJson(NOTIFICATIONS_PATH, [created, ...current].slice(0, MAX_NOTIFICATIONS))
   return { notification: created, persistenceConfigured }
+}
+
+/**
+ * The public notification poll is the app-owned heartbeat for active listeners.
+ * It creates at most one official message per eight-minute window, even when
+ * several phones poll at the same time in this server process.
+ */
+export async function maybeCreateRjOfficialNotification() {
+  if (autoNotificationPromise) return autoNotificationPromise
+  autoNotificationPromise = (async () => {
+    const settings = await getSettings()
+    if (!settings.rjOfficialAutoEnabled) return null
+
+    const state = await readJson<{ lastSentAt?: number; lastMessageIndex?: number }>(AUTO_NOTIFICATION_PATH, {})
+    const lastSentAt = typeof state.lastSentAt === 'number' ? state.lastSentAt : 0
+    if (Date.now() - lastSentAt < RJ_AUTO_INTERVAL_MS) return null
+
+    const customMessage = settings.rjOfficialAutoMessage.trim()
+    const messages = customMessage ? [customMessage] : DEFAULT_RJ_MESSAGES
+    const previousIndex = typeof state.lastMessageIndex === 'number' ? state.lastMessageIndex : -1
+    const nextIndex = messages.length > 1 ? (previousIndex + 1) % messages.length : 0
+    const result = await addNotification({
+      title: 'Hello from RJ FM OFFICIAL',
+      message: messages[nextIndex],
+      senderName: 'RJ FM OFFICIAL',
+      senderVerified: true,
+    })
+    await writeJson(AUTO_NOTIFICATION_PATH, { lastSentAt: Date.now(), lastMessageIndex: nextIndex })
+    return result
+  })().finally(() => {
+    autoNotificationPromise = null
+  })
+  return autoNotificationPromise
 }

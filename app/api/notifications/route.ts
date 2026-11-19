@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/auth'
-import { addNotification, getNotifications, MAX_ATTACHMENT_BYTES, MAX_NOTIFICATION_ATTACHMENTS } from '@/lib/notifications'
+import { addNotification, getNotifications, maybeCreateRjOfficialNotification, MAX_ATTACHMENT_BYTES, MAX_NOTIFICATION_ATTACHMENTS } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
 const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
 
 export async function GET() {
+  await maybeCreateRjOfficialNotification().catch((error) => {
+    console.error('[morefm] RJ FM Official auto notification failed', error instanceof Error ? error.message : error)
+  })
   return NextResponse.json({ notifications: await getNotifications() }, noStore)
 }
 
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
     const result = await addNotification({
       title,
       message,
-      senderName: 'RJ FM 93.5',
+      senderName: 'RJ FM OFFICIAL',
       senderVerified: true,
       ...(attachments.length > 0 ? { attachments } : {}),
     })

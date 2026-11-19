@@ -103,7 +103,7 @@ export function NotificationCenter() {
               <Megaphone className="size-5" aria-hidden="true" />
             </div>
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-              {unreadCount ? `${unreadCount} new` : 'RJ FM updates'}
+              {unreadCount ? `${unreadCount} new` : 'RJ FM OFFICIAL'}
             </span>
           </div>
           <SheetTitle className="mt-4 flex items-center gap-2 text-xl">
@@ -115,7 +115,7 @@ export function NotificationCenter() {
               <><Bell className="size-4 text-primary" />Notifications</>
             )}
           </SheetTitle>
-          <SheetDescription>Mga bagong announcement at updates para sa listeners ng RJ FM 93.5.</SheetDescription>
+          <SheetDescription>Mga verified announcement at updates mula sa RJ FM OFFICIAL.</SheetDescription>
         </SheetHeader>
         {!selectedNotification && visibleNotifications.length > 0 && (
           <div className="flex items-center justify-between px-5 pt-4">

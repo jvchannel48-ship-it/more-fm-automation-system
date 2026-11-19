@@ -19,6 +19,8 @@ export async function PUT(request: NextRequest) {
     newTagalogOpmEnabled?: unknown
     bassBoostDb?: unknown
     blockedGenres?: unknown
+    rjOfficialAutoEnabled?: unknown
+    rjOfficialAutoMessage?: unknown
   }
   const current = await getSettings()
   const blockedGenres = Array.isArray(body.blockedGenres)
@@ -36,6 +38,12 @@ export async function PUT(request: NextRequest) {
       ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
     blockedGenres,
+    rjOfficialAutoEnabled: typeof body.rjOfficialAutoEnabled === 'boolean'
+      ? body.rjOfficialAutoEnabled
+      : current.rjOfficialAutoEnabled,
+    rjOfficialAutoMessage: typeof body.rjOfficialAutoMessage === 'string'
+      ? body.rjOfficialAutoMessage.trim().slice(0, 500)
+      : current.rjOfficialAutoMessage,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'

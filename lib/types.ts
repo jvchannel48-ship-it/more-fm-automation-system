@@ -29,6 +29,8 @@ export interface StationSettings {
   newTagalogOpmEnabled: boolean
   bassBoostDb: number
   blockedGenres: string[]
+  rjOfficialAutoEnabled: boolean
+  rjOfficialAutoMessage: string
 }
 
 export interface NowResponse {
