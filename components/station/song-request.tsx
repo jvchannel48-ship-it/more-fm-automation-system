@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ensureDeviceSession } from '@/lib/device-id'
+import type { StationId } from '@/lib/stations'
 
 type RequestStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreditInfo = { creditsRemaining: number; dailyCredits: number; bonusCredits: number }
 
-export function SongRequest() {
+export function SongRequest({ station }: { station: StationId }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
@@ -53,7 +54,7 @@ export function SongRequest() {
       }
       const response = await fetch('/api/requests', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, artist }), cache: 'no-store',
+        body: JSON.stringify({ title, artist, station }), cache: 'no-store',
       })
       const data = await response.json().catch(() => ({})) as { error?: string; position?: number; creditsRemaining?: number; creditEmpty?: boolean }
       if (!response.ok) {
@@ -64,8 +65,8 @@ export function SongRequest() {
       if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : current)
       setStatus('success')
       setMessage(data.position && data.position > 1
-        ? `Song request successful! You are #${data.position} in the queue. 15 credits were used (30 for 2 songs). It will play after earlier requests.`
-        : 'Song request successful! Your song is queued. 15 credits were used (30 for 2 songs). It will play after the current song.')
+        ? `Song request successful for ${station.toUpperCase()}! You are #${data.position} in that station's queue. 15 credits were used (30 for 2 songs). It will play after earlier requests.`
+        : `Song request successful for ${station.toUpperCase()}! Your song is queued at the station you are listening to. 15 credits were used (30 for 2 songs).`)
     } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'Could not submit the song request.') }
   }
 
