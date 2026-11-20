@@ -69,7 +69,7 @@ export function RadioPlayer() {
         setRecoveryIssue('Could not recover the source right now. Retrying…')
         void mutate()
       })
-  }, [mutate, station])
+  },n  }, [mutate, station])
   const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume, recoverStream, station)
 
@@ -130,6 +130,12 @@ export function RadioPlayer() {
         <span className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`} aria-hidden="true" />
         {offAir ? 'Off air' : 'Live'}
       </span>
+      {data?.liveDj?.active && (
+        <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-200">
+          <span className="size-1.5 animate-pulse rounded-full bg-rose-400" aria-hidden="true" />
+          Live DJ · {data.liveDj.name || 'On air'}
+        </span>
+      )}
 
       <div className="vinyl relative flex size-52 items-center justify-center rounded-full sm:size-60">
         <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
