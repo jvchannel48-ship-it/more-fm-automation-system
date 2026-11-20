@@ -36,6 +36,21 @@ export interface StationSettings {
   rjOfficialAutoMessage: string
 }
 
+export interface LiveDjState {
+  active: boolean
+  name: string
+  stationId?: string
+  updatedAt: number
+}
+
+export interface ListenerMessage {
+  id: string
+  fromName: string
+  body: string
+  createdAt: number
+  read: boolean
+}
+
 export interface NowResponse {
   serverTime: number
   offAir: boolean
@@ -43,6 +58,7 @@ export interface NowResponse {
   tracks: Track[]
   bassBoostDb: number
   transmitterWatts: 5000 | 25000
+  liveDj?: LiveDjState | null
 }
 
 export interface AdminStatus extends StationSettings {

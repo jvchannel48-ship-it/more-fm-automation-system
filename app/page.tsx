@@ -1,6 +1,7 @@
 import { AdminMenu } from '@/components/station/admin-menu'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
+import { MessageButton } from '@/components/station/message-button'
 import { SettingsPanel } from '@/components/station/settings-panel'
 import { AccountMenu } from '@/components/station/account-menu'
 import { StationSelector } from '@/components/station/station-selector'
@@ -13,6 +14,7 @@ export default function Home() {
         <div className="flex items-center gap-1">
           <StationSelector />
           <NotificationCenter />
+          <MessageButton />
           <SettingsPanel />
           <AccountMenu />
           <AdminMenu />
