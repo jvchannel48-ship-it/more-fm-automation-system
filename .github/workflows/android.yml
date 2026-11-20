@@ -9,6 +9,9 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'components/station/account-menu.tsx'
+      - 'lib/app-permissions.ts'
+      - 'components/station/radio-player.tsx'
+      - 'components/station/station-shell.tsx'
       - '.github/workflows/android.yml'
 
 permissions:
@@ -81,22 +84,14 @@ jobs:
           cat > android/app/src/main/java/com/rjfm/app/MainActivity.java <<'JAVA'
           package com.rjfm.app;
 
-          import android.Manifest;
-          import android.content.pm.PackageManager;
-          import android.os.Build;
           import android.os.Bundle;
-          import androidx.core.app.ActivityCompat;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
             @Override
             public void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
-              if (Build.VERSION.SDK_INT >= 33 &&
-                  checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                  new String[]{Manifest.permission.POST_NOTIFICATIONS}, 2001);
-              }
+              // Permission prompts are shown from the RJ FM profile permissions page, not at launch.
             }
           }
           JAVA
