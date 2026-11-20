@@ -286,6 +286,8 @@ export async function getAverageListenerCount() {
 
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = 'station/state-v2.json'
+export const LIVE_DJ_PATH = 'station/live-dj.json'
+export const MESSAGES_PATH = 'station/listener-messages.json'
 /** RJ FM 105.5 Cebu — independent music queue. */
 export const CEBU_STATE_PATH = 'station/state-cebu-v2.json'
 export const GENSAN_STATE_PATH = 'station/state-gensan-v2.json'
