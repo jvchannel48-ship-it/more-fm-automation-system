@@ -316,8 +316,8 @@ export async function getSettings(): Promise<StationSettings> {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     sundayScheduleEnabled: typeof saved.sundayScheduleEnabled === 'boolean' ? saved.sundayScheduleEnabled : true,
     newTagalogOpmEnabled: typeof saved.newTagalogOpmEnabled === 'boolean' ? saved.newTagalogOpmEnabled : true,
-    bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb)
-      ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, saved.bassBoostDb))
+    bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb) && saved.bassBoostDb > 0
+      ? Math.min(MAX_BASS_BOOST_DB, saved.bassBoostDb)
       : MAX_BASS_BOOST_DB,
     transmitterWatts: saved.transmitterWatts === 5000 ? 5000 : 25000,
     blockedGenres: Array.isArray(saved.blockedGenres)
