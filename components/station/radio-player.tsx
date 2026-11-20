@@ -201,7 +201,7 @@ export function RadioPlayer() {
         </p>
       </div>
 
-      <SongRequest station={station} />
+      {data?.songRequestsEnabled !== false && <SongRequest station={station} />}
     </section>
   )
 }
