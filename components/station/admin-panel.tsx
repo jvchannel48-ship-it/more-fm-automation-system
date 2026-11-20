@@ -32,6 +32,7 @@ export function AdminPanel() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [bassBoostInput, setBassBoostInput] = useState('0')
+  const [transmitterWatts, setTransmitterWatts] = useState<5000 | 25000>(25000)
   const [notificationTitle, setNotificationTitle] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
   const [notificationFiles, setNotificationFiles] = useState<File[]>([])
@@ -42,10 +43,11 @@ export function AdminPanel() {
   useEffect(() => {
     if (data) {
       setBassBoostInput(String(data.bassBoostDb ?? 0))
+      setTransmitterWatts(data.transmitterWatts === 5000 ? 5000 : 25000)
       setBlockedGenres(data.blockedGenres ?? [])
       setRjAutoMessage(data.rjOfficialAutoMessage ?? '')
     }
-  }, [data?.bassBoostDb, data?.blockedGenres])
+  }, [data?.bassBoostDb, data?.blockedGenres, data?.transmitterWatts])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -66,6 +68,7 @@ export function AdminPanel() {
         sundayScheduleEnabled?: boolean
         newTagalogOpmEnabled?: boolean
         bassBoostDb?: number
+        transmitterWatts?: 5000 | 25000
         blockedGenres?: string[]
         rjOfficialAutoEnabled?: boolean
         rjOfficialAutoMessage?: string
@@ -90,6 +93,10 @@ export function AdminPanel() {
         setMessage(status.persistenceConfigured
           ? `Bass boost saved at ${status.bassBoostDb} dB.`
           : `Bass boost set to ${status.bassBoostDb} dB for this server session; durable storage is not configured.`)
+      } else if (values?.transmitterWatts === 5000 || values?.transmitterWatts === 25000) {
+        setMessage(status.persistenceConfigured
+          ? `Transmitter set to ${values.transmitterWatts === 25000 ? '25k' : '5k'} watts.`
+          : 'Transmitter setting saved for this server session only.')
       } else if (Array.isArray(values?.blockedGenres)) {
         setMessage(status.persistenceConfigured
           ? 'Na-save ang blocked genre filter at ni-refresh ang rotation.'
@@ -113,6 +120,12 @@ export function AdminPanel() {
       return
     }
     void send('PUT', { bassBoostDb: value })
+  }
+
+  const saveTransmitterWatts = (value: string) => {
+    const watts = value === '5000' ? 5000 : 25000
+    setTransmitterWatts(watts)
+    void send('PUT', { transmitterWatts: watts })
   }
 
   const updateBlockedGenres = (next: string[]) => {
@@ -191,6 +204,25 @@ export function AdminPanel() {
           disabled={!data || busy}
           onCheckedChange={(checked) => send('PUT', { broadcastEnabled: checked })}
         />
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="transmitter-watts">Transmitter power</Label>
+          <span className="text-xs text-muted-foreground">
+            {transmitterWatts === 25000 ? '25k watts · stronger signal · clean audio' : '5k watts · weaker signal · light static may be heard'}
+          </span>
+        </div>
+        <select
+          id="transmitter-watts"
+          value={transmitterWatts}
+          disabled={!data || busy}
+          onChange={(event) => saveTransmitterWatts(event.target.value)}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="25000">25k watts</option>
+          <option value="5000">5k watts</option>
+        </select>
       </div>
 
       <div className="flex items-center justify-between gap-3">

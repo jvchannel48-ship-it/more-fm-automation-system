@@ -263,7 +263,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
     if (offAir) {
       if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
-      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb }
+      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     // Block titles currently on main so the two stations do not play the same song.
@@ -286,13 +286,13 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       state.fillingUntil = 0
       await writeJson(statePath, state)
     } else if (changed) { await writeJson(statePath, state) }
-    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb }
+    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
   const offAir = isOffAir(now) || !settings.broadcastEnabled
   if (offAir) {
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
-    return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb }
+    return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts }
   }
   const scheduledDzmm = dzmmWindowAt(now)
   const upcomingDzmm = dzmmWindowAt(now + TRANSITION_LOOKAHEAD_MS)
@@ -354,7 +354,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) { await writeJson(STATE_PATH, state) }
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb }
+  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts }
 }
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()

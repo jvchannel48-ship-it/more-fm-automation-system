@@ -28,6 +28,7 @@ export interface StationSettings {
   sundayScheduleEnabled: boolean
   newTagalogOpmEnabled: boolean
   bassBoostDb: number
+  transmitterWatts: 5000 | 25000
   blockedGenres: string[]
   rjOfficialAutoEnabled: boolean
   rjOfficialAutoMessage: string
@@ -39,6 +40,7 @@ export interface NowResponse {
   nextOnAir: number | null
   tracks: Track[]
   bassBoostDb: number
+  transmitterWatts: 5000 | 25000
 }
 
 export interface AdminStatus extends StationSettings {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, RefreshCw, Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, savePlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
 
@@ -21,11 +22,13 @@ export function SettingsPanel() {
   const [stayAwake, setStayAwake] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [awakeError, setAwakeError] = useState('')
+  const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const wakeLock = useRef<WakeLockLike | null>(null)
 
   useEffect(() => {
     try {
       setStayAwake(window.localStorage.getItem(STAY_AWAKE_KEY) === 'true')
+      setPlayerPreferences(readPlayerPreferences())
     } catch {
       setStayAwake(false)
     }
@@ -76,6 +79,12 @@ export function SettingsPanel() {
     setStayAwake(next)
     setAwakeError('')
     try { window.localStorage.setItem(STAY_AWAKE_KEY, String(next)) } catch { /* storage may be blocked */ }
+  }
+
+  const updatePlayer = <K extends keyof PlayerPreferences>(key: K, value: PlayerPreferences[K]) => {
+    const next = { ...playerPreferences, [key]: value }
+    setPlayerPreferences(next)
+    savePlayerPreferences(next)
   }
 
   const updateApp = async () => {
@@ -141,6 +150,40 @@ export function SettingsPanel() {
               </button>
             </div>
             {awakeError && <p className="mt-3 text-xs text-amber-300" role="status">{awakeError}</p>}
+
+            <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+              <p className="font-medium">Player customization</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Customize lang sa device na ito; hindi maaapektuhan ang ibang listeners.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                {([
+                  ['compact', 'Compact player'],
+                  ['showVolume', 'Show volume'],
+                  ['showBorder', 'Show border'],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 rounded-lg border border-border/60 p-2">
+                    <input type="checkbox" checked={playerPreferences[key]} onChange={(event) => updatePlayer(key, event.target.checked)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <label className="text-xs text-muted-foreground">Background
+                  <select className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={playerPreferences.background} onChange={(event) => updatePlayer('background', event.target.value as PlayerPreferences['background'])}>
+                    <option value="night">Night</option><option value="ocean">Ocean</option><option value="sunset">Sunset</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">Volume icon
+                  <select className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={playerPreferences.volumeIcon} onChange={(event) => updatePlayer('volumeIcon', event.target.value as PlayerPreferences['volumeIcon'])}>
+                    <option value="speaker">Speaker</option><option value="minimal">Minimal</option><option value="waves">Waves</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">Vinyl color
+                  <select className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground" value={playerPreferences.vinylColor} onChange={(event) => updatePlayer('vinylColor', event.target.value as PlayerPreferences['vinylColor'])}>
+                    <option value="silver">Silver</option><option value="gold">Gold</option><option value="blue">Blue</option><option value="red">Red</option>
+                  </select>
+                </label>
+              </div>
+            </div>
 
             <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
               <p className="font-medium">App update</p>

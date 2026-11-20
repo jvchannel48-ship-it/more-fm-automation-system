@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Moon, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
@@ -11,6 +11,7 @@ import { STATIONS, type StationId } from '@/lib/stations'
 import { Equalizer } from './equalizer'
 import { SongRequest } from './song-request'
 import { getStoredStation } from './station-selector'
+import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -22,6 +23,8 @@ function getManilaHour() {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', hour12: false }).format(new Date()))
 }
 
+const vinylColors: Record<PlayerPreferences['vinylColor'], string> = { silver: '#cbd5e1', gold: '#f4b942', blue: '#60a5fa', red: '#fb7185' }
+
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(0.7)
@@ -29,10 +32,15 @@ export function RadioPlayer() {
   const [manilaHour, setManilaHour] = useState(getManilaHour)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
+  const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const listenerId = useRef<string | null>(null)
 
   useEffect(() => {
     setStation(getStoredStation())
+    setPlayerPreferences(readPlayerPreferences())
+    const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
+    window.addEventListener('morefm-player-preferences', update)
+    return () => window.removeEventListener('morefm-player-preferences', update)
   }, [])
 
   const nowUrl = `/api/now?station=${station}`
@@ -63,7 +71,7 @@ export function RadioPlayer() {
       })
   }, [mutate, station])
   const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
-  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume, recoverStream)
+  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume, recoverStream, station)
 
   useEffect(() => {
     const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
@@ -117,15 +125,15 @@ export function RadioPlayer() {
   }, [meta])
 
   return (
-    <section aria-label={`${meta.name} ${meta.frequency} live player`} className="radio-player radio-player-card flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-4' : 'gap-8'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
       <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>
         <span className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`} aria-hidden="true" />
         {offAir ? 'Off air' : 'Live'}
       </span>
 
       <div className="vinyl relative flex size-52 items-center justify-center rounded-full sm:size-60">
-        <div className="vinyl-ring absolute inset-0 rounded-full" aria-hidden="true" />
-        <div className={`vinyl-record absolute inset-3 rounded-full border ${playing && !offAir ? 'animate-spin' : ''}`} style={{ animationDuration: '8s' }} aria-hidden="true" />
+        <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] }} aria-hidden="true" />
+        <div className={`vinyl-record absolute inset-3 rounded-full border ${playing && !offAir ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', borderColor: vinylColors[playerPreferences.vinylColor] }} aria-hidden="true" />
         <div className="vinyl-label absolute inset-[28%] flex items-center justify-center rounded-full">
           <span className="vinyl-label-mark">{meta.vinylMark}</span>
         </div>
@@ -150,12 +158,12 @@ export function RadioPlayer() {
         )}
       </div>
 
-      <div className="volume-deck flex w-full max-w-xs items-center gap-3">
+      {playerPreferences.showVolume && <div className="volume-deck flex w-full max-w-xs items-center gap-3">
         <Button type="button" variant="ghost" size="icon-sm" aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((m) => !m)}>
-          {muted || volume === 0 ? <VolumeX /> : <Volume2 />}
+          {muted || volume === 0 ? <VolumeX /> : playerPreferences.volumeIcon === 'minimal' ? <Volume1 /> : <Volume2 />}
         </Button>
         <Slider value={[muted ? 0 : volume * 100]} onValueChange={(v) => { const next = typeof v === 'number' ? v : v[0]; setMuted(false); setVolume((next ?? 70) / 100) }} max={100} step={1} aria-label="Volume" />
-      </div>
+      </div>}
 
       <div className="flex flex-col items-center gap-1">
         <p className="text-sm font-medium">

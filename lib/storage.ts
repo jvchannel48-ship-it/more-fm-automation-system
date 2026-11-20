@@ -300,6 +300,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   sundayScheduleEnabled: true,
   newTagalogOpmEnabled: true,
   bassBoostDb: 0,
+  transmitterWatts: 25000,
   blockedGenres: [],
   rjOfficialAutoEnabled: false,
   rjOfficialAutoMessage: '',
@@ -314,6 +315,7 @@ export async function getSettings(): Promise<StationSettings> {
     bassBoostDb: typeof saved.bassBoostDb === 'number' && Number.isFinite(saved.bassBoostDb)
       ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, saved.bassBoostDb))
       : 0,
+    transmitterWatts: saved.transmitterWatts === 5000 ? 5000 : 25000,
     blockedGenres: Array.isArray(saved.blockedGenres)
       ? [...new Set(saved.blockedGenres.filter((genre): genre is string => typeof genre === 'string').map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
       : [],

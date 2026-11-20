@@ -18,6 +18,7 @@ export async function PUT(request: NextRequest) {
     sundayScheduleEnabled?: unknown
     newTagalogOpmEnabled?: unknown
     bassBoostDb?: unknown
+    transmitterWatts?: unknown
     blockedGenres?: unknown
     rjOfficialAutoEnabled?: unknown
     rjOfficialAutoMessage?: unknown
@@ -37,6 +38,7 @@ export async function PUT(request: NextRequest) {
     bassBoostDb: typeof body.bassBoostDb === 'number' && Number.isFinite(body.bassBoostDb)
       ? Math.min(MAX_BASS_BOOST_DB, Math.max(0, body.bassBoostDb))
       : current.bassBoostDb,
+    transmitterWatts: body.transmitterWatts === 5000 ? 5000 : body.transmitterWatts === 25000 ? 25000 : current.transmitterWatts,
     blockedGenres,
     rjOfficialAutoEnabled: typeof body.rjOfficialAutoEnabled === 'boolean'
       ? body.rjOfficialAutoEnabled

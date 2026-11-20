@@ -48,6 +48,7 @@ export function useBroadcast(
   playing: boolean,
   volume: number,
   onStreamError?: (uid: string) => void,
+  stationId = 'main',
 ) {
   const slots = useRef<Slot[]>([])
   const audioContext = useRef<AudioContext | null>(null)
@@ -70,6 +71,29 @@ export function useBroadcast(
   useEffect(() => {
     if (data) offset.current = data.serverTime - Date.now()
   }, [data])
+
+  useEffect(() => {
+    if (!playing || !data?.offAir || stationId !== 'main' || volume <= 0) return
+    const context = audioContext.current
+    if (!context || context.state === 'closed') return
+    let stopped = false
+    const playStatic = () => {
+      if (stopped || context.state === 'closed') return
+      const length = Math.floor(context.sampleRate * 0.16)
+      const buffer = context.createBuffer(1, length, context.sampleRate)
+      const channel = buffer.getChannelData(0)
+      for (let index = 0; index < length; index++) channel[index] = (Math.random() * 2 - 1) * 0.22
+      const source = context.createBufferSource()
+      const gain = context.createGain()
+      gain.gain.value = Math.min(0.07, volume * 0.1)
+      source.buffer = buffer
+      source.connect(gain).connect(context.destination)
+      source.start()
+    }
+    playStatic()
+    const interval = window.setInterval(playStatic, 900)
+    return () => { stopped = true; window.clearInterval(interval) }
+  }, [data?.offAir, playing, stationId, volume])
 
   const unlock = useCallback(() => {
     if (slots.current.length > 0) return
@@ -271,7 +295,8 @@ export function useBroadcast(
           }
         }
 
-        el.volume = clamp01(trackGain(track, now) * volume)
+        const weakSignal = data?.transmitterWatts === 5000 && Math.sin(now / 180) > 0.96 ? 0.18 : 1
+        el.volume = clamp01(trackGain(track, now) * volume * weakSignal)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           void el.play().then(() => {
@@ -306,16 +331,6 @@ export function useBroadcast(
     const id = window.setInterval(tick, 250)
     return () => window.clearInterval(id)
   }, [data, onStreamError, playing, volume])
-
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !playing) return
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'MOR 93.5',
-      artist: 'No. 1 Bicol Region',
-      album: 'MOR 93.5 · ABS-CBN Complex, Naga City',
-      artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
-    })
-  }, [playing])
 
   useEffect(
     () => () => {
