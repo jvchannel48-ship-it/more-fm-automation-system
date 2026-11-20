@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
+import { Bell, BatteryCharging, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -147,6 +147,17 @@ export function AccountMenu() {
     } finally { setPermissionBusy(false) }
   }
 
+  const enableBatteryOptimization = async () => {
+    setPermissionBusy(true); setError(''); setMessage('')
+    try {
+      const { requestBatteryOptimizationExemption } = await import('@/lib/app-permissions')
+      await requestBatteryOptimizationExemption()
+      setMessage('Binuksan ang Android battery optimization settings para payagan ang RJ FM.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Hindi mabuksan ang battery settings.')
+    } finally { setPermissionBusy(false) }
+  }
+
   const enableMicrophone = async () => {
     setPermissionBusy(true); setError(''); setMessage('')
     try {
@@ -195,6 +206,7 @@ export function AccountMenu() {
                 <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><div><p className="text-sm font-medium">Notifications</p><p className="text-xs text-muted-foreground">RJ FM alerts via OneSignal</p></div></div><Button type="button" size="sm" onClick={enableNotifications} disabled={permissionBusy}>Allow</Button></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Mic className="size-4 text-primary" /><div><p className="text-sm font-medium">Microphone</p><p className="text-xs text-muted-foreground">For voice features when used</p></div></div><Button type="button" size="sm" variant="outline" onClick={enableMicrophone} disabled={permissionBusy}>Allow</Button></div>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><BatteryCharging className="size-4 text-primary" /><div><p className="text-sm font-medium">Battery optimization</p><p className="text-xs text-muted-foreground">Allow background playback</p></div></div><Button type="button" size="sm" variant="outline" onClick={enableBatteryOptimization} disabled={permissionBusy}>Settings</Button></div>
                 <p className="text-xs text-muted-foreground">Maaari mo ring baguhin o bawiin ang permissions sa Android Settings → Apps → RJ FM → Permissions.</p>
               </div> : view === 'privacy' ? <div className="rounded-2xl border p-4 text-sm leading-6"><p className="font-medium">Privacy policy</p><p className="mt-2 text-muted-foreground">RJ FM keeps the profile details needed to save your preferences, credits, and request history. Your profile is tied to this phone session so another device cannot use its balance.</p><p className="mt-2 text-muted-foreground">Listening activity is used only to show current listener status in the admin panel. It expires shortly after playback stops. We do not display your private profile information to other listeners.</p></div> : <>
               <div className="flex flex-col gap-2"><Label htmlFor="profile-name">Display name</Label><div className="flex gap-2"><Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} /><Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button></div></div>
