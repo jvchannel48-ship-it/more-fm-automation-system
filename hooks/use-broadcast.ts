@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 120_000
+const PRELOAD_AHEAD_MS = 180_000
 const DRIFT_TOLERANCE_S = 15
-const MAX_MEDIA_RETRIES = 3
-const RETRY_BACKOFF_MS = 2_000
-const START_TIMEOUT_MS = 12_000
+const MAX_MEDIA_RETRIES = 5
+const RETRY_BACKOFF_MS = 1_500
+const START_TIMEOUT_MS = 8_000
 
 interface Slot {
   el: HTMLAudioElement
@@ -171,18 +171,18 @@ export function useBroadcast(
       }
 
       const availableTracks = tracks.filter((track) => !failedUids.current.has(track.uid))
-      const active = availableTracks.filter(
-        (track) => now >= track.startAt && now < track.startAt + track.duration * 1000,
-      )
+      const active = availableTracks
+        .filter((track) => now >= track.startAt && now < track.startAt + track.duration * 1000)
+        .sort((a, b) => a.startAt - b.startAt)
       const activeIds = new Set(active.map((track) => track.uid))
       const firstUpcomingMusic = availableTracks
         .filter((track) => track.kind === 'music' && track.startAt > now)
         .sort((a, b) => a.startAt - b.startAt)[0]
-      const upcoming = availableTracks.filter(
-        (track) => !activeIds.has(track.uid)
+      const upcoming = availableTracks
+        .filter((track) => !activeIds.has(track.uid)
           && track.startAt > now
-          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid),
-      )
+          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid))
+        .sort((a, b) => a.startAt - b.startAt)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
 
