@@ -1,10 +1,10 @@
 {
-  "id": "https://rjfm.com/",
+  "id": "https://more-fm-automation-system.onrender.com/",
   "name": "RJ FM",
   "short_name": "RJ FM",
   "description": "RJ FM live radio — Your Voice • Your Music • Live",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "https://more-fm-automation-system.onrender.com/",
+  "scope": "https://more-fm-automation-system.onrender.com/",
   "display": "standalone",
   "display_override": [
     "standalone",
@@ -26,7 +26,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/rj-fm-logo.jpg",
+      "src": "/rjfm-app-icon.svg",
       "sizes": "any",
       "type": "image/jpeg",
       "purpose": "any"
