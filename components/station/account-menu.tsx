@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, BatteryCharging, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
+import { Bell, BatteryCharging, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,7 @@ import { ensureDeviceSession } from '@/lib/device-id'
 type UsagePoint = { date: string; creditsUsed: number; requests: number }
 type MonthlyUsage = { credits_used: number; requests_count: number }
 type Profile = { id: string; email: string; displayName: string; avatarUrl: string | null; creditsEnabled: boolean; dailyCredits?: number; bonusCredits?: number; dailyAllowance?: number; creditsRemaining?: number; usage?: UsagePoint[]; monthlyUsage?: MonthlyUsage }
-type View = 'profile' | 'usage' | 'privacy' | 'permissions'
+type View = 'profile' | 'usage' | 'privacy' | 'permissions' | 'settings'
 
 async function readJson(response: Response) {
   const data = await response.json().catch(() => ({})) as { error?: string }
@@ -54,6 +54,7 @@ export function AccountMenu() {
   const [error, setError] = useState('')
   const [permissionBusy, setPermissionBusy] = useState(false)
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown')
+  const [updating, setUpdating] = useState(false)
 
   const refreshProfile = useCallback(async (showError = false) => {
     try {
@@ -88,8 +89,10 @@ export function AccountMenu() {
 
   useEffect(() => {
     const openAccount = () => { setOpen(true); setView('profile'); setError(''); setMessage('') }
+    const openSettings = () => { setOpen(true); setView('settings'); setError(''); setMessage('') }
     window.addEventListener('morefm:open-account', openAccount)
-    return () => window.removeEventListener('morefm:open-account', openAccount)
+    window.addEventListener('morefm:open-settings', openSettings)
+    return () => { window.removeEventListener('morefm:open-account', openAccount); window.removeEventListener('morefm:open-settings', openSettings) }
   }, [])
 
   const updateName = async () => {
@@ -177,19 +180,34 @@ export function AccountMenu() {
   }
 
   const logout = async () => { setBusy(true); try { await fetch('/api/account/session', { method: 'DELETE' }); profileRef.current = null; setProfile(null); setMessage('Naka-disconnect ang profile sa phone na ito.') } finally { setBusy(false) } }
+
+  const updateApp = async () => {
+    setUpdating(true)
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(registrations.map((registration) => registration.unregister()))
+      }
+      if ('caches' in window) {
+        const names = await caches.keys()
+        await Promise.all(names.map((name) => caches.delete(name)))
+      }
+    } finally {
+      const url = new URL(window.location.href)
+      url.searchParams.set('app_update', String(Date.now()))
+      window.location.replace(url.toString())
+    }
+  }
+
   const openView = (next: View) => { setView(next); setError(''); setMessage('') }
 
   return (
     <>
-      <Button variant="ghost" size="icon" aria-label="Account and profile" onClick={() => { setOpen(true); setView('profile'); setError(''); setMessage('') }} className="relative">
-        {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="" className="size-7 rounded-full object-cover" /> : <CircleUserRound aria-hidden="true" />}
-        {profile && <span className="absolute bottom-1 right-1 size-2 rounded-full bg-emerald-500 ring-2 ring-background" aria-label="Logged in" />}
-      </Button>
-      {open && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
+            {open && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
         <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl">
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Close account" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
           <h2 id="account-title" className="pr-8 text-xl font-semibold">Phone profile</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your listener profile and credits.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Profile, playback, permissions, at app settings.</p>
           {profile ? <div className="mt-5 flex flex-col gap-4">
             <div className="flex items-center gap-3 rounded-2xl bg-secondary/60 p-3">
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
@@ -201,8 +219,8 @@ export function AccountMenu() {
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p><p className="text-[11px] text-muted-foreground">credits</p></div>
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3"><p className="text-xs text-muted-foreground">Today</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.dailyCredits}</p><p className="text-[11px] text-muted-foreground">of {profile.dailyAllowance} · resets daily</p></div>
             </div>}
-            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
-            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
+            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button><Button type="button" variant={view === 'settings' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('settings')}><Settings className="size-4" />Settings</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
+            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'settings' ? <div className="flex flex-col gap-3 rounded-2xl border p-4"><div><p className="font-medium">App settings</p><p className="mt-1 text-xs text-muted-foreground">Manage app permissions and refresh the latest version.</p></div><Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button><div className="rounded-xl bg-secondary/50 p-3"><p className="text-sm font-medium">Update RJ FM</p><p className="mt-1 text-xs text-muted-foreground">Refresh app files and load the latest available version.</p><Button type="button" className="mt-3 w-full" onClick={updateApp} disabled={updating}>{updating ? <RefreshCw className="animate-spin" /> : <Check />}{updating ? 'Updating…' : 'Update app'}</Button></div></div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
                 <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><div><p className="text-sm font-medium">Notifications</p><p className="text-xs text-muted-foreground">RJ FM alerts via OneSignal</p></div></div><Button type="button" size="sm" onClick={enableNotifications} disabled={permissionBusy}>Allow</Button></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Mic className="size-4 text-primary" /><div><p className="text-sm font-medium">Microphone</p><p className="text-xs text-muted-foreground">For voice features when used</p></div></div><Button type="button" size="sm" variant="outline" onClick={enableMicrophone} disabled={permissionBusy}>Allow</Button></div>
