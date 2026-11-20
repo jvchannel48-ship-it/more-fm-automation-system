@@ -34,6 +34,7 @@ export interface StationSettings {
   discoEnabled: boolean
   rjOfficialAutoEnabled: boolean
   rjOfficialAutoMessage: string
+  rjFmNationwideEnabled: boolean
 }
 
 export interface LiveDjState {

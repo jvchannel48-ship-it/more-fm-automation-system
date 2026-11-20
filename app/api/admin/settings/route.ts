@@ -23,6 +23,7 @@ export async function PUT(request: NextRequest) {
     discoEnabled?: unknown
     rjOfficialAutoEnabled?: unknown
     rjOfficialAutoMessage?: unknown
+    rjFmNationwideEnabled?: unknown
   }
   const current = await getSettings()
   const blockedGenres = Array.isArray(body.blockedGenres)
@@ -48,6 +49,9 @@ export async function PUT(request: NextRequest) {
     rjOfficialAutoMessage: typeof body.rjOfficialAutoMessage === 'string'
       ? body.rjOfficialAutoMessage.trim().slice(0, 500)
       : current.rjOfficialAutoMessage,
+    rjFmNationwideEnabled: typeof body.rjFmNationwideEnabled === 'boolean'
+      ? body.rjFmNationwideEnabled
+      : current.rjFmNationwideEnabled,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'

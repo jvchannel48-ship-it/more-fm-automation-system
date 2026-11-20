@@ -168,6 +168,15 @@ export function AdminPanel() {
         />
       </div>
 
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="rj-fm-nationwide">RJ FM Nationwide MP3 IDs</Label>
+          <span className="text-xs text-muted-foreground">
+            {data?.rjFmNationwideEnabled === false ? 'OFF · Nationwide station IDs are skipped; music continues.' : 'ON · Regional station IDs play after every 2 songs.'}
+          </span>
+        </div>
+        <Switch id="rj-fm-nationwide" checked={data?.rjFmNationwideEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { rjFmNationwideEnabled: checked })} />
+      </div>
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="transmitter-watts">Transmitter power</Label>

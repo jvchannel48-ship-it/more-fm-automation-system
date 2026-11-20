@@ -42,6 +42,16 @@ const WEEKDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-weekday-announcement.mp3'
 const WEEKDAY_ANNOUNCEMENT_SECONDS = 5.407
 const SATURDAY_ANNOUNCEMENT_TITLE = 'RJ FM Saturday announcement'
 const WEEKDAY_ANNOUNCEMENT_TITLE = 'RJ FM weekday announcement'
+const NATIONWIDE_IDENT_FADE_SECONDS = 1.5
+const NATIONWIDE_IDENT_BY_STATION: Partial<Record<StationId, { src: string; duration: number; title: string }>> = {
+  naga: { src: '/audio/rjfmnagacity.mp3', duration: 5.96, title: 'RJ FM Naga City' },
+  cebu: { src: '/audio/rjfmcebu.mp3', duration: 5.64, title: 'RJ FM Cebu' },
+  gensan: { src: '/audio/rjfmgeneralsantos.mp3', duration: 6.43, title: 'RJ FM General Santos' },
+  cdo: { src: '/audio/rjfmcagayanDeoro.mp3', duration: 6.61, title: 'RJ FM Cagayan de Oro' },
+  davao: { src: '/audio/rjfmdavao.mp3', duration: 5.88, title: 'RJ FM Davao' },
+  iloilo: { src: '/audio/rjfmiloilo.mp3', duration: 6.27, title: 'RJ FM Iloilo' },
+  masbate: { src: '/audio/rjfmmasbate.mp3', duration: 5.49, title: 'RJ FM Masbate' },
+}
 
 interface HistoryEntry { id: string; key: string; artist: string; t: number }
 interface StationState {
@@ -203,25 +213,24 @@ function nextStart(state: StationState, now: number) {
 }
 
 /** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
-function buildNagaFollowTracks(mainState: StationState, now: number): Track[] {
-  const manilaMusic = mainState.tracks
-    .filter((track) => track.kind === 'music' && track.src)
-    .sort((a, b) => a.startAt - b.startAt)
+function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean): Track[] {
+  const manilaMusic = mainState.tracks.filter((track) => track.kind === 'music' && track.src).sort((a, b) => a.startAt - b.startAt)
   const out: Track[] = []
-  for (const track of manilaMusic) {
-    const startAt = track.startAt + NAGA_FOLLOW_DELAY_MS
-    if (startAt + track.duration * 1000 < now - 2_000) continue
-    out.push({
-      uid: `naga-follow-${track.uid}`,
-      src: track.src,
-      startAt,
-      duration: track.duration,
-      fadeIn: Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS),
-      fadeOut: Math.min(CROSSFADE_SECONDS, track.fadeOut || CROSSFADE_SECONDS),
-      kind: 'music',
-      title: track.title,
-      artist: track.artist,
-    })
+  const ident = NATIONWIDE_IDENT_BY_STATION.naga
+  const offset = Math.max(0, mainState.songCount - manilaMusic.length)
+  let shiftMs = 0
+  let nextFadeIn: number | null = null
+  for (let index = 0; index < manilaMusic.length; index++) {
+    const track = manilaMusic[index]
+    const startAt = track.startAt + NAGA_FOLLOW_DELAY_MS + shiftMs
+    const addIdent = nationwideEnabled && Boolean(ident) && (offset + index + 1) % 2 === 0
+    if (startAt + track.duration * 1000 >= now - 2_000) out.push({ uid: `naga-follow-${track.uid}`, src: track.src, startAt, duration: track.duration, fadeIn: nextFadeIn ?? Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS), fadeOut: addIdent ? 0 : Math.min(CROSSFADE_SECONDS, track.fadeOut || CROSSFADE_SECONDS), kind: 'music', title: track.title, artist: track.artist })
+    if (addIdent && ident) {
+      const identStartAt = startAt + track.duration * 1000
+      if (identStartAt + ident.duration * 1000 >= now - 2_000) out.push({ uid: `rjfm-nationwide-naga-${track.uid}`, src: ident.src, startAt: identStartAt, duration: ident.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: ident.title, artist: 'RJ FM Nationwide' })
+      shiftMs += (CROSSFADE_SECONDS + ident.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
+      nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
+    } else nextFadeIn = null
   }
   return out.sort((a, b) => a.startAt - b.startAt)
 }
@@ -238,7 +247,7 @@ function statePathFor(station: StationId) {
     default: return STATE_PATH
   }
 }
-async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main') {
+async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 6) {
     const startAt = nextStart(state, now)
@@ -249,6 +258,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         ? masbateProgramAt(startAt)
         : programAt(startAt, sundayScheduleEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
+    const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
+    const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 2 === 0
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
@@ -256,7 +267,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     if (!song) break
     if (request) state.requestQueue.shift()
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn, fadeOut: CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
+    state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
     const announcementSchedule = dailyAnnouncementScheduleAt(songStart)
@@ -264,6 +275,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     if (inAnnouncementWindow) state.dailyAnnouncementSongCount++
     const announcementSeconds = announcementSchedule?.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_SECONDS : WEEKDAY_ANNOUNCEMENT_SECONDS
     const announcementEndAt = songStart + song.duration * 1000 + announcementSeconds * 1000
+    let announcementAdded = false
     if (!state.dailyAnnouncementPlayed && announcementSchedule && state.dailyAnnouncementSongCount >= announcementSchedule.songsRequired && inAnnouncementWindow && announcementEndAt <= announcementSchedule.expiresAt) {
       const prev = state.tracks.at(-1)
       if (prev && prev.kind === 'music') prev.fadeOut = Math.min(prev.fadeOut || CROSSFADE_SECONDS, 3)
@@ -281,6 +293,11 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         artist: 'RJ FM',
       })
       state.dailyAnnouncementPlayed = true
+      announcementAdded = true
+    }
+    if (identAfterSong && !announcementAdded && stationIdent) {
+      const identStartAt = songStart + song.duration * 1000
+      state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
   }
 }
@@ -345,16 +362,28 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
+    if (!settings.rjFmNationwideEnabled) {
+      const idents = state.tracks.filter((track) => track.uid.startsWith('rjfm-nationwide-'))
+      if (idents.length) {
+        for (const ident of idents) {
+          const previousMusic = [...state.tracks].filter((track) => track.kind === 'music' && track.startAt < ident.startAt).sort((a, b) => b.startAt - a.startAt)[0]
+          const nextMusic = state.tracks.filter((track) => track.kind === 'music' && track.startAt > ident.startAt).sort((a, b) => a.startAt - b.startAt)[0]
+          if (previousMusic && nextMusic) { previousMusic.fadeOut = CROSSFADE_SECONDS; nextMusic.startAt = trackEnd(previousMusic) - CROSSFADE_SECONDS * 1000; nextMusic.fadeIn = CROSSFADE_SECONDS }
+        }
+        state.tracks = state.tracks.filter((track) => !track.uid.startsWith('rjfm-nationwide-'))
+        await writeJson(statePath, state)
+      }
+    }
 
     if (station === 'naga') {
       const mainHasUpcoming = mainSnap.state.tracks.some((track) => track.startAt > now)
       const mainHasCurrent = mainSnap.state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
       if (!mainHasUpcoming && !mainHasCurrent && !options.skipFill) {
-        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main')
+        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled)
         mainSnap.state.fillingUntil = 0
         await writeJson(STATE_PATH, mainSnap.state)
       }
-      const followed = buildNagaFollowTracks(mainSnap.state, now)
+      const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
       const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
       if (prevKey !== nextKey) {
@@ -380,7 +409,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
       state.fillingUntil = now + FILL_LOCK_MS
       await writeJson(statePath, state)
-      await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station)
+      await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled)
       state.fillingUntil = 0
       await writeJson(statePath, state)
     } else if (changed) { await writeJson(statePath, state) }
@@ -420,7 +449,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (!options.skipFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main')
+    await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) await writeJson(STATE_PATH, state)
