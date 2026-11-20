@@ -10,6 +10,11 @@ export function StationShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setStation(getStoredStation())
+    if ('serviceWorker' in navigator) {
+      void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
+        console.warn('[RJ FM] Offline support registration failed', error)
+      })
+    }
   }, [])
 
   const meta = STATIONS[station]
