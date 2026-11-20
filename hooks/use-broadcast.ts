@@ -76,22 +76,26 @@ export function useBroadcast(
     if (!playing || !data?.offAir || stationId !== 'main' || volume <= 0) return
     const context = audioContext.current
     if (!context || context.state === 'closed') return
+    if (context.state === 'suspended') void context.resume().catch(() => undefined)
     let stopped = false
     const playStatic = () => {
       if (stopped || context.state === 'closed') return
-      const length = Math.floor(context.sampleRate * 0.16)
+      const length = Math.floor(context.sampleRate * 0.28)
       const buffer = context.createBuffer(1, length, context.sampleRate)
       const channel = buffer.getChannelData(0)
-      for (let index = 0; index < length; index++) channel[index] = (Math.random() * 2 - 1) * 0.22
+      for (let index = 0; index < length; index++) {
+        const envelope = Math.min(1, index / (length * 0.08), (length - index) / (length * 0.18))
+        channel[index] = (Math.random() * 2 - 1) * 0.72 * Math.max(0, envelope)
+      }
       const source = context.createBufferSource()
       const gain = context.createGain()
-      gain.gain.value = Math.min(0.07, volume * 0.1)
+      gain.gain.value = Math.min(0.24, volume * 0.34)
       source.buffer = buffer
       source.connect(gain).connect(context.destination)
       source.start()
     }
     playStatic()
-    const interval = window.setInterval(playStatic, 900)
+    const interval = window.setInterval(playStatic, 700)
     return () => { stopped = true; window.clearInterval(interval) }
   }, [data?.offAir, playing, stationId, volume])
 
