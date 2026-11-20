@@ -1,0 +1,90 @@
+name: Build RJ FM Android App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'components/station/account-menu.tsx'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.3.4 --activate
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Generate Android project
+        run: |
+          pnpm exec cap add android
+          pnpm exec cap sync android
+
+      - name: Apply RJ FM launcher icon
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          curl -L 'https://raw.githubusercontent.com/jvchannel48-ship-it/more-fm-automation-system/main/public/rj-fm-logo.jpg' -o /tmp/rjfm-logo.jpg
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            case "$density" in
+              mdpi) size=48 ;;
+              hdpi) size=72 ;;
+              xhdpi) size=96 ;;
+              xxhdpi) size=144 ;;
+              xxxhdpi) size=192 ;;
+            esac
+            dir="android/app/src/main/res/mipmap-$density"
+            mkdir -p "$dir"
+            convert /tmp/rjfm-logo.jpg -resize "${size}x${size}^" -gravity center -extent "${size}x${size}" "$dir/ic_launcher.png"
+            cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+          done
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Prepare APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk rj-fm-android.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RJ-FM-Android
+          path: rj-fm-android.apk
+          retention-days: 30
+
+      - name: Publish latest APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: RJ FM Android App
+          body: Latest standalone RJ FM Android APK.
+          files: rj-fm-android.apk
+          make_latest: true
+          prerelease: false
+          fail_on_unmatched_files: true
