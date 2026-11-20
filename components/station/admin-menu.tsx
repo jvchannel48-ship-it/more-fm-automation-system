@@ -72,8 +72,8 @@ export function AdminMenu() {
 
   return (
     <Sheet>
-      <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
-        <Menu aria-hidden="true" />
+      <SheetTrigger render={<Button variant="ghost" aria-label="Open menu" className="h-14 w-full flex-col gap-1 rounded-xl text-xs" />}> 
+        <Menu className="size-5" aria-hidden="true" />Menu
       </SheetTrigger>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <div className="flex flex-col gap-6 px-4 pb-6">
