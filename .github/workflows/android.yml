@@ -49,7 +49,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          curl -L 'https://raw.githubusercontent.com/jvchannel48-ship-it/more-fm-automation-system/main/public/rj-fm-logo.jpg' -o /tmp/rjfm-logo.jpg
+          curl -L 'https://raw.githubusercontent.com/jvchannel48-ship-it/more-fm-automation-system/main/public/rjfm-app-icon.svg' -o /tmp/rjfm-logo.svg
           for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             case "$density" in
               mdpi) size=48 ;;
@@ -60,9 +60,46 @@ jobs:
             esac
             dir="android/app/src/main/res/mipmap-$density"
             mkdir -p "$dir"
-            convert /tmp/rjfm-logo.jpg -resize "${size}x${size}^" -gravity center -extent "${size}x${size}" "$dir/ic_launcher.png"
+            convert -background "#040f1e" /tmp/rjfm-logo.svg -resize "${size}x${size}^" -gravity center -extent "${size}x${size}" "$dir/ic_launcher.png"
             cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
           done
+
+      - name: Configure Android permissions and notification prompt
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          additions = '''    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-feature android:name="android.hardware.microphone" android:required="false" />
+          '''
+          s = s.replace('<application', additions + '\\n    <application', 1)
+          p.write_text(s)
+          PY
+          mkdir -p android/app/src/main/java/com/rjfm/app
+          cat > android/app/src/main/java/com/rjfm/app/MainActivity.java <<'JAVA'
+          package com.rjfm.app;
+
+          import android.Manifest;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+          import android.os.Bundle;
+          import androidx.core.app.ActivityCompat;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+            @Override
+            public void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              if (Build.VERSION.SDK_INT >= 33 &&
+                  checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                  new String[]{Manifest.permission.POST_NOTIFICATIONS}, 2001);
+              }
+            }
+          }
+          JAVA
 
       - name: Build APK
         working-directory: android
