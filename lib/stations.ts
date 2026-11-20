@@ -162,7 +162,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
   },
 }
 
-export const STATION_ORDER: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+export const STATION_ORDER: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo']
 
 export function isStationId(value: unknown): value is StationId {
   return typeof value === 'string' && value in STATIONS
