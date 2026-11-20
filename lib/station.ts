@@ -63,7 +63,7 @@ async function getLiveDj(): Promise<LiveDjState | null> {
   }
   return state
 }
-interface SearchItem { id: string; title: string; url: string; duration: string; genre?: string }
+interface SearchItem { id: string; title: string; url: string; duration: string; genre?: string; channel?: string; channelTitle?: string; uploader?: string; description?: string; artist?: string }
 
 function parseDuration(value: string): number {
   const parts = value.split(':').map(Number)
@@ -142,6 +142,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (seconds < 120 || seconds > 420) return false
       const allowDancePop = ['main', 'naga', 'cebu', 'davao', 'iloilo'].includes(station) && program.id === 'disco'
       if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
+      if (!isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres })) return false
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
@@ -160,7 +161,7 @@ async function findRequestedSong(title: string, artist: string, history: History
   const artistNeedle = normalize(artist)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, genre: item.genre, blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
   }).map((item) => {
     const normalizedTitle = normalize(item.title)
     const score = (normalizedTitle.includes(titleNeedle) ? 2 : 0) + (normalizedTitle.includes(artistNeedle) ? 1 : 0)
