@@ -326,8 +326,6 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
 
     if (station === 'naga') {
       const followed = buildNagaFollowTracks(mainSnap.state, now)
-      const hasFollowedCurrent = followed.some((track) => track.startAt <= now && trackEnd(track) > now)
-      const hasFollowedUpcoming = followed.some((track) => track.startAt > now)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
       const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
       if (prevKey !== nextKey) {
