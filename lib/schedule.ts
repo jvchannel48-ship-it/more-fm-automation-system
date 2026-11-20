@@ -326,7 +326,7 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Willie Revillame|willie',
 ])
 
-const LOVE_VARIANTS = ['classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
+const LOVE_VARIANTS = ['60s 70s 80s 90s 2000s love songs', 'classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
 const DISCO_VARIANTS = [
   '',
   'official audio',
@@ -554,7 +554,7 @@ export function iloiloDzmmWindowAt(ms: number): DzmmWindow | null {
   return null
 }
 
-/** Own programming uses disco/dance until 1 PM, then love songs; DZMM windows are handled separately. */
+/** RJ FM uses an all-day love-song format; DZMM windows are handled separately. */
 export function programAt(ms: number, sundayScheduleEnabled = true): Program {
   const { hour, day } = manilaTime(ms)
   if (sundayScheduleEnabled && day === 0) {
@@ -563,17 +563,13 @@ export function programAt(ms: number, sundayScheduleEnabled = true): Program {
     if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
     if (hour >= 20) return PROGRAMS['sunday-english-love']
   }
-  if (hour >= 4 && hour < 13) return PROGRAMS.disco
-  if (hour >= 13 && hour < 20) return PROGRAMS['daytime-love']
+  if (hour >= 4 && hour < 20) return PROGRAMS['daytime-love']
   return PROGRAMS['love-mix']
 }
 
-/** RJ FM Naga 92.3 has its own disco/dance rotation until 1 PM, then love songs. */
+/** RJ FM Naga follows the Manila love-song format. */
 export function nagaProgramAt(ms: number): Program {
-  const { hour } = manilaTime(ms)
-  if (hour >= 4 && hour < 13) return PROGRAMS.disco
-  if (hour >= 13 && hour < 20) return PROGRAMS['daytime-love']
-  return PROGRAMS['love-mix']
+  return programAt(ms)
 }
 
 /** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
