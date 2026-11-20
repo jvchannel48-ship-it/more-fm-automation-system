@@ -299,8 +299,8 @@ export function useBroadcast(
           }
         }
 
-        const weakSignal = data?.transmitterWatts === 5000 && Math.sin(now / 180) > 0.96 ? 0.18 : 1
-        el.volume = clamp01(trackGain(track, now) * volume * weakSignal)
+        const liveDuck = data?.liveDj?.active ? 0.38 : 1
+        el.volume = clamp01(trackGain(track, now) * volume * liveDuck)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           void el.play().then(() => {
