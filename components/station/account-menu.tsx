@@ -30,7 +30,7 @@ function UsageChart({ usage }: { usage: UsagePoint[] }) {
   const points = slots.map((slot, index) => `${index * 16 + 5},${62 - (slot.value / max) * 50}`).join(' ')
   return (
     <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
-      <svg viewBox="0 0 110 70" className="h-28 w-full overflow-visible" role="img" aria-label="Credit usage from Monday to Saturday">
+      <svg viewBox="0 0 110 70" className="h-28 w-full overflow-visible" role="img" aria-label="Credit usage from Monday to Sunday">
         <defs><linearGradient id="usage-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#34d399" stopOpacity=".25" /><stop offset="1" stopColor="#34d399" stopOpacity="0" /></linearGradient></defs>
         <path d={`M 5 62 L ${points} L 101 62 Z`} fill="url(#usage-fill)" />
         <polyline points={points} fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
