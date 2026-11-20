@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CircleUserRound, Download, LogOut, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
+import { CircleUserRound, LogOut, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -105,6 +105,34 @@ export function AccountMenu() {
     finally { setBusy(false) }
   }
 
+  const shareAppLink = async () => {
+    const apkUrl = 'https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk'
+    const shareData = {
+      title: 'RJ FM Android App',
+      text: 'I-download ang RJ FM Android app gamit ang link na ito:',
+      url: apkUrl,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        setMessage('Naibahagi ang RJ FM APK link.')
+        setError('')
+        return
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(apkUrl)
+        setMessage('Nakopya ang RJ FM APK link. Maaari mo na itong ipadala sa iba.')
+        setError('')
+        return
+      }
+      window.prompt('Kopyahin ang RJ FM APK link:', apkUrl)
+    } catch (reason) {
+      if (reason instanceof Error && reason.name === 'AbortError') return
+      setError('Hindi naibahagi ang link. Subukan ulit.')
+    }
+  }
+
   const reconnectDevice = async () => {
     setBusy(true); setError(''); setMessage('')
     try { if (!await ensureDeviceSession()) throw new Error('Hindi ma-link ang phone device. Subukan ulit.'); await refreshProfile(true); setMessage('Handa na ang profile mo para sa daily credits.') }
@@ -131,7 +159,8 @@ export function AccountMenu() {
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
               <div className="min-w-0"><p className="truncate font-medium">{profile.displayName || 'Listener'}</p><p className="truncate text-xs text-muted-foreground">Your RJ FM profile</p></div>
             </div>
-            <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"><Download className="size-4" />Download RJ FM Android App</a>
+            <Button type="button" variant="outline" className="w-full" onClick={shareAppLink}><Share2 className="size-4" />Share RJ FM APK link</Button>
+            <p className="text-xs text-muted-foreground">Ipadala ang opisyal na link para ma-download o ma-update ng iba ang RJ FM app.</p>
             {profile.creditsEnabled && <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p><p className="text-[11px] text-muted-foreground">credits</p></div>
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3"><p className="text-xs text-muted-foreground">Today</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.dailyCredits}</p><p className="text-[11px] text-muted-foreground">of {profile.dailyAllowance} · resets daily</p></div>
