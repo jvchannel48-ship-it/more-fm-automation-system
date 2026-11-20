@@ -28,7 +28,7 @@ function playSfx(kind: (typeof SOUNDBOARD)[number]['kind']) {
   master.gain.value = 0.35
   master.connect(ctx.destination)
 
-  const tone = (freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain =  0.3) => 0.3) => {
+  const tone = (freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.3) => {
     const o = ctx.createOscillator()
     const g = ctx.createGain()
     o.type = type
@@ -153,7 +153,7 @@ export function AdminLiveDesk() {
   const [live, setLive] = useState<LiveState>({ active: false, name: '', updatedAt: 0 })
   const [djName, setDjName] = useState('Live DJ')
   const [micBusy, setMicBusy] = useState(false)
-  const [ [micError, setMicError] = useState('')
+  const [micError, setMicError] = useState('')
   const [status, setStatus] = useState('')
   const [level, setLevel] = useState(0)
 
