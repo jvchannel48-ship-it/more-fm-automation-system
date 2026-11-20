@@ -111,11 +111,12 @@ export function isOriginalArtistTrack(title: string, artist: ArtistTrackCredit, 
 }
 
 /** Merge admin blocked genres with built-in defaults (deduped). */
-export function effectiveBlockedGenres(adminBlocked: string[] | undefined | null) {
+export function effectiveBlockedGenres(adminBlocked: string[] | undefined | null, options?: { discoEnabled?: boolean }) {
   const admin = Array.isArray(adminBlocked)
     ? adminBlocked.map((g) => normalize(g)).filter(Boolean)
     : []
-  return [...new Set([...DEFAULT_BLOCKED_GENRES.map((g) => normalize(g)), ...admin])].slice(0, 40)
+  const forced = options?.discoEnabled === false ? ['disco', 'dance', 'eurodance', 'funk'] : []
+  return [...new Set([...DEFAULT_BLOCKED_GENRES.map((g) => normalize(g)), ...admin, ...forced])].slice(0, 40)
 }
 
 /** Word-boundary-ish match of blocked genre tokens against free text. */
