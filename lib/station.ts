@@ -210,7 +210,12 @@ function trackEnd(track: Track) { return track.startAt + track.duration * 1000 }
 function nextStart(state: StationState, now: number) {
   const last = state.tracks.at(-1)
   if (!last) return now
-  return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
+  // A station ID / announcement must finish before the next song begins.
+  // Do not apply the normal music crossfade to voice clips.
+  const nextAt = last.kind === 'dj-mic'
+    ? trackEnd(last)
+    : trackEnd(last) - last.fadeOut * 1000
+  return Math.max(now, nextAt)
 }
 
 /** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
