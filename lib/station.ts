@@ -322,7 +322,6 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
 
-    // RJ FM Naga: follow Manila song-for-song (start each track after Manila finishes it)
     if (station === 'naga') {
       const followed = buildNagaFollowTracks(mainSnap.state, now)
       const hasFollowedCurrent = followed.some((track) => track.startAt <= now && trackEnd(track) > now)
@@ -349,10 +348,8 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         }
         return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
       }
-      // Manila on DZMM / empty music — keep Naga music flowing independently until Manila music returns
     }
 
-    // Other regional stations (and Naga fallback): independent queues
     if (station !== 'naga') {
       const mainLiveKeys = new Set(mainSnap.state.tracks.filter((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now).map((track) => songKey(track.title ?? '')))
       if (mainLiveKeys.size) {
@@ -441,7 +438,7 @@ export async function reportPlaybackFailure(uid: string) {
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
   const [settings, listenersNow, averageListeners, { state }] = await Promise.all([
-    getSettings(), getActiveListenerCount(), getAverageListenereListenerCount(), loadState(now),
+    getSettings(), getActiveListenerCount(), getAverageListenerCount(), loadState(now),
   ])
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000
   const hourAgo = now - ARTIST_WINDOW_MS
