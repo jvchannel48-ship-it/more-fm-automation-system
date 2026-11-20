@@ -3,6 +3,7 @@ import { enqueueSongRequest } from '@/lib/station'
 import { privateJsonHeaders, requireAccount } from '@/lib/account-api'
 import { chargeSongRequest, refundSongRequest } from '@/lib/account-store'
 import { SONG_REQUEST_CREDIT_COST } from '@/lib/credit-math'
+import { parseStationId } from '@/lib/stations'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -10,7 +11,8 @@ export const maxDuration = 60
 export async function POST(request: NextRequest) {
   const { user, response: authResponse } = await requireAccount(request)
   if (authResponse) return authResponse
-  const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown; station?: unknown }
+  const station = parseStationId(body.station)
   const title = typeof body.title === 'string' ? body.title.trim() : ''
   const artist = typeof body.artist === 'string' ? body.artist.trim() : ''
 
@@ -27,8 +29,8 @@ export async function POST(request: NextRequest) {
       creditsRemaining = creditResult.creditsRemaining
       if (!creditResult.accepted) throw new Error('CREDITS_EMPTY')
       charged = creditResult.creditsRemaining !== undefined
-    })
-    return NextResponse.json({ ...result, creditsRemaining }, { status: 202, headers: privateJsonHeaders })
+    }, station)
+    return NextResponse.json({ ...result, station, creditsRemaining }, { status: 202, headers: privateJsonHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'CREDITS_EMPTY') {
       const remaining = creditsRemaining ?? 0
