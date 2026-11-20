@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   description:
     'RJ FM live radio. Select Manila, Naga, Cebu, Davao, or Iloilo for station-specific programming.',
   manifest: '/manifest.json',
-  generator: 'v0.app',
   appleWebApp: { capable: true, title: 'RJ FM', statusBarStyle: 'black-translucent' },
   icons: {
     icon: '/rjfm-app-icon.svg',
