@@ -11,7 +11,6 @@ type UsagePoint = { date: string; creditsUsed: number; requests: number }
 type MonthlyUsage = { credits_used: number; requests_count: number }
 type Profile = { id: string; email: string; displayName: string; avatarUrl: string | null; creditsEnabled: boolean; dailyCredits?: number; bonusCredits?: number; dailyAllowance?: number; creditsRemaining?: number; usage?: UsagePoint[]; monthlyUsage?: MonthlyUsage }
 type View = 'profile' | 'usage' | 'privacy'
-type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }> }
 
 async function readJson(response: Response) {
   const data = await response.json().catch(() => ({})) as { error?: string }
@@ -53,9 +52,6 @@ export function AccountMenu() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null)
-  const [appInstalled, setAppInstalled] = useState(false)
-  const [iosInstall, setIosInstall] = useState(false)
 
   const refreshProfile = useCallback(async (showError = false) => {
     try {
@@ -87,37 +83,6 @@ export function AccountMenu() {
     return () => { active = false; window.clearInterval(timer) }
   }, [refreshProfile])
 
-  useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
-    setAppInstalled(standalone)
-    setIosInstall(/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone)
-    const onBeforeInstall = (event: Event) => {
-      event.preventDefault()
-      setInstallPrompt(event as InstallPromptEvent)
-    }
-    const onInstalled = () => { setAppInstalled(true); setInstallPrompt(null); setMessage('Na-install na ang RJ FM app sa device mo.') }
-    window.addEventListener('beforeinstallprompt', onBeforeInstall)
-    window.addEventListener('appinstalled', onInstalled)
-    if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => undefined)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-      window.removeEventListener('appinstalled', onInstalled)
-    }
-  }, [])
-
-  const installApp = async () => {
-    if (appInstalled) return
-    if (installPrompt) {
-      await installPrompt.prompt()
-      const choice = await installPrompt.userChoice
-      if (choice.outcome === 'accepted') setMessage('Sinimulan ang pag-install ng RJ FM app.')
-      setInstallPrompt(null)
-      return
-    }
-    setMessage(iosInstall
-      ? 'Para i-install: i-tap ang Share sa Safari, pagkatapos piliin ang Add to Home Screen.'
-      : 'Buksan ang Chrome menu (⋮), pagkatapos piliin ang Install app o Add to Home screen.')
-  }
 
   useEffect(() => {
     const openAccount = () => { setOpen(true); setView('profile'); setError(''); setMessage('') }
@@ -166,7 +131,7 @@ export function AccountMenu() {
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-14 rounded-full object-cover" /> : <span className="flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary"><UserRound /></span>}
               <div className="min-w-0"><p className="truncate font-medium">{profile.displayName || 'Listener'}</p><p className="truncate text-xs text-muted-foreground">Your RJ FM profile</p></div>
             </div>
-            <Button type="button" onClick={() => void installApp()} disabled={appInstalled} className="w-full gap-2 bg-primary text-primary-foreground"><Download className="size-4" />{appInstalled ? 'RJ FM App Installed' : 'Download App Now'}</Button>
+            <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"><Download className="size-4" />Download RJ FM Android App</a>
             {profile.creditsEnabled && <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p><p className="text-[11px] text-muted-foreground">credits</p></div>
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3"><p className="text-xs text-muted-foreground">Today</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.dailyCredits}</p><p className="text-[11px] text-muted-foreground">of {profile.dailyAllowance} · resets daily</p></div>
