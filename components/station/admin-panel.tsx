@@ -39,6 +39,7 @@ export function AdminPanel() {
   const [blockedGenres, setBlockedGenres] = useState<string[]>([])
   const [genreInput, setGenreInput] = useState('')
   const [rjAutoMessage, setRjAutoMessage] = useState('')
+  const [confirmSendNotif, setConfirmSendNotif] = useState(false)
 
   useEffect(() => {
     if (data) {
@@ -60,54 +61,12 @@ export function AdminPanel() {
         body: body ? JSON.stringify(body) : undefined,
       })
       const result = await res.json().catch(() => ({})) as Partial<AdminStatus> & { error?: string }
-      if (!res.ok) throw new Error(result.error ?? 'Hindi na-save ang admin setting.')
+      if (!res.ok) throw new Error(result.error ?? 'Could not save admin setting.')
       const status = result as AdminStatus
       mutate(status, { revalidate: false })
-      const values = body as {
-        broadcastEnabled?: boolean
-        sundayScheduleEnabled?: boolean
-        newTagalogOpmEnabled?: boolean
-        bassBoostDb?: number
-        transmitterWatts?: 5000 | 25000
-        blockedGenres?: string[]
-        rjOfficialAutoEnabled?: boolean
-        rjOfficialAutoMessage?: string
-      } | undefined
-      if (method === 'POST') {
-        setMessage('Na-refresh ang music rotation.')
-      } else if (typeof values?.sundayScheduleEnabled === 'boolean') {
-        setMessage(status.persistenceConfigured
-          ? values.sundayScheduleEnabled ? 'Naka-save ang Sunday schedule setting.' : 'Naka-OFF ang Sunday special; normal mellow rotation ang susunod.'
-          : 'Na-toggle ang Sunday schedule, pero pansamantala lang ito sa server memory.')
-      } else if (typeof values?.newTagalogOpmEnabled === 'boolean') {
-        setMessage(status.persistenceConfigured
-          ? values.newTagalogOpmEnabled
-            ? 'Naka-ON ang modern Tagalog OPM mode at mananatili ito hanggang i-OFF mo.'
-            : 'Naka-OFF ang modern Tagalog OPM mode; normal rotation na ang kasunod.'
-          : 'Na-toggle ang OPM mode, pero pansamantala lang ito sa server memory.')
-      } else if (typeof values?.broadcastEnabled === 'boolean') {
-        setMessage(status.persistenceConfigured
-          ? 'Nai-save ang Broadcast setting sa Blob.'
-          : 'Na-toggle ang Broadcast, pero pansamantala lang ito sa server memory.')
-      } else if (typeof values?.bassBoostDb === 'number') {
-        setMessage(status.persistenceConfigured
-          ? `Bass boost saved at ${status.bassBoostDb} dB.`
-          : `Bass boost set to ${status.bassBoostDb} dB for this server session; durable storage is not configured.`)
-      } else if (values?.transmitterWatts === 5000 || values?.transmitterWatts === 25000) {
-        setMessage(status.persistenceConfigured
-          ? `Transmitter set to ${values.transmitterWatts === 25000 ? '25k' : '5k'} watts.`
-          : 'Transmitter setting saved for this server session only.')
-      } else if (Array.isArray(values?.blockedGenres)) {
-        setMessage(status.persistenceConfigured
-          ? 'Na-save ang blocked genre filter at ni-refresh ang rotation.'
-          : 'Na-update ang blocked genre filter, pero pansamantala lang ito sa server memory.')
-      } else if (typeof values?.rjOfficialAutoEnabled === 'boolean' || typeof values?.rjOfficialAutoMessage === 'string') {
-        setMessage(status.persistenceConfigured
-          ? 'Na-save ang RJ FM OFFICIAL auto-message settings.'
-          : 'Na-save ang auto-message settings para sa server session lamang.')
-      }
+      if (method === 'POST') setMessage('Music rotation refreshed.')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Hindi na-save ang admin setting.')
+      setError(reason instanceof Error ? reason.message : 'Could not save admin setting.')
     } finally {
       setBusy(false)
     }
@@ -157,10 +116,10 @@ export function AdminPanel() {
 
   const sendNotification = async () => {
     if (!notificationTitle.trim() || !notificationMessage.trim()) {
-      setError('Maglagay ng title at message bago mag-send ng notification.')
+      setError('Add a title and message before sending a notification.')
       return
     }
-    if (!window.confirm('I-send ang notification na ito sa lahat ng listeners?')) return
+    setConfirmSendNotif(false)
     setBusy(true)
     setError('')
     setMessage('')
@@ -172,21 +131,22 @@ export function AdminPanel() {
       for (const file of notificationFiles) form.append('files', file)
       const response = await fetch('/api/notifications', { method: 'POST', body: form })
       const result = await response.json().catch(() => ({})) as { error?: string; persistenceConfigured?: boolean }
-      if (!response.ok) throw new Error(result.error ?? 'Hindi na-send ang notification.')
+      if (!response.ok) throw new Error(result.error ?? 'Could not send the notification.')
       setNotificationTitle('')
       setNotificationMessage('')
       setNotificationFiles([])
       setMessage(result.persistenceConfigured === false
-        ? 'Na-send ang notification, pero pansamantala lang ito sa server memory.'
-        : 'Na-send na ang notification sa lahat ng listeners.')
+        ? 'Notification sent (temporary server memory only).'
+        : 'Notification sent to all listeners.')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Hindi na-send ang notification.')
+      setError(reason instanceof Error ? reason.message : 'Could not send the notification.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
+    <>
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
@@ -194,7 +154,7 @@ export function AdminPanel() {
           <Label htmlFor="broadcast">Manila 93.5 Broadcast</Label>
           <span className="text-xs text-muted-foreground">
             {data?.broadcastEnabled === false
-              ? `RJ FM Manila 93.5 lang ang naka-off · regional stations stay live · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`
+              ? `RJ FM Manila 93.5 only is off · regional stations stay live · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`
               : `RJ FM Manila 93.5 + DZMM schedule · regional stations stay live · auto ON ${SIGN_ON_HOUR}:00 AM / auto OFF ${SIGN_OFF_HOUR}:00 AM`}
           </span>
         </div>
@@ -230,7 +190,7 @@ export function AdminPanel() {
           <Label htmlFor="sunday-schedule">Sunday special schedule</Label>
           <span className="text-xs text-muted-foreground">
             {data?.sundayScheduleEnabled === false
-              ? 'Naka-OFF · normal mellow rotation tuwing Sunday'
+              ? 'OFF · normal mellow rotation on Sunday'
               : '4–10 AM English oldies · 10 AM–3 PM Pinoy jukebox · 3–8 PM Tagalog classics · 8 PM English love songs'}
           </span>
         </div>
@@ -255,23 +215,19 @@ export function AdminPanel() {
             onChange={(event) => setBassBoostInput(event.target.value)}
             disabled={!data || busy}
             className="h-10 w-28 rounded-md border border-input bg-background px-3 text-sm tabular-nums"
-            aria-describedby="bass-boost-help"
           />
           <span className="text-sm text-muted-foreground">dB</span>
           <Button type="button" variant="secondary" disabled={!data || busy} onClick={saveBassBoost}>
             Apply bass
           </Button>
         </div>
-        <p id="bass-boost-help" className="text-xs text-muted-foreground">
-          Set 0–{MAX_BASS_BOOST_DB} dB. 0 dB is neutral; 12 dB is the full-bass maximum with 35 Hz rumble control, clean headroom, and gentle peak protection so vocals stay clear.
-        </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <Label htmlFor="blocked-genre">Genre filter / block</Label>
-            <p className="mt-1 text-xs text-muted-foreground">I-enter ang genre na ayaw mong mapasama sa rotation, tulad ng disco, dance, rock. Puwedeng comma-separated.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Enter genres to keep out of rotation (e.g. disco, dance, rock).</p>
           </div>
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={applyStrictClassicLoveFilter}>Strict classic love</Button>
         </div>
@@ -301,14 +257,13 @@ export function AdminPanel() {
                 onClick={() => updateBlockedGenres(blockedGenres.filter((item) => item !== genre))}
                 disabled={busy}
                 className="rounded-full border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/20 disabled:opacity-50"
-                title={`Remove ${genre} block`}
               >
                 {genre} ×
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Walang naka-block na genre.</p>
+          <p className="text-xs text-muted-foreground">No blocked genres.</p>
         )}
       </div>
 
@@ -339,7 +294,7 @@ export function AdminPanel() {
           onChange={(event) => setNotificationMessage(event.target.value)}
           maxLength={3000}
           rows={4}
-          placeholder="I-type dito ang message para sa lahat ng listeners..."
+          placeholder="Type the message for all listeners..."
           disabled={busy}
           className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
@@ -355,7 +310,12 @@ export function AdminPanel() {
           <span className="flex items-center gap-1.5"><ImagePlus className="size-3.5" />{notificationFiles.length ? `${notificationFiles.length}/3 image${notificationFiles.length === 1 ? '' : 's'} attached` : 'No images attached'}</span>
           <span>{notificationMessage.length}/3000</span>
         </div>
-        <Button type="button" disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()} onClick={sendNotification} className="h-11 shadow-lg shadow-primary/15">
+        <Button
+          type="button"
+          disabled={busy || !notificationTitle.trim() || !notificationMessage.trim()}
+          onClick={() => setConfirmSendNotif(true)}
+          className="h-11 shadow-lg shadow-primary/15"
+        >
           <Send aria-hidden="true" />
           Send all notification
         </Button>
@@ -368,7 +328,7 @@ export function AdminPanel() {
               <Label htmlFor="rj-official-auto">RJ FM OFFICIAL auto message</Label>
               <BadgeCheck className="size-4 fill-sky-500 text-white" aria-label="Verified account" />
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Kapag naka-ON, magpapadala ng varied Hello / Keep the music message bawat 8 minuto sa active listeners.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">When ON, sends varied Hello / keep-the-music messages every 8 minutes to active listeners.</p>
           </div>
           <Switch
             id="rj-official-auto"
@@ -407,10 +367,24 @@ export function AdminPanel() {
         <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
         Refresh rotation
       </Button>
-
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Mellow easy-listening sa regular rotation; espesyal ang Sunday schedule kapag naka-ON. Walang AI o cover/remix; duplicate song uploads ay iniiwasan sa loob ng 7 araw.
-      </p>
     </div>
+
+    {confirmSendNotif && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmSendNotif(false) }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="send-notif-title" className="w-full max-w-sm rounded-2xl border border-primary/30 bg-card p-5 shadow-2xl">
+          <h3 id="send-notif-title" className="text-base font-semibold">Send notification?</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Send this notification to all listeners?
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmSendNotif(false)}>Cancel</Button>
+            <Button type="button" disabled={busy} onClick={() => void sendNotification()}>
+              <Send className="size-4" /> Send
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
