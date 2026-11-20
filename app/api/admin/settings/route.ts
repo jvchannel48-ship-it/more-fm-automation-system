@@ -20,6 +20,7 @@ export async function PUT(request: NextRequest) {
     bassBoostDb?: unknown
     transmitterWatts?: unknown
     blockedGenres?: unknown
+    discoEnabled?: unknown
     rjOfficialAutoEnabled?: unknown
     rjOfficialAutoMessage?: unknown
   }
@@ -40,6 +41,7 @@ export async function PUT(request: NextRequest) {
       : current.bassBoostDb,
     transmitterWatts: body.transmitterWatts === 5000 ? 5000 : body.transmitterWatts === 25000 ? 25000 : current.transmitterWatts,
     blockedGenres,
+    discoEnabled: typeof body.discoEnabled === 'boolean' ? body.discoEnabled : current.discoEnabled,
     rjOfficialAutoEnabled: typeof body.rjOfficialAutoEnabled === 'boolean'
       ? body.rjOfficialAutoEnabled
       : current.rjOfficialAutoEnabled,
@@ -52,6 +54,7 @@ export async function PUT(request: NextRequest) {
     && body.newTagalogOpmEnabled !== current.newTagalogOpmEnabled)
     || (Array.isArray(body.blockedGenres)
       && JSON.stringify(blockedGenres) !== JSON.stringify(current.blockedGenres))
+    || (typeof body.discoEnabled === 'boolean' && body.discoEnabled !== current.discoEnabled)
   ) {
     await refreshQueue()
   }
