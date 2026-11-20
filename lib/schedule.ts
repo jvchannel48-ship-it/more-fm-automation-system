@@ -392,12 +392,12 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'english-love': {
     id: 'english-love',
-    pools: { english: ENGLISH_LOVE, tagalog: PINOY_LOVE },
+    pools: { english: ENGLISH_LOVE, tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'daytime-love': {
     id: 'daytime-love',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   disco: {
@@ -407,7 +407,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'night-love': {
     id: 'night-love',
-    pools: { english: NIGHT_LOVE, tagalog: PINOY_LOVE },
+    pools: { english: NIGHT_LOVE, tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'masbate-tagalog': {
@@ -418,7 +418,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: PINOY_LOVE },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {
