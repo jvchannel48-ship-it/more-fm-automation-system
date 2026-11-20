@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, writeJson } from './storage'
 import { STATIONS, type StationId } from './stations'
 import {
   isOffAir,
@@ -135,7 +135,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     })
     for (const item of shuffle(candidates.slice(0, 10)).slice(0, 2)) {
       const dl = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
-      if (dl?.downloadUrl) return { id: item.id, key: songKey(item.title), title: item.title, artist: artist.name, src: dl.downloadUrl, duration: parseDuration(item.duration) }
+      if (dl?.downloadUrl) return { id: item.id, key: songKey(item.title), artist: artist.name, title: item.title, src: dl.downloadUrl, duration: parseDuration(item.duration) }
     }
   }
   return null
@@ -165,6 +165,18 @@ function nextStart(state: StationState, now: number) {
   const last = state.tracks.at(-1)
   if (!last) return now
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
+}
+function statePathFor(station: StationId) {
+  switch (station) {
+    case 'naga': return NAGA_STATE_PATH
+    case 'cebu': return CEBU_STATE_PATH
+    case 'gensan': return GENSAN_STATE_PATH
+    case 'cdo': return CDO_STATE_PATH
+    case 'davao': return DAVAO_STATE_PATH
+    case 'iloilo': return ILOILO_STATE_PATH
+    case 'masbate': return MASBATE_STATE_PATH
+    default: return STATE_PATH
+  }
 }
 async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main') {
   let guard = 0
@@ -261,8 +273,8 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
   const station: StationId = options.station ?? 'main'
   const now = Date.now()
-  if (station === 'cebu' || station === 'naga' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
-    const statePath = station === 'naga' ? NAGA_STATE_PATH : station === 'cebu' ? CEBU_STATE_PATH : station === 'davao' ? DAVAO_STATE_PATH : station === 'iloilo' ? ILOILO_STATE_PATH : MASBATE_STATE_PATH
+  if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
+    const statePath = statePathFor(station)
     const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
     const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
@@ -341,24 +353,30 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
 }
 export async function refreshQueue() {
   const now = Date.now()
-  const { state } = await loadState(now)
+  const { state } = await_state_load = await loadState(now)
+  const state = __state_load.state
   state.tracks = []
   state.fillingUntil = 0
   await writeJson(STATE_PATH, state)
   return getNowPlaying()
 }
-export async function reportPlaybackFailure(uid: string) {
+export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}) {
+  const station: StationId = options.station ?? 'main'
+  const path = statePathFor(station)
   const now = Date.now()
-  const { state } = await loadState(now)
+  const { state } = await loadState(now, path)
   const failed = state.tracks.find((track) => track.uid === uid)
-  if (!failed) return getNowPlaying({ skipFill: true })
+  if (!failed) return getNowPlaying({ skipFill: true, station })
   if (failed.kind === 'live' && uid.startsWith('dzmm-')) {
     const start = Number(uid.slice('dzmm-'.length))
     if (Number.isFinite(start)) state.failedDzmmWindowStart = start
   }
   state.tracks = state.tracks.filter((track) => track.uid !== uid)
-  await writeJson(STATE_PATH, state)
-  return getNowPlaying()
+  await writeJson(path, state)
+  return getNowPlaying({ station })
+}
+export async function reportPlaybackFailure(uid: string) {
+  return recoverFailedTrack(uid, { station: 'main' })
 }
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
