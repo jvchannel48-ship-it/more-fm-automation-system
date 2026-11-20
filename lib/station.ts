@@ -325,6 +325,13 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
 
     if (station === 'naga') {
+      const mainHasUpcoming = mainSnap.state.tracks.some((track) => track.startAt > now)
+      const mainHasCurrent = mainSnap.state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
+      if (!mainHasUpcoming && !mainHasCurrent && !options.skipFill) {
+        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main')
+        mainSnap.state.fillingUntil = 0
+        await writeJson(STATE_PATH, mainSnap.state)
+      }
       const followed = buildNagaFollowTracks(mainSnap.state, now)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
       const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
