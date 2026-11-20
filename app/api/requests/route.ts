@@ -4,6 +4,7 @@ import { privateJsonHeaders, requireAccount } from '@/lib/account-api'
 import { chargeSongRequest, refundSongRequest } from '@/lib/account-store'
 import { SONG_REQUEST_CREDIT_COST } from '@/lib/credit-math'
 import { parseStationId } from '@/lib/stations'
+import { getSettings } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -11,6 +12,8 @@ export const maxDuration = 60
 export async function POST(request: NextRequest) {
   const { user, response: authResponse } = await requireAccount(request)
   if (authResponse) return authResponse
+  const settings = await getSettings()
+  if (!settings.songRequestsEnabled) return NextResponse.json({ error: 'Song requests are currently turned off.' }, { status: 403, headers: privateJsonHeaders })
   const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown; station?: unknown }
   const station = parseStationId(body.station)
   const title = typeof body.title === 'string' ? body.title.trim() : ''
