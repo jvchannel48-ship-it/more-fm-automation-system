@@ -9,10 +9,6 @@ const config: CapacitorConfig = {
     cleartext: false,
     allowNavigation: ['rjfm.com', 'www.rjfm.com'],
   },
-  android: {
-    allowMixedContent: false,
-    captureInput: true,
-  },
 }
 
 export default config
