@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { getStoredStation } from './station-selector'
+import { AppUpdateGate } from './app-update-gate'
 
 /** Applies station name + background theme (main vs Cebu). */
 export function StationShell({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ export function StationShell({ children }: { children: ReactNode }) {
         aria-hidden="true"
       />
       {children}
+      <AppUpdateGate />
     </div>
   )
 }
