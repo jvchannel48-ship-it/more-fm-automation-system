@@ -177,7 +177,7 @@ export function RadioPlayer() {
         </p>
       </div>
 
-      <SongRequest />
+      <SongRequest station={station} />
     </section>
   )
 }
