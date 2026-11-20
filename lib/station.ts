@@ -296,8 +296,13 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       state.dailyAnnouncementPlayed = true
       announcementAdded = true
     }
-    if (identAfterSong && !announcementAdded && stationIdent) {
-      const identStartAt = songStart + song.duration * 1000
+    if (identAfterSong && stationIdent) {
+      // Always air the station ID after every second song. If a scheduled daily
+      // announcement also follows this song, let that clip finish before the ID.
+      const announcementTrack = announcementAdded ? state.tracks.at(-1) : null
+      const identStartAt = announcementTrack && announcementTrack.kind === 'dj-mic'
+        ? trackEnd(announcementTrack)
+        : songStart + song.duration * 1000
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
   }
