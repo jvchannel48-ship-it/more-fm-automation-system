@@ -152,11 +152,19 @@ export async function getProfile(accountId: string) {
        FROM morefm_credit_usage
        WHERE account_id = $1
          AND usage_date >= (date_trunc('week', timezone('Asia/Manila', now()))::date)
-         AND usage_date <= (date_trunc('week', timezone('Asia/Manila', now()))::date + 5)
+         AND usage_date <= (date_trunc('week', timezone('Asia/Manila', now()))::date + 6)
        ORDER BY usage_date`, [accountId],
     )
+    const monthlyUsage = await client.query<{ credits_used: number; requests_count: number }>(
+      `SELECT COALESCE(SUM(credits_used),0)::int AS credits_used,
+              COALESCE(SUM(requests_count),0)::int AS requests_count
+       FROM morefm_credit_usage
+       WHERE account_id = $1
+         AND usage_date >= date_trunc('month', timezone('Asia/Manila', now()))::date
+         AND usage_date <= timezone('Asia/Manila', now())::date`, [accountId],
+    )
     await client.query('COMMIT')
-    return profile ? { ...profile, usage: usage.rows } : null
+    return profile ? { ...profile, usage: usage.rows, monthlyUsage: monthlyUsage.rows[0] } : null
   } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error }
   finally { client.release() }
 }
