@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, BatteryCharging, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
+import { Bell, BatteryCharging, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,7 +53,6 @@ export function AccountMenu() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [permissionBusy, setPermissionBusy] = useState(false)
-  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown')
   const [updating, setUpdating] = useState(false)
 
   const refreshProfile = useCallback(async (showError = false) => {
@@ -143,7 +142,6 @@ export function AccountMenu() {
     try {
       const { requestPushPermission } = await import('@/lib/app-permissions')
       const granted = await requestPushPermission()
-      setPermissionStatus(granted ? 'granted' : 'denied')
       setMessage(granted ? 'Pinayagan ang RJ FM notifications.' : 'Hindi pinayagan ang notifications. Maaari itong baguhin sa Android Settings.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Hindi ma-enable ang notifications.')
