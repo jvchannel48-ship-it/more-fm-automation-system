@@ -32,7 +32,7 @@ export function AdminPanel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [bassBoostInput, setBassBoostInput] = useState('0')
+  const [bassBoostInput, setBassBoostInput] = useState('12')
   const [transmitterWatts, setTransmitterWatts] = useState<5000 | 25000>(25000)
   const [notificationTitle, setNotificationTitle] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
@@ -44,7 +44,7 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (data) {
-      setBassBoostInput(String(data.bassBoostDb ?? 0))
+      setBassBoostInput(String(data.bassBoostDb ?? MAX_BASS_BOOST_DB))
       setTransmitterWatts(data.transmitterWatts === 5000 ? 5000 : 25000)
       setBlockedGenres(data.blockedGenres ?? [])
       setRjAutoMessage(data.rjOfficialAutoMessage ?? '')
@@ -168,6 +168,15 @@ export function AdminPanel() {
         />
       </div>
 
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="song-requests">Song Requests</Label>
+          <span className="text-xs text-muted-foreground">
+            {data?.songRequestsEnabled === false ? 'OFF · Request button hidden; new requests are blocked.' : 'ON · Listeners can make song requests.'}
+          </span>
+        </div>
+        <Switch id="song-requests" checked={data?.songRequestsEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { songRequestsEnabled: checked })} />
+      </div>
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="rj-fm-nationwide">RJ FM Nationwide MP3 IDs</Label>
