@@ -154,24 +154,46 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   return null
 }
 async function findRequestedSong(title: string, artist: string, history: HistoryEntry[], requestQueue: SongRequest[], blockedGenres: string[]) {
-  const data = await fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: `${title} ${artist}` }), 15_000)
+  const queries = [...new Set([
+    `${title} ${artist}`,
+    `"${title}" ${artist}`,
+    `${artist} ${title} official audio`,
+  ])]
+  const results = await Promise.all(queries.map((search) =>
+    fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search }), 15_000),
+  ))
+  const items = [...new Map(results.flatMap((result) => result?.items ?? []).map((item) => [item.id, item])).values()]
   const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id)])
   const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key)])
   const titleNeedle = normalize(title)
   const artistNeedle = normalize(artist)
-  const candidates = (data?.items ?? []).filter((item) => {
+  const candidates = items.filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    const officialAttribution = [item.artist, item.channelTitle, item.channel, item.uploader]
+      .filter(Boolean).join(' ')
+    const hasOriginalArtistCredit = isOriginalArtistTrack(item.title, { name: artist, match: artist })
+      || (Boolean(officialAttribution) && isOriginalArtistTrack(`${item.title} - ${officialAttribution}`, { name: artist, match: artist }))
+    return seconds >= 120 && seconds <= 420
+      && normalize(item.title).includes(titleNeedle)
+      && hasOriginalArtistCredit
+      && isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres })
+      && !playedIds.has(item.id)
+      && !playedKeys.has(songKey(item.title))
   }).map((item) => {
+    const metadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
     const normalizedTitle = normalize(item.title)
-    const score = (normalizedTitle.includes(titleNeedle) ? 2 : 0) + (normalizedTitle.includes(artistNeedle) ? 1 : 0)
+    const score = (normalizedTitle.startsWith(titleNeedle) ? 4 : 0)
+      + (normalizedTitle.includes(titleNeedle) ? 2 : 0)
+      + (metadata.includes(artistNeedle) ? 4 : 0)
     return { item, score }
   }).sort((a, b) => b.score - a.score)
-  const item = candidates[0]?.item
-  if (!item) return null
-  const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
-  if (!download?.downloadUrl) return null
-  return { id: item.id, key: songKey(item.title), src: download.downloadUrl, duration: parseDuration(item.duration) }
+  for (const { item } of candidates) {
+    const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
+    if (download?.downloadUrl) {
+      return { id: item.id, key: songKey(item.title), src: download.downloadUrl, duration: parseDuration(item.duration) }
+    }
+  }
+  return null
 }
 function trackEnd(track: Track) { return track.startAt + track.duration * 1000 }
 function nextStart(state: StationState, now: number) {
