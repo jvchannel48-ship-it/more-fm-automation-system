@@ -58,7 +58,7 @@ export function useBroadcast(
   const [state, setState] = useState<PlaybackState>({ onAir: false, buffering: false, playbackIssue: null })
 
   useEffect(() => {
-    const nextDb = Math.min(MAX_BASS_BOOST_DB, Math.max(0, data?.bassBoostDb ?? 0))
+    const nextDb = Math.min(MAX_BASS_BOOST_DB, Math.max(0, data?.bassBoostDb ?? MAX_BASS_BOOST_DB))
     bassDb.current = nextDb
     for (const slot of slots.current) {
       const filter = slot.bassFilter
