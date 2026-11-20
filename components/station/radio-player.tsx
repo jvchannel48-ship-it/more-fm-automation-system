@@ -107,6 +107,30 @@ export function RadioPlayer() {
 
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir
+
+  // Generate low-level broadband receiver hiss while the selected station is signed off.
+  useEffect(() => {
+    if (!playing || !offAir || muted) return
+    const AudioContextCtor = window.AudioContext
+    if (!AudioContextCtor) return
+    const context = new AudioContextCtor()
+    const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate)
+    const channel = buffer.getChannelData(0)
+    for (let i = 0; i < channel.length; i++) channel[i] = (Math.random() * 2 - 1) * 0.32
+    const source = context.createBufferSource()
+    const gain = context.createGain()
+    source.buffer = buffer
+    source.loop = true
+    gain.gain.value = Math.max(0.001, volume * 0.035)
+    source.connect(gain)
+    gain.connect(context.destination)
+    source.start()
+    void context.resume().catch(() => undefined)
+    return () => {
+      try { source.stop() } catch { /* already stopped */ }
+      void context.close().catch(() => undefined)
+    }
+  }, [playing, offAir, muted, volume])
   const togglePlay = () => { unlock(); setPlaying((p) => !p) }
   const onAirAgain = data?.nextOnAir
     ? new Date(data.nextOnAir).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
@@ -144,7 +168,7 @@ export function RadioPlayer() {
           <span className="vinyl-label-mark">{meta.vinylMark}</span>
         </div>
         <div className="vinyl-hole absolute size-3 rounded-full" aria-hidden="true" />
-        <Button size="icon" onClick={togglePlay} disabled={offAir} aria-label={playing ? `Pause ${meta.name}` : `Play ${meta.name}`} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
+        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
           {playing ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
