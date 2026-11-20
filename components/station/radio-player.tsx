@@ -138,6 +138,25 @@ export function RadioPlayer() {
   const meta = STATIONS[station]
 
   useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = playing && !offAir ? 'playing' : 'paused'
+    const playFromMedia = () => { unlock(); setPlaying(true) }
+    const pauseFromMedia = () => setPlaying(false)
+    try {
+      navigator.mediaSession.setActionHandler('play', playFromMedia)
+      navigator.mediaSession.setActionHandler('pause', pauseFromMedia)
+      navigator.mediaSession.setActionHandler('stop', pauseFromMedia)
+    } catch { /* Some WebViews expose only partial Media Session support. */ }
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play', null)
+        navigator.mediaSession.setActionHandler('pause', null)
+        navigator.mediaSession.setActionHandler('stop', null)
+      } catch { /* unsupported action */ }
+    }
+  }, [playing, offAir, unlock])
+
+  useEffect(() => {
     document.title = `${meta.name} ${meta.frequency} — Live Radio`
     if ('mediaSession' in navigator && typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata({
