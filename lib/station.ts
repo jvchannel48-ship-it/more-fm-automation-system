@@ -468,6 +468,9 @@ export async function refreshQueue(preserveCurrent = false) {
       const path = statePathFor(station)
       const { state } = await loadState(now, path)
       state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
+      for (const track of state.tracks) {
+        if (track.kind === 'music' && track.fadeOut <= 0) track.fadeOut = CROSSFADE_SECONDS
+      }
       state.fillingUntil = 0
       await writeJson(path, state)
     }))
