@@ -14,9 +14,9 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   appleWebApp: { capable: true, title: 'RJ FM', statusBarStyle: 'black-translucent' },
   icons: {
-    icon: '/rj-fm-logo.jpg',
-    apple: '/rj-fm-logo.jpg',
-    shortcut: '/rj-fm-logo.jpg',
+    icon: '/rjfm-app-icon.svg',
+    apple: '/rjfm-app-icon.svg',
+    shortcut: '/rjfm-app-icon.svg',
   },
 }
 
