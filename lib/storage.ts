@@ -308,6 +308,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   rjOfficialAutoEnabled: false,
   rjOfficialAutoMessage: '',
   rjFmNationwideEnabled: true,
+  songRequestsEnabled: true,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -327,5 +328,6 @@ export async function getSettings(): Promise<StationSettings> {
     rjOfficialAutoEnabled: typeof saved.rjOfficialAutoEnabled === 'boolean' ? saved.rjOfficialAutoEnabled : false,
     rjOfficialAutoMessage: typeof saved.rjOfficialAutoMessage === 'string' ? saved.rjOfficialAutoMessage.trim().slice(0, 500) : '',
     rjFmNationwideEnabled: typeof saved.rjFmNationwideEnabled === 'boolean' ? saved.rjFmNationwideEnabled : true,
+    songRequestsEnabled: typeof saved.songRequestsEnabled === 'boolean' ? saved.songRequestsEnabled : true,
   }
 }
