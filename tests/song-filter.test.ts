@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isBlockedByTitleRules, isBlockedProgramGenre, isOriginalArtistTrack } from '../lib/song-filter.ts'
+import { isAllowedStationTrack, isBlockedByTitleRules, isBlockedProgramGenre, isOriginalArtistTrack } from '../lib/song-filter.ts'
 import { PROGRAMS } from '../lib/schedule.ts'
 
 assert.equal(isBlockedProgramGenre(PROGRAMS.disco.id, ['disco']), true, 'an explicit disco filter blocks the complete disco program')
@@ -25,13 +25,13 @@ assert.equal(
 )
 assert.equal(
   isOriginalArtistTrack('Whitney Houston - I Wanna Dance With Somebody', whitney, { allowDancePop: true }),
-  true,
-  'Naga morning may use a clean artist-credited dance/pop original',
+  false,
+  'dance tracks are blocked even when legacy allowDancePop is requested',
 )
 assert.equal(
   isOriginalArtistTrack("Modern Talking - You're My Heart, You're My Soul (Official Audio)", { name: 'Modern Talking', match: 'modern talking' }, { allowDancePop: true }),
   true,
-  'regional disco rotation allows a clean Modern Talking original',
+  'clean original track with no blocked genre token remains eligible',
 )
 
 for (const title of [
@@ -55,6 +55,10 @@ for (const title of [
   'Whitney Houston - Love Song (Extended Mix)',
   'Whitney Houston - I Look to You [Radio Edit]',
   'Whitney Houston - Dance_Mix',
+  'Whitney Houston - AI cover generated with Suno',
+  'Whitney Houston - Disco Inferno',
+  'Whitney Houston - Eurodance Classics',
+  'Whitney Houston - Club Dance Version',
 ]) {
   assert.equal(isOriginalArtistTrack(title, whitney), false, `excluded: ${title}`)
 }
@@ -65,6 +69,8 @@ assert.equal(
   'a classic ballad remains eligible',
 )
 assert.equal(isBlockedByTitleRules('Whitney Houston - Christmas Worship'), true, 'seasonal worship tracks stay blocked on standard stations')
-assert.equal(isBlockedByTitleRules('Whitney Houston - I Wanna Dance With Somebody', { allowDancePop: true }), false, 'Naga morning still permits clean dance/pop originals')
+assert.equal(isBlockedByTitleRules('Whitney Houston - I Wanna Dance With Somebody', { allowDancePop: true }), true, 'dance remains blocked for every program')
 
-console.log('song filter: only artist-credited originals pass; dance/pop/rock and cover/remix results are rejected')
+assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'Disco Dance Remix', blockedGenres: [] }), false, 'genre metadata blocks dance/disco/remix even when admin list is empty')
+assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'AI generated music by Suno', blockedGenres: [] }), false, 'AI metadata is blocked')
+console.log('song filter: AI, disco, dance, remix, and alternate versions are blocked')
