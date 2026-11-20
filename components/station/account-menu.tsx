@@ -19,7 +19,7 @@ async function readJson(response: Response) {
 }
 
 function UsageChart({ usage }: { usage: UsagePoint[] }) {
-  const slots = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label, index) => {
+  const slots = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => {
     const found = usage.find((item) => {
       const day = new Date(`${item.date}T00:00:00+08:00`).getUTCDay()
       return ((day + 6) % 7) === index
@@ -27,16 +27,16 @@ function UsageChart({ usage }: { usage: UsagePoint[] }) {
     return { label, value: found?.creditsUsed ?? 0 }
   })
   const max = Math.max(15, ...slots.map((slot) => slot.value))
-  const points = slots.map((slot, index) => `${index * 20 + 5},${62 - (slot.value / max) * 50}`).join(' ')
+  const points = slots.map((slot, index) => `${index * 16 + 5},${62 - (slot.value / max) * 50}`).join(' ')
   return (
     <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
       <svg viewBox="0 0 110 70" className="h-28 w-full overflow-visible" role="img" aria-label="Credit usage from Monday to Saturday">
         <defs><linearGradient id="usage-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#34d399" stopOpacity=".25" /><stop offset="1" stopColor="#34d399" stopOpacity="0" /></linearGradient></defs>
-        <path d={`M 5 62 L ${points} L 105 62 Z`} fill="url(#usage-fill)" />
+        <path d={`M 5 62 L ${points} L 101 62 Z`} fill="url(#usage-fill)" />
         <polyline points={points} fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        {slots.map((slot, index) => <circle key={slot.label} cx={index * 20 + 5} cy={62 - (slot.value / max) * 50} r="1.8" fill="#a7f3d0" />)}
+        {slots.map((slot, index) => <circle key={slot.label} cx={index * 16 + 5} cy={62 - (slot.value / max) * 50} r="1.8" fill="#a7f3d0" />)}
       </svg>
-      <div className="grid grid-cols-6 text-center text-[10px] text-muted-foreground">{slots.map((slot) => <span key={slot.label}>{slot.label}<br /><b className="text-emerald-300">{slot.value}</b></span>)}</div>
+      <div className="grid grid-cols-7 text-center text-[10px] text-muted-foreground">{slots.map((slot) => <span key={slot.label}>{slot.label}<br /><b className="text-emerald-300">{slot.value}</b></span>)}</div>
     </div>
   )
 }
@@ -135,7 +135,7 @@ export function AccountMenu() {
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3"><p className="text-xs text-muted-foreground">Today</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.dailyCredits}</p><p className="text-[11px] text-muted-foreground">of {profile.dailyAllowance} · resets daily</p></div>
             </div>}
             <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
-            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Saturday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'privacy' ? <div className="rounded-2xl border p-4 text-sm leading-6"><p className="font-medium">Privacy policy</p><p className="mt-2 text-muted-foreground">RJ FM keeps the profile details needed to save your preferences, credits, and request history. Your profile is tied to this phone session so another device cannot use its balance.</p><p className="mt-2 text-muted-foreground">Listening activity is used only to show current listener status in the admin panel. It expires shortly after playback stops. We do not display your private profile information to other listeners.</p></div> : <>
+            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'privacy' ? <div className="rounded-2xl border p-4 text-sm leading-6"><p className="font-medium">Privacy policy</p><p className="mt-2 text-muted-foreground">RJ FM keeps the profile details needed to save your preferences, credits, and request history. Your profile is tied to this phone session so another device cannot use its balance.</p><p className="mt-2 text-muted-foreground">Listening activity is used only to show current listener status in the admin panel. It expires shortly after playback stops. We do not display your private profile information to other listeners.</p></div> : <>
               <div className="flex flex-col gap-2"><Label htmlFor="profile-name">Display name</Label><div className="flex gap-2"><Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} /><Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button></div></div>
               <div className="flex flex-col gap-2"><Label htmlFor="profile-avatar">Profile picture</Label><input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" /><Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button></div>
               <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Disconnect this phone</Button>
