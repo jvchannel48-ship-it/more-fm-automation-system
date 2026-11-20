@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Clapperboard, Mic, MicOff, Radio, Search, Send, Trash2, Volume2 } from 'lucide-react'
+import { Clapperboard, Mic, MicOff, Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { ListenerMessage } from '@/lib/types'
 
 type LiveState = { active: boolean; name: string; updatedAt: number }
 
@@ -29,7 +28,7 @@ function playSfx(kind: (typeof SOUNDBOARD)[number]['kind']) {
   master.gain.value = 0.35
   master.connect(ctx.destination)
 
-  const tone = (freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.3) => {
+  const tone = (freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain =  0.3) => 0.3) => {
     const o = ctx.createOscillator()
     const g = ctx.createGain()
     o.type = type
@@ -103,19 +102,64 @@ function playSfx(kind: (typeof SOUNDBOARD)[number]['kind']) {
   window.setTimeout(() => void ctx.close(), 2000)
 }
 
+async function requestMicStream(): Promise<MediaStream> {
+  if (typeof window === 'undefined') throw new Error('Microphone is only available in the browser.')
+  if (!window.isSecureContext) {
+    throw new Error('Microphone needs HTTPS. Open the site with https:// then try Mic ON again.')
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('This browser does not support the microphone API.')
+  }
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+      },
+      video: false,
+    })
+  } catch (first) {
+    if (first instanceof DOMException && (first.name === 'NotAllowedError' || first.name === 'PermissionDeniedError')) {
+      throw first
+    }
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  }
+}
+
+function micErrorMessage(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      return 'Microphone permission denied. Allow mic for this site in browser settings, then tap Mic ON again.'
+    }
+    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      return 'No microphone found on this device.'
+    }
+    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      return 'Microphone is busy (another app may be using it). Close other apps and try again.'
+    }
+    if (error.name === 'SecurityError') {
+      return 'Browser blocked the mic (needs HTTPS). Open the secure site URL and try again.'
+    }
+    return error.message || 'Could not open the microphone.'
+  }
+  if (error instanceof Error) return error.message
+  return 'Could not open the microphone.'
+}
+
 export function AdminLiveDesk() {
   const [live, setLive] = useState<LiveState>({ active: false, name: '', updatedAt: 0 })
   const [djName, setDjName] = useState('Live DJ')
   const [micBusy, setMicBusy] = useState(false)
-  const [micError, setMicError] = useState('')
-  const [searchTitle, setSearchTitle] = useState('')
-  const [searchArtist, setSearchArtist] = useState('')
-  const [playlistMsg, setPlaylistMsg] = useState('')
-  const [messages, setMessages] = useState<ListenerMessage[]>([])
+  const [ [micError, setMicError] = useState('')
   const [status, setStatus] = useState('')
+  const [level, setLevel] = useState(0)
 
   const streamRef = useRef<MediaStream | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number | null>(null)
 
   const loadLive = useCallback(async () => {
     const res = await fetch('/api/admin/live', { cache: 'no-store' })
@@ -125,45 +169,37 @@ export function AdminLiveDesk() {
     if (data.name) setDjName(data.name)
   }, [])
 
-  const loadMessages = useCallback(async () => {
-    const res = await fetch('/api/messages', { cache: 'no-store' })
-    if (!res.ok) return
-    const data = await res.json() as { messages?: ListenerMessage[] }
-    setMessages(Array.isArray(data.messages) ? data.messages : [])
-  }, [])
-
   useEffect(() => {
     void loadLive()
-    void loadMessages()
-    const id = window.setInterval(() => { void loadMessages() }, 5000)
-    return () => window.clearInterval(id)
-  }, [loadLive, loadMessages])
+  }, [loadLive])
 
   const stopMic = useCallback(async () => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     if (audioCtxRef.current) {
       await audioCtxRef.current.close().catch(() => undefined)
       audioCtxRef.current = null
     }
+    setLevel(0)
   }, [])
 
   const setLiveState = async (active: boolean) => {
     setMicBusy(true)
     setMicError('')
+    setStatus('')
     try {
       if (active) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            channelCount: 1,
-          },
-        })
+        const stream = await requestMicStream()
         streamRef.current = stream
+
         const ctx = new AudioContext()
         audioCtxRef.current = ctx
+        if (ctx.state === 'suspended') await ctx.resume().catch(() => undefined)
+
         const source = ctx.createMediaStreamSource(stream)
         const highpass = ctx.createBiquadFilter()
         highpass.type = 'highpass'
@@ -175,8 +211,26 @@ export function AdminLiveDesk() {
         compressor.attack.value = 0.003
         compressor.release.value = 0.18
         const monitor = ctx.createGain()
-        monitor.gain.value = 0.35
+        monitor.gain.value = 0.22
         source.connect(highpass).connect(compressor).connect(monitor).connect(ctx.destination)
+
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 512
+        compressor.connect(analyser)
+        const data = new Uint8Array(analyser.frequencyBinCount)
+        const tick = () => {
+          if (!streamRef.current) return
+          analyser.getByteTimeDomainData(data)
+          let sum = 0
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128
+            sum += v * v
+          }
+          const rms = Math.sqrt(sum / data.length)
+          setLevel(Math.min(1, rms * 4))
+          rafRef.current = requestAnimationFrame(tick)
+        }
+        rafRef.current = requestAnimationFrame(tick)
       } else {
         await stopMic()
       }
@@ -186,57 +240,30 @@ export function AdminLiveDesk() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active, name: djName.trim() || 'Live DJ' }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Could not update mic')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        await stopMic()
+        throw new Error(data.error === 'Unauthorized' ? 'Admin session expired. Log in again.' : (data.error || 'Could not update live mic status'))
+      }
       setLive(data)
-      setStatus(active ? 'Mic ON — music ducks for listeners. Use headphones to avoid feedback.' : 'Mic OFF')
+      setStatus(active
+        ? 'Mic ON — music soft-ducks for listeners. Use headphones to avoid feedback.'
+        : 'Mic OFF')
     } catch (error) {
       await stopMic()
-      setMicError(error instanceof Error ? error.message : 'Microphone unavailable')
+      setMicError(micErrorMessage(error))
       setLive((current) => ({ ...current, active: false }))
+      void fetch('/api/admin/live', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: false, name: djName.trim() || 'Live DJ' }),
+      }).catch(() => undefined)
     } finally {
       setMicBusy(false)
     }
   }
 
   useEffect(() => () => { void stopMic() }, [stopMic])
-
-  const queueSong = async () => {
-    setPlaylistMsg('')
-    const res = await fetch('/api/admin/playlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: searchTitle, artist: searchArtist }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setPlaylistMsg(data.error || 'Could not queue song')
-      return
-    }
-    setPlaylistMsg(`Queued: ${searchTitle} — ${searchArtist}`)
-    setSearchTitle('')
-    setSearchArtist('')
-  }
-
-  const markRead = async (id: string) => {
-    await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'mark-read', id }),
-    })
-    void loadMessages()
-  }
-
-  const clearMessages = async () => {
-    await fetch('/api/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'clear' }),
-    })
-    setMessages([])
-  }
-
-  const unread = messages.filter((m) => !m.read).length
 
   return (
     <div className="flex flex-col gap-5">
@@ -248,7 +275,7 @@ export function AdminLiveDesk() {
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold">Live mic</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Echo-cancelled mic. Background music soft-ducks while ON. Shown on player as Live DJ.
+              Echo-cancelled mic. When ON, background music soft-ducks. Allow microphone when the browser asks.
             </p>
           </div>
         </div>
@@ -265,6 +292,14 @@ export function AdminLiveDesk() {
               disabled={micBusy || live.active}
             />
           </div>
+          {live.active && (
+            <div className="h-2 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-rose-400 transition-[width] duration-75"
+                style={{ width: `${Math.round(level * 100)}%` }}
+              />
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -277,34 +312,12 @@ export function AdminLiveDesk() {
             </Button>
           </div>
           {status && <p className="text-xs text-emerald-300">{status}</p>}
-          {micError && <p className="text-xs text-destructive">{micError}</p>}
+          {micError && (
+            <p className="text-xs text-destructive" role="alert">
+              {micError}
+            </p>
+          )}
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Search className="size-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold">Playlist search</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Search a song and queue it to play next.</p>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="pl-title">Title</Label>
-            <Input id="pl-title" className="mt-1" value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)} placeholder="Song title" />
-          </div>
-          <div>
-            <Label htmlFor="pl-artist">Artist</Label>
-            <Input id="pl-artist" className="mt-1" value={searchArtist} onChange={(e) => setSearchArtist(e.target.value)} placeholder="Artist" />
-          </div>
-        </div>
-        <Button type="button" className="mt-3 w-full sm:w-auto" disabled={!searchTitle.trim() || !searchArtist.trim()} onClick={() => void queueSong()}>
-          <Radio className="size-4" /> Queue to play
-        </Button>
-        {playlistMsg && <p className="mt-2 text-xs text-muted-foreground">{playlistMsg}</p>}
       </section>
 
       <section className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4">
@@ -322,42 +335,6 @@ export function AdminLiveDesk() {
             <Button key={fx.id} type="button" variant="secondary" className="h-11 text-xs" onClick={() => playSfx(fx.kind)}>
               <Volume2 className="size-3.5" /> {fx.label}
             </Button>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-sky-400/25 bg-sky-400/5 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-400/15 text-sky-200">
-              <Send className="size-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Listener messages {unread > 0 ? `(${unread} new)` : ''}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">From the player message button.</p>
-            </div>
-          </div>
-          {messages.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => void clearMessages()}>
-              <Trash2 className="size-3.5" /> Clear
-            </Button>
-          )}
-        </div>
-        <div className="mt-3 flex max-h-56 flex-col gap-2 overflow-y-auto">
-          {messages.length === 0 && <p className="text-xs text-muted-foreground">No messages yet.</p>}
-          {messages.map((message) => (
-            <button
-              key={message.id}
-              type="button"
-              onClick={() => void markRead(message.id)}
-              className={`rounded-xl border p-3 text-left transition ${message.read ? 'border-border/60 bg-background/30' : 'border-sky-400/40 bg-sky-400/10'}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium">{message.fromName}</p>
-                <p className="text-[10px] text-muted-foreground">{new Date(message.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</p>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{message.body}</p>
-            </button>
           ))}
         </div>
       </section>
