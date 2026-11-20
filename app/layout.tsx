@@ -12,12 +12,9 @@ export const metadata: Metadata = {
     'RJ FM live radio. Select Manila, Naga, Cebu, Davao, or Iloilo for station-specific programming.',
   generator: 'v0.app',
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/rj-fm-logo.jpg',
+    apple: '/rj-fm-logo.jpg',
+    shortcut: '/rj-fm-logo.jpg',
   },
 }
 
