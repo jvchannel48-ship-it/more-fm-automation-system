@@ -1,0 +1,35 @@
+{
+  "id": "https://rjfm.com/",
+  "name": "RJ FM",
+  "short_name": "RJ FM",
+  "description": "RJ FM live radio — Your Voice • Your Music • Live",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
+  "background_color": "#080f1e",
+  "theme_color": "#080f1e",
+  "categories": [
+    "music",
+    "entertainment"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/rjfm-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/rj-fm-logo.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
