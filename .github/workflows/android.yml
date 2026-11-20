@@ -74,7 +74,7 @@ jobs:
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
               <uses-feature android:name="android.hardware.microphone" android:required="false" />
           '''
-          s = s.replace('<application', additions + '\\n    <application', 1)
+          s = s.replace('<application', additions + '\n    <application', 1)
           p.write_text(s)
           PY
           mkdir -p android/app/src/main/java/com/rjfm/app
