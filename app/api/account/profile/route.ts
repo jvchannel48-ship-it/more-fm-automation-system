@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         bonusCredits: profile.bonus_credits,
         dailyAllowance: profile.daily_allowance,
         creditsRemaining: profile.daily_credits + profile.bonus_credits,
+        monthlyUsage: profile.monthlyUsage,
         usage: profile.usage.map((item) => ({
           date: item.usage_date,
           creditsUsed: item.credits_used,
