@@ -20,7 +20,7 @@ import {
   type Artist,
   type Program,
 } from './schedule'
-import { effectiveBlockedGenres, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
+import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, LiveDjState, NowResponse, SongRequest, Track } from './types'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
@@ -152,7 +152,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   }
   return null
 }
-async function findRequestedSong(title: string, artist: string, history: HistoryEntry[], requestQueue: SongRequest[]) {
+async function findRequestedSong(title: string, artist: string, history: HistoryEntry[], requestQueue: SongRequest[], blockedGenres: string[]) {
   const data = await fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: `${title} ${artist}` }), 15_000)
   const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id)])
   const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key)])
@@ -160,7 +160,7 @@ async function findRequestedSong(title: string, artist: string, history: History
   const artistNeedle = normalize(artist)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, artist, genre: item.genre, blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
   }).map((item) => {
     const normalizedTitle = normalize(item.title)
     const score = (normalizedTitle.includes(titleNeedle) ? 2 : 0) + (normalizedTitle.includes(artistNeedle) ? 1 : 0)
@@ -293,17 +293,18 @@ async function withSongRequestLock<T>(operation: () => Promise<T>): Promise<T> {
   await previous
   try { return await operation() } finally { release() }
 }
-export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>) {
+export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>, station: StationId = 'main') {
   return withSongRequestLock(async () => {
     const now = Date.now()
-    const { state } = await loadState(now)
+    const statePath = statePathFor(station)
+    const [{ state }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
-    const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue)
+    const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
     if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
     await beforeEnqueue?.()
     const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, submittedAt: now, ...resolved }
     state.requestQueue.push(request)
-    await writeJson(STATE_PATH, state)
+    await writeJson(statePath, state)
     return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
   })
 }
@@ -322,7 +323,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
 
-    if (station === 'naga') {
+    if (station === 'naga' && state.requestQueue.length === 0) {
       const followed = buildNagaFollowTracks(mainSnap.state, now)
       const hasFollowedCurrent = followed.some((track) => track.startAt <= now && trackEnd(track) > now)
       const hasFollowedUpcoming = followed.some((track) => track.startAt > now)
