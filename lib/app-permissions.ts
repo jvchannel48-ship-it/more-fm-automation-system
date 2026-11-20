@@ -1,6 +1,13 @@
 'use client'
 
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
+
+interface BatteryOptimizationPlugin {
+  isIgnoringOptimizations(): Promise<{ exempt: boolean }>
+  requestExemption(): Promise<{ opened: boolean }>
+}
+
+const BatteryOptimization = registerPlugin<BatteryOptimizationPlugin>('BatteryOptimization')
 
 export const ONESIGNAL_APP_ID = 'a15a432f-006c-4687-ba48-1445d36a77fa'
 
@@ -39,4 +46,16 @@ export async function requestMicrophonePermission() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
   stream.getTracks().forEach((track) => track.stop())
   return true
+}
+
+export async function getBatteryOptimizationStatus() {
+  if (!Capacitor.isNativePlatform()) return null
+  return (await BatteryOptimization.isIgnoringOptimizations()).exempt
+}
+
+export async function requestBatteryOptimizationExemption() {
+  if (!Capacitor.isNativePlatform()) {
+    throw new Error('Available lang ito sa installed RJ FM Android app.')
+  }
+  return BatteryOptimization.requestExemption()
 }
