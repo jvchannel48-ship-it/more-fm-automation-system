@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CircleUserRound, LogOut, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
+import { Bell, CircleUserRound, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,7 @@ import { ensureDeviceSession } from '@/lib/device-id'
 type UsagePoint = { date: string; creditsUsed: number; requests: number }
 type MonthlyUsage = { credits_used: number; requests_count: number }
 type Profile = { id: string; email: string; displayName: string; avatarUrl: string | null; creditsEnabled: boolean; dailyCredits?: number; bonusCredits?: number; dailyAllowance?: number; creditsRemaining?: number; usage?: UsagePoint[]; monthlyUsage?: MonthlyUsage }
-type View = 'profile' | 'usage' | 'privacy'
+type View = 'profile' | 'usage' | 'privacy' | 'permissions'
 
 async function readJson(response: Response) {
   const data = await response.json().catch(() => ({})) as { error?: string }
@@ -52,6 +52,8 @@ export function AccountMenu() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [permissionBusy, setPermissionBusy] = useState(false)
+  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown')
 
   const refreshProfile = useCallback(async (showError = false) => {
     try {
@@ -133,6 +135,29 @@ export function AccountMenu() {
     }
   }
 
+  const enableNotifications = async () => {
+    setPermissionBusy(true); setError(''); setMessage('')
+    try {
+      const { requestPushPermission } = await import('@/lib/app-permissions')
+      const granted = await requestPushPermission()
+      setPermissionStatus(granted ? 'granted' : 'denied')
+      setMessage(granted ? 'Pinayagan ang RJ FM notifications.' : 'Hindi pinayagan ang notifications. Maaari itong baguhin sa Android Settings.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Hindi ma-enable ang notifications.')
+    } finally { setPermissionBusy(false) }
+  }
+
+  const enableMicrophone = async () => {
+    setPermissionBusy(true); setError(''); setMessage('')
+    try {
+      const { requestMicrophonePermission } = await import('@/lib/app-permissions')
+      await requestMicrophonePermission()
+      setMessage('Pinayagan ang microphone para sa mga feature na nangangailangan nito.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Hindi ma-enable ang microphone.')
+    } finally { setPermissionBusy(false) }
+  }
+
   const reconnectDevice = async () => {
     setBusy(true); setError(''); setMessage('')
     try { if (!await ensureDeviceSession()) throw new Error('Hindi ma-link ang phone device. Subukan ulit.'); await refreshProfile(true); setMessage('Handa na ang profile mo para sa daily credits.') }
@@ -165,8 +190,13 @@ export function AccountMenu() {
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.creditsRemaining}</p><p className="text-[11px] text-muted-foreground">credits</p></div>
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3"><p className="text-xs text-muted-foreground">Today</p><p className="mt-1 text-2xl font-bold tabular-nums">{profile.dailyCredits}</p><p className="text-[11px] text-muted-foreground">of {profile.dailyAllowance} · resets daily</p></div>
             </div>}
-            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
-            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'privacy' ? <div className="rounded-2xl border p-4 text-sm leading-6"><p className="font-medium">Privacy policy</p><p className="mt-2 text-muted-foreground">RJ FM keeps the profile details needed to save your preferences, credits, and request history. Your profile is tied to this phone session so another device cannot use its balance.</p><p className="mt-2 text-muted-foreground">Listening activity is used only to show current listener status in the admin panel. It expires shortly after playback stops. We do not display your private profile information to other listeners.</p></div> : <>
+            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
+            {!profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
+                <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><div><p className="text-sm font-medium">Notifications</p><p className="text-xs text-muted-foreground">RJ FM alerts via OneSignal</p></div></div><Button type="button" size="sm" onClick={enableNotifications} disabled={permissionBusy}>Allow</Button></div>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Mic className="size-4 text-primary" /><div><p className="text-sm font-medium">Microphone</p><p className="text-xs text-muted-foreground">For voice features when used</p></div></div><Button type="button" size="sm" variant="outline" onClick={enableMicrophone} disabled={permissionBusy}>Allow</Button></div>
+                <p className="text-xs text-muted-foreground">Maaari mo ring baguhin o bawiin ang permissions sa Android Settings → Apps → RJ FM → Permissions.</p>
+              </div> : view === 'privacy' ? <div className="rounded-2xl border p-4 text-sm leading-6"><p className="font-medium">Privacy policy</p><p className="mt-2 text-muted-foreground">RJ FM keeps the profile details needed to save your preferences, credits, and request history. Your profile is tied to this phone session so another device cannot use its balance.</p><p className="mt-2 text-muted-foreground">Listening activity is used only to show current listener status in the admin panel. It expires shortly after playback stops. We do not display your private profile information to other listeners.</p></div> : <>
               <div className="flex flex-col gap-2"><Label htmlFor="profile-name">Display name</Label><div className="flex gap-2"><Input id="profile-name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} /><Button type="button" variant="secondary" onClick={updateName} disabled={busy || !name.trim()}>Save</Button></div></div>
               <div className="flex flex-col gap-2"><Label htmlFor="profile-avatar">Profile picture</Label><input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" /><Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button></div>
               <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Disconnect this phone</Button>
