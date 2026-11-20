@@ -44,6 +44,7 @@ const SATURDAY_ANNOUNCEMENT_TITLE = 'RJ FM Saturday announcement'
 const WEEKDAY_ANNOUNCEMENT_TITLE = 'RJ FM weekday announcement'
 const NATIONWIDE_IDENT_FADE_SECONDS = 1.5
 const NATIONWIDE_IDENT_BY_STATION: Partial<Record<StationId, { src: string; duration: number; title: string }>> = {
+  main: { src: '/audio/rjfmmanila.mp3', duration: 6.03, title: 'RJ FM Manila' },
   naga: { src: '/audio/rjfmnagacity.mp3', duration: 5.96, title: 'RJ FM Naga City' },
   cebu: { src: '/audio/rjfmcebu.mp3', duration: 5.64, title: 'RJ FM Cebu' },
   gensan: { src: '/audio/rjfmgeneralsantos.mp3', duration: 6.43, title: 'RJ FM General Santos' },
