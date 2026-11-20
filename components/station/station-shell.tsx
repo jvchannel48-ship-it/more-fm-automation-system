@@ -10,6 +10,7 @@ export function StationShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setStation(getStoredStation())
+    void import('@/lib/app-permissions').then(({ initializePushNotifications }) => initializePushNotifications()).catch((error) => console.warn('[RJ FM] OneSignal initialization failed', error))
     if ('serviceWorker' in navigator) {
       void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
         console.warn('[RJ FM] Offline support registration failed', error)
