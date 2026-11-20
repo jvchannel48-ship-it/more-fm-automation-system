@@ -14,9 +14,15 @@ importers:
       '@capacitor/android':
         specifier: ^8.0.0
         version: 8.6.2(@capacitor/core@8.6.2)
+      '@capacitor/app':
+        specifier: ^8.0.0
+        version: 8.1.2(@capacitor/core@8.6.2)
       '@capacitor/core':
         specifier: ^8.0.0
         version: 8.6.2
+      '@onesignal/capacitor-plugin':
+        specifier: ^1.2.3
+        version: 1.2.3(@capacitor/core@8.6.2)
       '@vercel/analytics':
         specifier: 1.6.1
         version: 1.6.1(next@16.4.6(@babel/core@7.29.7)(@types/node@24.10.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -267,6 +273,11 @@ packages:
     resolution: {integrity: sha512-dWXnXmOVTtxU91n5h11MzoQ7PAMjyzU1qguw0mBJZiwSuhGvLKTG/IlsQ75H8qeE0a1acV2f573x15wYvyzuVA==}
     peerDependencies:
       '@capacitor/core': ^8.6.0
+
+  '@capacitor/app@8.1.2':
+    resolution: {integrity: sha512-uKBlsrXH0IdvUn69e/KKYbZ32A06pcrUdG8LWuZ/6y33YMXZXLEEdNSwl+jKS/SrsTWqnePs8EqSWaiQM3mUGA==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@capacitor/cli@8.6.2':
     resolution: {integrity: sha512-3HeNPX3cEWBSljJT0sJviZCxXRoToTLAufhUcIJh+JMj1xOhLFZpuj8oFRnJ0kNYAf7DIBHQDmilIXloK9+YYg==}
@@ -618,6 +629,11 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@onesignal/capacitor-plugin@1.2.3':
+    resolution: {integrity: sha512-x8zw8OzMW9OF5Lz3L+TOtErYYIIHcTBjVIpgpCGI9ouoT3F6IP6X+l8VAxZBq5dgALn8jZsHhG1nYbI34WO3Mw==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -2520,6 +2536,10 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.6.2
 
+  '@capacitor/app@8.1.2(@capacitor/core@8.6.2)':
+    dependencies:
+      '@capacitor/core': 8.6.2
+
   '@capacitor/cli@8.6.2':
     dependencies:
       '@ionic/cli-framework-output': 2.2.8
@@ -2869,6 +2889,10 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@onesignal/capacitor-plugin@1.2.3(@capacitor/core@8.6.2)':
+    dependencies:
+      '@capacitor/core': 8.6.2
 
   '@sec-ant/readable-stream@0.4.1': {}
 
