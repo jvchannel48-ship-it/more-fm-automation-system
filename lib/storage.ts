@@ -302,6 +302,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   bassBoostDb: 0,
   transmitterWatts: 25000,
   blockedGenres: [],
+  discoEnabled: true,
   rjOfficialAutoEnabled: false,
   rjOfficialAutoMessage: '',
 }
@@ -319,6 +320,7 @@ export async function getSettings(): Promise<StationSettings> {
     blockedGenres: Array.isArray(saved.blockedGenres)
       ? [...new Set(saved.blockedGenres.filter((genre): genre is string => typeof genre === 'string').map((genre) => genre.trim().toLowerCase()).filter(Boolean))].slice(0, 30)
       : [],
+    discoEnabled: typeof saved.discoEnabled === 'boolean' ? saved.discoEnabled : true,
     rjOfficialAutoEnabled: typeof saved.rjOfficialAutoEnabled === 'boolean' ? saved.rjOfficialAutoEnabled : false,
     rjOfficialAutoMessage: typeof saved.rjOfficialAutoMessage === 'string' ? saved.rjOfficialAutoMessage.trim().slice(0, 500) : '',
   }
