@@ -459,12 +459,24 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (!hasCurrentMusic && !hasUpcomingMusic) await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main')
   return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
 }
-export async function refreshQueue() {
+export async function refreshQueue(preserveCurrent = false) {
   const now = Date.now()
-  const { state } = await loadState(now)
-  state.tracks = []
-  state.fillingUntil = 0
-  await writeJson(STATE_PATH, state)
+  if (preserveCurrent) {
+    // Apply new filters to every station's upcoming rotation without interrupting audio already on air.
+    const stations: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+    await Promise.all(stations.map(async (station) => {
+      const path = statePathFor(station)
+      const { state } = await loadState(now, path)
+      state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
+      state.fillingUntil = 0
+      await writeJson(path, state)
+    }))
+  } else {
+    const { state } = await loadState(now)
+    state.tracks = []
+    state.fillingUntil = 0
+    await writeJson(STATE_PATH, state)
+  }
   return getNowPlaying()
 }
 export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}) {
