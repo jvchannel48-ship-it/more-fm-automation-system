@@ -30,6 +30,8 @@ export interface StationSettings {
   bassBoostDb: number
   transmitterWatts: 5000 | 25000
   blockedGenres: string[]
+  /** When false, disco/dance is blocked on ALL stations */
+  discoEnabled: boolean
   rjOfficialAutoEnabled: boolean
   rjOfficialAutoMessage: string
 }
