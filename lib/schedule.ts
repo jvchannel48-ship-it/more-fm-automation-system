@@ -143,15 +143,7 @@ const PINOY_LOVE = artists('tagalog', [
   'Ogie Alcasid|ogie',
   'MYMP',
   'Michael Learns to Rock|michael learns to rock',
-  'Eraserheads',
-  'Rivermaya',
-  'Parokya ni Edgar|parokya',
   'December Avenue|december avenue',
-  'Orange and Lemons|orange and lemons',
-  'Hale',
-  'Kamikazee',
-  'Callalily',
-  'Imago',
   'Apo Hiking Society|apo hiking',
   'Freestyle',
   'Side A',
@@ -172,11 +164,6 @@ const PINOY_LOVE = artists('tagalog', [
   'December Avenue|december avenue',
   'Cup of Joe|cup of joe',
   'Lola Amour|lola amour',
-  'Sponge Cola|sponge cola',
-  '6cyclemind|6cyclemind',
-  'Itchyworms|itchyworms',
-  'The Dawn',
-  'Tanya Markova|tanya markova',
 ])
 
 export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
