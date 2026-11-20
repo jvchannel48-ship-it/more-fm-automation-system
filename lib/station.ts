@@ -160,7 +160,7 @@ async function findRequestedSong(title: string, artist: string, history: History
   const artistNeedle = normalize(artist)
   const candidates = (data?.items ?? []).filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, artist, genre: item.genre, blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+    return seconds >= 120 && seconds <= 420 && isOriginalArtistTrack(item.title, { name: artist, match: artist }) && isAllowedStationTrack({ title: item.title, genre: item.genre, blockedGenres }) && !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
   }).map((item) => {
     const normalizedTitle = normalize(item.title)
     const score = (normalizedTitle.includes(titleNeedle) ? 2 : 0) + (normalizedTitle.includes(artistNeedle) ? 1 : 0)
