@@ -16,6 +16,7 @@ export function AdminCreditControls() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [confirmGrant, setConfirmGrant] = useState<number | null>(null)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   const load = async (syncAllowanceInput = false) => {
     try {
@@ -87,7 +88,7 @@ export function AdminCreditControls() {
   }
 
   const resetAll = async () => {
-    if (!window.confirm('Reset all daily and bonus credits for every device? This cannot be undone.')) return
+    setConfirmReset(false)
     setBusy(true); setError(''); setMessage('')
     try {
       const response = await fetch('/api/admin/credits', { method: 'DELETE' })
@@ -107,7 +108,7 @@ export function AdminCreditControls() {
     <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
       <Button type="button" variant={data?.creditsEnabled === false ? 'outline' : 'secondary'} disabled={busy || !data || data.creditsEnabled !== false} onClick={() => void toggleCredits(true)}><Power />Credits ON</Button>
       <Button type="button" variant={data?.creditsEnabled === false ? 'secondary' : 'outline'} disabled={busy || !data || data.creditsEnabled === false} onClick={() => void toggleCredits(false)}><Power />Credits OFF</Button>
-      <Button type="button" variant="outline" className="ml-auto" disabled={busy || !data} onClick={() => void resetAll()}><RotateCcw />Reset all credits</Button>
+      <Button type="button" variant="outline" className="ml-auto" disabled={busy || !data} onClick={() => setConfirmReset(true)}><RotateCcw />Reset all credits</Button>
     </div>
     <div className="flex flex-col gap-2">
       <Label htmlFor="daily-credit-allowance">Free daily credits per user</Label>
@@ -140,6 +141,23 @@ export function AdminCreditControls() {
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmGrant(null)}>Cancel</Button>
             <Button type="button" disabled={busy} onClick={confirmGrantAll}>
               <Gift className="size-4" /> Confirm send
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {confirmReset && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmReset(false) }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title" className="w-full max-w-sm rounded-2xl border border-primary/30 bg-card p-5 shadow-2xl">
+          <h3 id="reset-confirm-title" className="text-base font-semibold">Reset all credits?</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Reset all daily and bonus credits for every device? This cannot be undone.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button type="button" variant="destructive" disabled={busy} onClick={() => void resetAll()}>
+              <RotateCcw className="size-4" /> Reset all
             </Button>
           </div>
         </div>
