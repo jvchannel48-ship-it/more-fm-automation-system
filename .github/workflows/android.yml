@@ -13,6 +13,7 @@ on:
       - 'public/app-update.json'
       - 'lib/app-permissions.ts'
       - 'components/station/radio-player.tsx'
+      - 'hooks/use-broadcast.ts'
       - 'components/station/station-shell.tsx'
       - '.github/workflows/android.yml'
 
