@@ -355,3 +355,9 @@ body {
 .signal-bars span {
   box-shadow: none;
 }
+
+
+/* Keep the radio player fixed-size on touch devices; no pinch-to-zoom inside the player. */
+.radio-player {
+  touch-action: pan-y;
+}
