@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
       && JSON.stringify(blockedGenres) !== JSON.stringify(current.blockedGenres))
     || (typeof body.discoEnabled === 'boolean' && body.discoEnabled !== current.discoEnabled)
   ) {
-    await refreshQueue()
+    await refreshQueue(true)
   }
   return NextResponse.json(await getAdminStatus(), noStore)
 }
