@@ -102,10 +102,9 @@ export function isBlockedByTitleRules(title: string, options: { allowDancePop?: 
   if (!title || NON_LATIN.test(title)) return true
   const normalizedTitle = normalize(title)
   if (AI_OR_NON_ORIGINAL_RULE.test(title)) return true
-  if (options.allowDancePop
-    ? DISCO_HARD_BLOCK_RULE.test(title) || DISCO_HARD_BLOCK_RULE.test(normalizedTitle)
-    : EXCLUDED_GENRE_RULE.test(title) || EXCLUDED_GENRE_RULE.test(normalizedTitle)) return true
-  if (!options.allowDancePop && CLASSIC_LOVE_EXCLUSION_RULE.test(normalizedTitle)) return true
+  // Ignore legacy allowDancePop exceptions: RJ FM blocks dance/disco in every rotation.
+  if (EXCLUDED_GENRE_RULE.test(title) || EXCLUDED_GENRE_RULE.test(normalizedTitle)) return true
+  if (CLASSIC_LOVE_EXCLUSION_RULE.test(normalizedTitle)) return true
   if (LIVE_CONCERT_NEWS_RULE.test(title) || LIVE_CONCERT_NEWS_RULE.test(normalizedTitle)) return true
   if (NON_MUSIC_OR_ALTERNATE_RULE.test(title) || FOREIGN_RULE.test(title)) return true
   return false
