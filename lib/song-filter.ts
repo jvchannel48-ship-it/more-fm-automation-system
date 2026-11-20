@@ -38,6 +38,10 @@ const DISCO_HARD_BLOCK_RULE = /\b(?:rock|metal|punk|grunge|emo|screamo|hardcore|
 export const DEFAULT_BLOCKED_GENRES = [
   'rock',
   'remix',
+  'dance',
+  'disco',
+  'eurodance',
+  'funk',
   'metal',
   'punk',
   'hip hop',
@@ -118,7 +122,8 @@ export function effectiveBlockedGenres(adminBlocked: string[] | undefined | null
   const admin = Array.isArray(adminBlocked)
     ? adminBlocked.map((g) => normalize(g)).filter(Boolean)
     : []
-  const forced = options?.discoEnabled === false ? ['disco', 'dance', 'eurodance', 'funk'] : []
+  // RJ FM policy: always block these genres, including legacy settings that enabled disco.
+  const forced = ['disco', 'dance', 'eurodance', 'funk', 'club', 'party', 'remix', 'mashup', 'bootleg']
   return [...new Set([...DEFAULT_BLOCKED_GENRES.map((g) => normalize(g)), ...admin, ...forced])].slice(0, 40)
 }
 
@@ -139,7 +144,6 @@ export function isBlockedProgramGenre(programId: string, blockedGenres: string[]
   const normalizedProgram = programId.replaceAll('-', ' ')
   if (matchesBlockedGenre(normalizedProgram, blockedGenres)) return true
   return normalize(programId) === 'disco'
-    && blockedGenres.some((genre) => ['disco', 'dance', 'eurodance', 'pop'].includes(normalize(genre)))
 }
 
 /**
