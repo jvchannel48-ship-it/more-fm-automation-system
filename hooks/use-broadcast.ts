@@ -114,6 +114,8 @@ export function useBroadcast(
     slots.current = Array.from({ length: 4 }, () => {
       const el = new Audio()
       el.preload = 'auto'
+      el.setAttribute('playsinline', '')
+      el.setAttribute('webkit-playsinline', '')
       let bassHighPass: BiquadFilterNode | null = null
       let bassFilter: BiquadFilterNode | null = null
       let bassHeadroom: GainNode | null = null
@@ -279,16 +281,20 @@ export function useBroadcast(
           continue
         }
 
+        // Start the browser's media pipeline immediately on the first Play tap.
+        // HTMLMediaElement.play() can be called while data is still buffering; waiting
+        // for HAVE_CURRENT_DATA here delayed the initial request and audible playback.
         if (el.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
           if (slot.activeWaitSince === null) slot.activeWaitSince = now
           if (now - slot.activeWaitSince >= START_TIMEOUT_MS) {
             if (retrySource(slot, track)) continue
             failSource(slot, track)
+            continue
           }
-          continue
+        } else {
+          slot.activeWaitSince = null
         }
 
-        slot.activeWaitSince = null
         const expected = (now - track.startAt) / 1000
         if (track.kind !== 'live' && el.readyState >= HTMLMediaElement.HAVE_METADATA) {
           if (!slot.synced || Math.abs(el.currentTime - expected) > DRIFT_TOLERANCE_S) {
