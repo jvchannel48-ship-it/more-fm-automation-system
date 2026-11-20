@@ -27,7 +27,7 @@ const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway
 const CROSSFADE_SECONDS = 8
 const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
 const PRELOAD_AHEAD_TRACKS = 2
-const NAGA_FOLLOW_GAP_MS = 12_000
+const NAGA_FOLLOW_DELAY_MS = 12_000
 const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
@@ -187,7 +187,7 @@ function buildNagaFollowTracks(mainState: StationState, now: number): Track[] {
     .sort((a, b) => a.startAt - b.startAt)
   const out: Track[] = []
   for (const track of manilaMusic) {
-    const startAt = trackEnd(track) + NAGA_FOLLOW_GAP_MS
+    const startAt = track.startAt + NAGA_FOLLOW_DELAY_MS
     if (startAt + track.duration * 1000 < now - 2_000) continue
     out.push({
       uid: `naga-follow-${track.uid}`,
@@ -297,7 +297,7 @@ async function withSongRequestLock<T>(operation: () => Promise<T>): Promise<T> {
 export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>, station: StationId = 'main') {
   return withSongRequestLock(async () => {
     const now = Date.now()
-    const statePath = statePathFor(station)
+    const statePath = statePathFor(station === 'naga' ? 'main' : station)
     const [{ state }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
     const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
@@ -324,32 +324,23 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
 
-    if (station === 'naga' && state.requestQueue.length === 0) {
+    if (station === 'naga') {
       const followed = buildNagaFollowTracks(mainSnap.state, now)
       const hasFollowedCurrent = followed.some((track) => track.startAt <= now && trackEnd(track) > now)
       const hasFollowedUpcoming = followed.some((track) => track.startAt > now)
-      if (followed.length > 0 && (hasFollowedCurrent || hasFollowedUpcoming)) {
-        const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
-        const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
-        if (prevKey !== nextKey) {
-          state.tracks = followed
-          for (const track of followed) {
-            if (track.title) {
-              state.history.push({
-                id: track.uid,
-                key: songKey(track.title),
-                artist: track.artist || 'RJ FM Manila',
-                t: track.startAt,
-              })
-            }
-          }
-          state.history = state.history.slice(-80)
-          await writeJson(statePath, state)
-        } else if (changed) {
-          await writeJson(statePath, state)
-        }
-        return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+      const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
+      const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
+      if (prevKey !== nextKey) {
+        state.tracks = followed
+        state.history = [...state.history, ...followed.filter((track) => track.title).map((track) => ({
+          id: track.uid, key: songKey(track.title!), artist: track.artist || 'RJ FM Manila', t: track.startAt,
+        }))].slice(-80)
+        await writeJson(statePath, state)
+      } else if (changed) {
+        await writeJson(statePath, state)
       }
+      // Naga is a delayed simulcast of Manila, never an independently filled playlist.
+      return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
     }
 
     if (station !== 'naga') {
