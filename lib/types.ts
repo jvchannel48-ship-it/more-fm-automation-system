@@ -18,10 +18,10 @@ export interface SongRequest {
   artist: string
   location?: string
   submittedAt: number
-  id: string
-  key: string
-  src: string
-  duration: number
+  id?: string
+  key?: string
+  src?: string
+  duration?: number
 }
 
 export interface StationSettings {
