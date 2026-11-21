@@ -3,7 +3,6 @@ import { after } from 'next/server'
 import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
 import { STATIONS, type StationId } from './stations'
 import {
-  isOffAir,
   DZMM_STREAM_URL,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
   dailyAnnouncementScheduleAt,
@@ -11,9 +10,6 @@ import {
   languageForSlot,
   manilaDateKey,
   manilaTime,
-  nextSignOn,
-  nextSignOnAtHour,
-  isOffAirHours,
   masbateProgramAt,
   nagaProgramAt,
   programAt,
@@ -27,10 +23,12 @@ import { buildChristopherScript, saveChristopherScript, nextChristopherTimeCheck
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
-const PRELOAD_AHEAD_TRACKS = 3
+const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
+const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
+const SONG_REPEAT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 interface ArtistHistoryRecord { artist: string; plays: number; lastPlayedAt: number }
 async function recordArtistPlay(artist: string, playedAt: number) {
   const saved = await readJson<ArtistHistoryRecord[]>(ARTIST_HISTORY_PATH, [])
@@ -64,6 +62,14 @@ const NATIONWIDE_IDENT_BY_STATION: Partial<Record<StationId, { src: string; dura
 }
 
 interface HistoryEntry { id: string; key: string; artist: string; t: number }
+let autoDjFillQueue: Promise<void> = Promise.resolve()
+async function withAutoDjFillLock<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = autoDjFillQueue
+  let release!: () => void
+  autoDjFillQueue = new Promise<void>((resolve) => { release = resolve })
+  await previous
+  try { return await operation() } finally { release() }
+}
 interface StationState {
   tracks: Track[]; songCount: number; history: HistoryEntry[]; fillingUntil: number; requestQueue: SongRequest[]
   failedDzmmWindowStart: number | null; dailyAnnouncementDay: string | null; dailyAnnouncementSongCount: number; dailyAnnouncementPlayed: boolean
@@ -321,6 +327,10 @@ function statePathFor(station: StationId) {
   }
 }
 async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, djChristopherIntervalMinutes = 40) {
+  const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
+  const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
+  const networkHistoryKeys = new Set(networkHistory.map((entry) => entry.id))
+  const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !networkHistoryKeys.has(entry.id))]
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 6) {
     const startAt = nextStart(state, now)
@@ -335,7 +345,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
-      : await findSong(program, state.songCount, state.history, startAt, blockedGenres, station)
+      : await findSong(program, state.songCount, selectionHistory, startAt, blockedGenres, station)
     if (!song) break
     if (request) state.requestQueue.shift()
     let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
@@ -371,7 +381,10 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
     }
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
-    state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
+    const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
+    state.history.push(playedEntry)
+    networkHistory.push(playedEntry)
+    await writeJson(PLAYED_SONG_HISTORY_PATH, networkHistory)
     await recordArtistPlay(song.artist, songStart)
     state.songCount++
     let timeCheckEndAt = songStart + song.duration * 1000
@@ -581,9 +594,11 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
       state.fillingUntil = now + FILL_LOCK_MS
       await writeJson(statePath, state)
-      await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-      state.fillingUntil = 0
-      await writeJson(statePath, state)
+      await withAutoDjFillLock(async () => {
+        await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+        state.fillingUntil = 0
+        await writeJson(statePath, state)
+      })
     } else if (changed) { await writeJson(statePath, state) }
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
