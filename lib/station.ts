@@ -360,11 +360,26 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       ? resolvedRequest
       : await findSong(program, state.songCount, selectionHistory, startAt, blockedGenres, station)
     if (!song) break
+    let requestAnnouncementDuration = 0
     if (request && resolvedRequest) {
       Object.assign(request, resolvedRequest)
       state.requestQueue.shift()
+      const requestText = `Auto DJ has a listener song request: ${request.title} by ${request.artist}. This one is specially requested for RJ FM. Enjoy the music!`
+      const requestScriptId = await saveAutoDjScript(requestText)
+      requestAnnouncementDuration = estimateChristopherDuration(requestText)
+      state.tracks.push({
+        uid: `dj-autodj-message-${station}-request-${request.requestId}-${requestScriptId}`,
+        src: `/api/dj-christopher?id=${requestScriptId}&speaker=autodj`,
+        startAt,
+        duration: requestAnnouncementDuration,
+        fadeIn: 0.5,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'Auto DJ · Song Request Announcement',
+        artist: 'RJ FM Auto DJ',
+      })
     }
-    let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    let songStart = Math.max(startAt + requestAnnouncementDuration * 1000, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     const songFadeIn = fadeIn
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
