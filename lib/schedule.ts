@@ -41,6 +41,70 @@ function artists(language: Language, entries: string[]): Artist[] {
   })
 }
 
+/** Curated soft-pop / easy-listening artist discovery pools by era.
+ * Search results still pass RJ FM's original-artist and no-rock/dance/disco/remix/AI filters.
+ */
+export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
+  '60s-70s': artists('english', [
+    'Andy Williams', 'Nat King Cole', 'Perry Como', 'Matt Monro', 'Jim Reeves',
+    'Frank Sinatra', 'Tony Bennett', 'Johnny Mathis', 'Dusty Springfield',
+    'Dionne Warwick', 'Roberta Flack', 'Paul Anka', 'Tom Jones',
+    'Engelbert Humperdinck|engelbert', 'Bobby Vinton', 'The Carpenters|carpenters',
+    'Bread', 'Barry Manilow', 'Anne Murray', 'Rita Coolidge', 'Glen Campbell',
+    'B.J. Thomas|bj thomas', 'The Righteous Brothers|righteous brothers',
+  ]),
+  '80s-90s': artists('english', [
+    'Sade', 'Anita Baker', 'Luther Vandross', 'Peabo Bryson', 'James Ingram',
+    'Richard Marx', 'Michael Bolton', 'Whitney Houston', 'Celine Dion',
+    'Mariah Carey', 'Boyz II Men|boyz ii men', 'All-4-One|all 4 one',
+    'Toni Braxton', 'Vanessa Williams', 'Brian McKnight', 'Shai',
+    'Color Me Badd|color me badd', 'George Michael', 'Gloria Estefan',
+    'Natalie Cole', 'Kenny G', 'Sarah McLachlan', 'Seal', 'Savage Garden|savage garden',
+  ]),
+  '2000s': artists('english', [
+    'Westlife', 'Blue', 'Ronan Keating', 'Daniel Bedingfield',
+    'James Blunt', 'Jason Mraz', 'John Legend', 'Alicia Keys',
+    'Leona Lewis', 'Dido', 'Norah Jones', 'Michael Buble|michael buble',
+    'Josh Groban', 'Sara Bareilles', 'Colbie Caillat', 'Corinne Bailey Rae',
+    'Natasha Bedingfield', 'David Archuleta', 'Kelly Clarkson',
+    'Daniel Powter', 'Gavin DeGraw', 'Jordin Sparks', 'David Cook',
+  ]),
+  '2023-2026': artists('english', [
+    'Benson Boone', 'Teddy Swims', 'Alex Warren', 'Stephen Sanchez',
+    'Laufey', 'Gracie Abrams', 'Olivia Dean', 'Lizzy McAlpine',
+    'Lewis Capaldi', 'Dean Lewis', 'James Arthur', 'NIKI',
+    'Sabrina Carpenter', 'Myles Smith', ' sombr ', 'd4vd',
+  ]),
+  'OPM 60s-90s': artists('tagalog', [
+    'Jose Mari Chan|jose mari chan', 'Pilita Corrales', 'Imelda Papin',
+    'Victor Wood', 'Eddie Peregrina', 'Basil Valdez', 'Rey Valera',
+    'Marco Sison', 'Rico J. Puno|rico j', 'Hajji Alejandro',
+    'Nonoy Zuniga|zuniga', 'Celeste Legaspi', 'Rodel Naval',
+    'Joey Albert', 'Gino Padilla', 'Raymond Lauchengco',
+    'Ogie Alcasid|ogie', 'Gary Valenciano|gary v', 'Lea Salonga',
+    'Sharon Cuneta', 'Jaya', 'Zsa Zsa Padilla',
+  ]),
+  'OPM 2000s-2026': artists('tagalog', [
+    'Nina', 'Kyla', 'Juris', 'Jay R|jay r', 'Sarah Geronimo|sarah',
+    'Erik Santos|erik santos', 'Jed Madela|jed madela', 'KZ Tandingan|kz',
+    'Moira Dela Torre|moira', 'TJ Monterde', 'Arthur Nery',
+    'Zack Tabudlo', 'Adie', 'Dionela', 'Maki', 'Cup of Joe',
+    'Earl Agustin', 'Rob Deniel', 'Jan Roberts', 'Mikee Sarmiento',
+    'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso',
+    'Morissette Amon|morissette', 'Jona|jona', 'Angeline Quinto',
+  ]),
+}
+const ENGLISH_ERA_EXPANSION = [
+  ...RJFM_ARTIST_LIBRARY['60s-70s'],
+  ...RJFM_ARTIST_LIBRARY['80s-90s'],
+  ...RJFM_ARTIST_LIBRARY['2000s'],
+  ...RJFM_ARTIST_LIBRARY['2023-2026'],
+]
+const TAGALOG_ERA_EXPANSION = [
+  ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'],
+  ...RJFM_ARTIST_LIBRARY['OPM 2000s-2026'],
+]
+
 const PINOY_OLDIES = artists('tagalog', [
   'Imelda Papin',
   'Victor Wood',
@@ -326,7 +390,7 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Willie Revillame|willie',
 ])
 
-const LOVE_VARIANTS = ['60s 70s 80s 90s 2000s love songs', 'classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
+const LOVE_VARIANTS = ['60s 70s 80s 90s classic soft love songs', '2000s soft pop love ballads', '2023 2024 2025 2026 soft pop ballad official audio', 'classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
 const DISCO_VARIANTS = [
   '',
   'official audio',
@@ -336,7 +400,7 @@ const DISCO_VARIANTS = [
   'latest 2026 disco pop song',
   '2026 dance music official audio',
 ]
-const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', 'original audio', 'greatest hits']
+const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', '2023 2024 2025 2026 new OPM love ballad official audio', 'modern soft Tagalog love song', 'original audio', 'greatest hits']
 const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
 const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'BINI',
@@ -349,7 +413,7 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'Flow G',
   'Kiyo',
 ])
-const MASBATE_TAGALOG = [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...MASBATE_CURRENT_TAGALOG]
+const MASBATE_TAGALOG = [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...MASBATE_CURRENT_TAGALOG, ...TAGALOG_ERA_EXPANSION]
 const MASBATE_TAGALOG_VARIANTS = ['latest 2026 OPM Tagalog song', 'new Filipino love song', 'modern Tagalog song', 'official audio', 'original audio']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
@@ -361,7 +425,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'sunday-english-oldies': {
     id: 'sunday-english-oldies',
-    pools: { english: SUNDAY_ENGLISH_OLDIES, tagalog: [] },
+    pools: { english: [...SUNDAY_ENGLISH_OLDIES, ...RJFM_ARTIST_LIBRARY['60s-70s'], ...RJFM_ARTIST_LIBRARY['80s-90s']], tagalog: [] },
     variants: { english: SUNDAY_OLDIES_VARIANTS, tagalog: [] },
     englishOnly: true,
   },
@@ -379,12 +443,12 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'english-love': {
     id: 'english-love',
-    pools: { english: ENGLISH_LOVE, tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
+    pools: { english: [...ENGLISH_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'daytime-love': {
     id: 'daytime-love',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   disco: {
@@ -394,7 +458,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'night-love': {
     id: 'night-love',
-    pools: { english: NIGHT_LOVE, tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
+    pools: { english: [...NIGHT_LOVE, ...RJFM_ARTIST_LIBRARY['80s-90s'], ...RJFM_ARTIST_LIBRARY['2023-2026']], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'masbate-tagalog': {
