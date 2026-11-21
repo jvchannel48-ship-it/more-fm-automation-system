@@ -118,7 +118,7 @@ export function useBroadcast(
       // The original MP3 and the server playlist are never modified.
       el.addEventListener('ended', () => {
         const playedUrl = el.currentSrc || el.src
-        if (playedUrl && 'serviceWorker' in navigator) {
+        if (el.dataset.rjfmAutoDelete === 'true' && playedUrl && 'serviceWorker' in navigator) {
           navigator.serviceWorker.controller?.postMessage({
             type: 'RJFM_PURGE_PLAYED_AUDIO',
             url: playedUrl,
@@ -273,6 +273,7 @@ export function useBroadcast(
         }
         const isActive = activeIds.has(track.uid)
         const el = slot.el
+        el.dataset.rjfmAutoDelete = String(data?.autoDeletePlayedCache !== false)
 
         if (!playing) {
           if (!el.paused) el.pause()
