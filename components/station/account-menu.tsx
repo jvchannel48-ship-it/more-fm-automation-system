@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, BatteryCharging, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
+import { Activity, Bell, BatteryCharging, ExternalLink, Gauge, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -54,6 +54,9 @@ export function AccountMenu() {
   const [error, setError] = useState('')
   const [permissionBusy, setPermissionBusy] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [pingBusy, setPingBusy] = useState(false)
+  const [pingSamples, setPingSamples] = useState<number[]>([])
+  const [pingError, setPingError] = useState('')
 
   const refreshProfile = useCallback(async (showError = false) => {
     try {
@@ -197,6 +200,27 @@ export function AccountMenu() {
     }
   }
 
+  const runPingTest = async () => {
+    setPingBusy(true)
+    setPingError('')
+    setPingSamples([])
+    const samples: number[] = []
+    try {
+      for (let index = 0; index < 5; index++) {
+        const startedAt = performance.now()
+        const response = await fetch(`/api/ping?run=${Date.now()}-${index}`, { cache: 'no-store' })
+        if (!response.ok) throw new Error('Hindi maabot ang RJ FM server.')
+        await response.json()
+        samples.push(Math.round((performance.now() - startedAt) * 10) / 10)
+        setPingSamples([...samples])
+      }
+    } catch (reason) {
+      setPingError(reason instanceof Error ? reason.message : 'Hindi natapos ang ping test.')
+    } finally {
+      setPingBusy(false)
+    }
+  }
+
   const openView = (next: View) => { setView(next); setError(''); setMessage('') }
 
   return (
@@ -217,8 +241,29 @@ export function AccountMenu() {
               <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/[0.03] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Available balance</p><p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">{profile.creditsRemaining ?? 0}</p><p className="mt-1 text-[11px] text-muted-foreground">RJ FM credits</p></div>
               <div className="rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/15 to-emerald-400/[0.03] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Daily allowance</p><p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">{profile.dailyCredits ?? 0}<span className="ml-1 text-sm font-semibold text-muted-foreground">/ {profile.dailyAllowance ?? 0}</span></p><p className="mt-1 text-[11px] text-muted-foreground">Resets every day</p></div>
             </div>}
-            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button><Button type="button" variant={view === 'settings' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('settings')}><Settings className="size-4" />Settings</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
-            {view === 'usage' && !profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'settings' ? <div className="flex flex-col gap-3 rounded-2xl border p-4"><div><p className="font-medium">App settings</p><p className="mt-1 text-xs text-muted-foreground">Manage app permissions and refresh the latest version.</p></div><Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button><div className="rounded-xl bg-secondary/50 p-3"><p className="text-sm font-medium">Update RJ FM</p><p className="mt-1 text-xs text-muted-foreground">Refresh app files and load the latest available version.</p><Button type="button" className="mt-3 w-full" onClick={updateApp} disabled={updating}>{updating ? <RefreshCw className="animate-spin" /> : <Check />}{updating ? 'Updating…' : 'Update app'}</Button></div></div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
+            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button><Button type="button" variant={view === 'settings' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('settings')}><Settings className="size-4" />Tools</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
+            {view === 'usage' && !profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'settings' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
+              <div><p className="font-semibold">RJ FM Tools</p><p className="mt-1 text-xs text-muted-foreground">Internet speed test and connection ping diagnostics.</p></div>
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <div className="flex items-center gap-2"><Gauge className="size-4 text-primary" /><p className="font-medium">Ookla Speedtest</p></div>
+                <p className="mt-1 text-xs text-muted-foreground">Open the official Speedtest page to measure download, upload and latency using Ookla's network.</p>
+                <Button type="button" className="mt-3 w-full" onClick={() => window.open('https://www.speedtest.net', '_blank', 'noopener,noreferrer')}><ExternalLink className="size-4" />Open Ookla Speedtest</Button>
+                <p className="mt-2 text-[10px] text-muted-foreground">Official embedded Ookla SDK requires a paid license; this button opens Ookla's official test instead.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                <div className="flex items-center gap-2"><Activity className="size-4 text-primary" /><p className="font-medium">RJ FM Server Ping</p></div>
+                <p className="mt-1 text-xs text-muted-foreground">Five round-trip checks from this device to the RJ FM server.</p>
+                <Button type="button" variant="outline" className="mt-3 w-full" onClick={runPingTest} disabled={pingBusy}>{pingBusy ? <RefreshCw className="size-4 animate-spin" /> : <Activity className="size-4" />}{pingBusy ? 'Testing ping…' : 'Start ping test'}</Button>
+                {pingSamples.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{Math.min(...pingSamples)} ms</p><p className="text-[10px] text-muted-foreground">Best</p></div>
+                  <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{(pingSamples.reduce((sum, value) => sum + value, 0) / pingSamples.length).toFixed(1)} ms</p><p className="text-[10px] text-muted-foreground">Average</p></div>
+                  <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{Math.max(...pingSamples)} ms</p><p className="text-[10px] text-muted-foreground">Worst</p></div>
+                </div>}
+                {pingBusy && <p className="mt-2 text-center text-xs text-muted-foreground">{pingSamples.length}/5 checks complete</p>}
+                {pingError && <p className="mt-2 text-xs text-destructive" role="alert">{pingError}</p>}
+              </div>
+              <Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button>
+            </div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
                 <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><div><p className="text-sm font-medium">Notifications</p><p className="text-xs text-muted-foreground">RJ FM alerts via OneSignal</p></div></div><Button type="button" size="sm" onClick={enableNotifications} disabled={permissionBusy}>Allow</Button></div>
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-3"><div className="flex items-center gap-2"><Mic className="size-4 text-primary" /><div><p className="text-sm font-medium">Microphone</p><p className="text-xs text-muted-foreground">For voice features when used</p></div></div><Button type="button" size="sm" variant="outline" onClick={enableMicrophone} disabled={permissionBusy}>Allow</Button></div>
