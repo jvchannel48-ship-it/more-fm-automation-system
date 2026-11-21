@@ -3,7 +3,7 @@ name: Build RJ FM Android App
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, restore-dj-christopher-ph-timecheck]
     paths:
       - 'capacitor.config.ts'
       - 'package.json'
