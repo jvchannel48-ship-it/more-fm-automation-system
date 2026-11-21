@@ -1,7 +1,7 @@
 import 'server-only'
 import { after } from 'next/server'
 import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
-import type { StationId } from './stations'
+import { STATIONS, type StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
   languageForSlot,
@@ -414,7 +414,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         fromName: selectedMessage.fromName.replace(/[\r\n<>]/g, ' ').slice(0, 40),
         body: selectedMessage.body.replace(/https?:\/\/\S+/gi, ' link ').replace(/[\r\n<>]/g, ' ').slice(0, 180),
       } : undefined
-      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`, safeListenerMessage)
+      const stationName = station === 'main' ? 'RJ FM 93.5' : STATIONS[station].name
+      const timeCheckText = buildTimeCheckScript(`Time check is ${philippinesTime}`, safeListenerMessage, stationName)
       if (selectedMessage) {
         await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
           message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
