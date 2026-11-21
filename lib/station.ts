@@ -312,16 +312,17 @@ async function buildNagaFollowTracks(mainState: StationState, now: number, natio
     const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS + identDelay
     const followUid = `naga-follow-${voice.uid}`
     let nagaVoice = existingTracks.find((track) => track.uid === followUid)
-    if (!nagaVoice) {
-      const sourceScriptId = voice.src.split('id=')[1]
-      const sourceScript = sourceScriptId ? await getChristopherScript(sourceScriptId) : null
-      const nagaScript = sourceScript?.replace(/^RJ FM 93\.5(?= Manila time check)/, 'RJ FM Naga 92.3')
-      if (nagaScript && nagaScript !== sourceScript) {
-        const scriptId = await saveChristopherScript(nagaScript)
-        nagaVoice = { ...voice, src: `/api/dj-christopher?id=${scriptId}`, duration: estimateChristopherDuration(nagaScript) }
-      } else {
-        nagaVoice = voice
-      }
+    const currentScriptId = nagaVoice?.src.split('id=')[1]
+    const currentScript = currentScriptId ? await getChristopherScript(currentScriptId) : null
+    const sourceScriptId = voice.src.split('id=')[1]
+    const sourceScript = sourceScriptId ? await getChristopherScript(sourceScriptId) : null
+    const scriptToLocalize = currentScript ?? sourceScript
+    const nagaScript = scriptToLocalize?.replace(/^RJ FM 93\\.5(?= Manila time check)/, 'RJ FM Naga 92.3')
+    if (nagaScript && nagaScript !== scriptToLocalize) {
+      const scriptId = await saveChristopherScript(nagaScript)
+      nagaVoice = { ...voice, uid: followUid, src: `/api/dj-christopher?id=${scriptId}`, duration: estimateChristopherDuration(nagaScript) }
+    } else if (!nagaVoice) {
+      nagaVoice = voice
     }
     if (startAt + nagaVoice.duration * 1000 >= now - 2_000) out.push({ ...nagaVoice, uid: followUid, startAt })
   }
