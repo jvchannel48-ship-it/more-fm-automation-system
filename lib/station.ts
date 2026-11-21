@@ -147,9 +147,13 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const allowed = unique.filter((a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR)
   const recent = new Set(history.slice(-20).map((h) => h.artist))
   const fresh = allowed.filter((a) => !recent.has(a.name))
-  // Relax artist spacing only when the current library has no other eligible artist.
+  // Give the requested Kenny Rogers / Anne Murray classic catalog a fair chance in the English love rotation.
+  const featuredClassic = fresh.find((artist) => normalize(artist.name) === 'kenny rogers')
   const relaxed = allowed.length ? allowed : unique.filter((a) => a.name !== lastArtist)
-  return shuffle(fresh.length > 0 ? fresh : relaxed.length > 0 ? relaxed : unique)
+  const rotation = fresh.length > 0 ? fresh : relaxed.length > 0 ? relaxed : unique
+  return featuredClassic
+    ? [featuredClassic, ...shuffle(rotation.filter((artist) => artist.name !== featuredClassic.name))]
+    : shuffle(rotation)
 }
 /**
  * Live AutoDJ selector: evaluates a rotating pool against the active program,
@@ -178,7 +182,10 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const variantIndex = (songCount + offset + index + Math.floor(now / 60_000)) % variants.length
       const primary = variants[variantIndex] ?? ''
       const secondary = variants[(variantIndex + 1) % variants.length] ?? ''
-      const queries = [...new Set([primary, secondary].map((value) => `${artist.name} ${value}`.trim()))]
+      const queries = [...new Set([
+        primary, secondary,
+        ...(normalize(artist.name) === 'kenny rogers' ? ['If I Ever Fall in Love Again Kenny Rogers Anne Murray official audio'] : []),
+      ].map((value) => `${artist.name} ${value}`.trim()))]
       const responses = await Promise.all(queries.map((query) =>
         fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: query }), 7_000),
       ))
