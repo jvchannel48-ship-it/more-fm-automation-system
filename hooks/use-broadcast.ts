@@ -196,7 +196,7 @@ export function useBroadcast(
       const upcoming = availableTracks
         .filter((track) => !activeIds.has(track.uid)
           && track.startAt > now
-          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid))
+          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid || (track.kind === 'dj-mic' && track.uid.includes('dj-christopher-timecheck'))))
         .sort((a, b) => a.startAt - b.startAt)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
