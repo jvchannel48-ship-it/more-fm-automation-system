@@ -126,7 +126,9 @@ export function buildTimeCheckScript(prompt: string) {
   return `RJ FM time check is ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
-  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
+  // Conservative speech timing plus a small tail buffer so voice clips finish
+  // before Auto DJ schedules the next music track.
+  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.2) + 2)
 }
 export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3' | 'dzmm', songCount: number) {
   const text = buildTimeCheckScript(prompt)
