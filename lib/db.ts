@@ -36,8 +36,7 @@ export function getDb() {
     // Render managed Postgres requires SSL for External URL and usually for Internal too.
     const useSsl =
       process.env.NODE_ENV === 'production' ||
-      /render\.com|amazonaws\.com|sslmode=require/i.test(connectionString) ||
-      false
+      /render\.com|amazonaws\.com|sslmode=require/i.test(connectionString)
 
     pool = new Pool({
       connectionString,
