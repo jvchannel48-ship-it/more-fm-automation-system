@@ -322,10 +322,11 @@ export function useBroadcast(
           }
         }
 
-        // All RJ FM stations play at full browser audio-element volume.
-        // Do not apply master-volume caps or duck music under DJ Christopher.
-        // Fade envelopes remain only for smooth track transitions.
-        const fadeGain = trackGain(track, now)
+        // All RJ FM music uses full playback volume with no automatic ducking.
+        // Keep DJ Christopher's voice gain independent and untouched at full level.
+        // Other tracks retain their transition fades.
+        const isChristopherVoice = track.kind === 'dj-mic' && track.uid.includes('dj-christopher-')
+        const fadeGain = isChristopherVoice ? 1 : trackGain(track, now)
         el.volume = clamp01(fadeGain)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
