@@ -139,19 +139,35 @@ function betadashUrl(params: Record<string, string>) {
   return url.toString()
 }
 function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
-  const unique = [...new Map(pool.map((a) => [a.name, a])).values()]
-  const lastArtist = history.at(-1)?.artist
+  const unique = [...new Map(pool.map((artist) => [normalize(artist.name), artist])).values()]
+  const lastArtist = normalize(history.at(-1)?.artist ?? '')
   const hourCounts = new Map<string, number>()
-  for (const h of history) {
-    if (h.t > now - ARTIST_WINDOW_MS) hourCounts.set(h.artist, (hourCounts.get(h.artist) ?? 0) + 1)
+  const lastPlayed = new Map<string, number>()
+  for (const entry of history) {
+    const key = normalize(entry.artist)
+    if (!key) continue
+    if (entry.t > now - ARTIST_WINDOW_MS) hourCounts.set(key, (hourCounts.get(key) ?? 0) + 1)
+    lastPlayed.set(key, Math.max(lastPlayed.get(key) ?? 0, entry.t))
   }
-  const allowed = unique.filter((a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR)
-  const recent = new Set(history.slice(-20).map((h) => h.artist))
-  const fresh = allowed.filter((a) => !recent.has(a.name))
-  const relaxed = allowed.length ? allowed : unique.filter((a) => a.name !== lastArtist)
-  const rotation = fresh.length > 0 ? fresh : relaxed.length > 0 ? relaxed : unique
-  // No featured artist: every eligible artist gets an equal randomized turn.
-  return shuffle(rotation)
+  // Enforce the one-per-hour cap using normalized names so spelling/format
+  // variations cannot accidentally give the same artist another turn.
+  const allowed = unique.filter((artist) => {
+    const key = normalize(artist.name)
+    return key !== lastArtist && (hourCounts.get(key) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR
+  })
+  const recent = new Set(history.slice(-24).map((entry) => normalize(entry.artist)))
+  const fresh = allowed.filter((artist) => !recent.has(normalize(artist.name)))
+  // Prefer artists that have been off-air longest; randomize ties so no artist
+  // (including Luther Vandross) is permanently featured or repeatedly selected.
+  const candidates = fresh.length ? fresh : allowed.length ? allowed : unique
+  const ranked = [...candidates].sort((a, b) =>
+    (lastPlayed.get(normalize(a.name)) ?? 0) - (lastPlayed.get(normalize(b.name)) ?? 0),
+  )
+  const oldestTime = lastPlayed.get(normalize(ranked[0]?.name ?? '')) ?? 0
+  const oldestGroup = ranked.filter((artist) =>
+    (lastPlayed.get(normalize(artist.name)) ?? 0) <= oldestTime + 15 * 60 * 1000,
+  )
+  return shuffle(oldestGroup.length ? oldestGroup : ranked)
 }
 /**
  * Live AutoDJ selector: evaluates a rotating pool against the active program,
@@ -208,7 +224,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const sourceScore = /official audio|official music|topic$/.test(normalizedMetadata + ' ' + normalizedTitle) ? 12 : 0
       const cleanTitleScore = /official audio|audio only/.test(normalizedTitle) ? 6 : 0
       const artistCreditScore = normalizedMetadata.includes(normalize(artist.name)) ? 10 : 0
-      const artistHistory = history.filter((entry) => entry.artist === artist.name).length
+      const artistHistory = history.filter((entry) => normalize(entry.artist) === normalize(artist.name)).length
       const freshnessScore = Math.max(0, 12 - artistHistory * 2)
       shortlist.push({ item, artist, score: durationScore + sourceScore + cleanTitleScore + artistCreditScore + freshnessScore + Math.random() * 3 })
     }
