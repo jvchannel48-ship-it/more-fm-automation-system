@@ -30,6 +30,15 @@ const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
 const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
+const ARTIST_HISTORY_PATH = 'station/artist-history.json'
+interface ArtistHistoryRecord { artist: string; plays: number; lastPlayedAt: number }
+async function recordArtistPlay(artist: string, playedAt: number) {
+  const saved = await readJson<ArtistHistoryRecord[]>(ARTIST_HISTORY_PATH, [])
+  const index = saved.findIndex((entry) => entry.artist.toLowerCase() === artist.toLowerCase())
+  if (index >= 0) saved[index] = { ...saved[index], plays: saved[index].plays + 1, lastPlayedAt: Math.max(saved[index].lastPlayedAt, playedAt) }
+  else saved.push({ artist, plays: 1, lastPlayedAt: playedAt })
+  await writeJson(ARTIST_HISTORY_PATH, saved)
+}
 const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
 const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
@@ -350,6 +359,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     }
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
+    await recordArtistPlay(song.artist, songStart)
     state.songCount++
     let timeCheckEndAt = songStart + song.duration * 1000
     const generatedTimeCheck = station === 'main' ? await nextChristopherTimeCheck('after3', state.songCount) : null
@@ -462,6 +472,7 @@ async function loadState(now: number, path = STATE_PATH) {
     const isActive = t.startAt <= now && trackEnd(t) > now
     return Boolean((schedule && now >= schedule.availableFrom && now < schedule.expiresAt || isActive) && trackEnd(t) >= now - 1000)
   })
+  state.history = state.history.filter((h) => h.t > now - 30 * 24 * 60 * 60 * 1000)
   return { state, changed: state.tracks.length !== before }
 }
 let songRequestQueue: Promise<void> = Promise.resolve()
@@ -674,8 +685,8 @@ export async function reportPlaybackFailure(uid: string) {
 }
 export async function getAdminStatus(): Promise<AdminStatus> {
   const now = Date.now()
-  const [settings, listenersNow, averageListeners, { state }] = await Promise.all([
-    getSettings(), getActiveListenerCount(), getAverageListenerCount(), loadState(now),
+  const [settings, listenersNow, averageListeners, { state }, artistHistory] = await Promise.all([
+    getSettings(), getActiveListenerCount(), getAverageListenerCount(), loadState(now), readJson<ArtistHistoryRecord[]>(ARTIST_HISTORY_PATH, []),
   ])
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000
   const hourAgo = now - ARTIST_WINDOW_MS
@@ -687,13 +698,7 @@ export async function getAdminStatus(): Promise<AdminStatus> {
     songsThisWeek: state.history.filter((entry) => entry.t >= weekAgo).length,
     artistsThisHour: new Set(state.history.filter((entry) => entry.t >= hourAgo).map((entry) => entry.artist)).size,
     queued: state.requestQueue.length,
-    artistHistory: [...state.history.reduce((map, entry) => {
-      const current = map.get(entry.artist) ?? { artist: entry.artist, plays: 0, lastPlayedAt: 0 }
-      current.plays += 1
-      current.lastPlayedAt = Math.max(current.lastPlayedAt, entry.t)
-      map.set(entry.artist, current)
-      return map
-    }, new Map<string, { artist: string; plays: number; lastPlayedAt: number }>()).values()].sort((a, b) => b.lastPlayedAt - a.lastPlayedAt),
+    artistHistory: artistHistory.sort((a, b) => b.lastPlayedAt - a.lastPlayedAt),
   }
 }
 
