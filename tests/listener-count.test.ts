@@ -29,7 +29,7 @@ async function main() {
     assert.equal((await getSettings()).djChristopherEnabled, false, 'DJ Christopher voice breaks are disabled')
     assert.equal((await getSettings()).sundayScheduleEnabled, true, 'Sunday special programming defaults ON')
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'modern Tagalog OPM mode defaults ON')
-    assert.equal((await getSettings()).bassBoostDb, 0, 'bass boost defaults to neutral 0 dB')
+    assert.equal((await getSettings()).bassBoostDb, 12, 'bass boost defaults to the configured +12 dB maximum')
     await writeJson(SETTINGS_PATH, { broadcastEnabled: false })
     assert.equal((await getSettings()).broadcastEnabled, false, 'the broadcast OFF toggle remains readable in memory fallback')
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'OPM mode stays ON when legacy settings omit its value')
