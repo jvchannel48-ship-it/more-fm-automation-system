@@ -237,6 +237,7 @@ export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
   'Arthur Nery',
   'Moira Dela Torre',
   'TJ Monterde',
+  'Cup of Joe|cup of joe',
   'Janine Teñoso',
   'mrld',
   'Yeng Constantino|yeng',
