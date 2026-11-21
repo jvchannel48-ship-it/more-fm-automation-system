@@ -79,7 +79,7 @@ export async function getChristopherScript(id: string): Promise<string | null> {
   return saved.find((item) => item.id === id)?.text ?? null
 }
 
-export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromName: string; body: string }) {
+export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromName: string; body: string }, stationName = 'RJ FM 93.5') {
   const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i)
   if (!match) throw new Error('Include a time, for example: Generate RJ FM time check is 4:30 AM.')
   const hour = Number(match[1])
@@ -105,7 +105,7 @@ export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromNam
     'Stay tuned; another favourite is coming up next.',
     'Keep listening, because the music continues right here.',
   ])
-  return `${opening} The time is ${time}, Philippine time. ${listenerLine} Thank you for choosing RJ FM. ${transition}`
+  return `${opening} ${stationName}, the time is now ${time}, Philippine time. ${listenerLine} Thank you for choosing ${stationName}. ${transition}`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
