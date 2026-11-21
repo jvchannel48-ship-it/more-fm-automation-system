@@ -27,7 +27,7 @@ const vinylColors: Record<string, string> = { silver: '#cbd5e1', gold: '#f4b942'
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.7)
+  const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [manilaHour, setManilaHour] = useState(getManilaHour)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
@@ -70,8 +70,7 @@ export function RadioPlayer() {
         void mutate()
       })
   }, [mutate, station])
-  const nightVolume = manilaHour >= 20 || manilaHour < 4 ? 0.7 : volume
-  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : nightVolume, recoverStream, station)
+  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
 
   useEffect(() => {
     const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
