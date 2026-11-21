@@ -158,7 +158,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
 
   // Search many artists in parallel batches. If the first artists have no valid
   // results, keep searching the remaining library instead of ending the fill.
-  const batchSize = 12
+  const batchSize = 16
   const maxArtistsPerFill = Math.min(candidatesArtists.length, 32)
   const triedIds = new Set<string>()
   for (let offset = 0; offset < maxArtistsPerFill; offset += batchSize) {
@@ -198,21 +198,22 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     }
 
     shortlist.sort((a, b) => b.score - a.score)
-    // A broken download link should not stop AutoDJ from testing the other
-    // valid results in this batch or moving on to the next artist batch.
-    for (const { item, artist } of shortlist.slice(0, 3)) {
+    // Probe the three best sources in parallel so a slow/broken source cannot
+    // hold the station queue for multiple sequential 12-second timeouts.
+    const downloadProbes = shortlist.slice(0, 3).map(async ({ item, artist }) => {
       const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
-      if (download?.downloadUrl) {
-        return {
-          id: item.id,
-          key: songKey(item.title),
-          artist: artist.name,
-          title: item.title,
-          src: download.downloadUrl,
-          duration: parseDuration(item.duration),
-        }
+      if (!download?.downloadUrl) throw new Error('No downloadable source')
+      return {
+        id: item.id,
+        key: songKey(item.title),
+        artist: artist.name,
+        title: item.title,
+        src: download.downloadUrl,
+        duration: parseDuration(item.duration),
       }
-    }
+    })
+    const playable = await Promise.any(downloadProbes).catch(() => null)
+    if (playable) return playable
   }
   return null
 }
