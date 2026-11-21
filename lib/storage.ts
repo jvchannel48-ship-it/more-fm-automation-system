@@ -284,6 +284,40 @@ export async function getAverageListenerCount() {
   return Math.round(metrics.reduce((total, item) => total + item.count, 0) / metrics.length)
 }
 
+export const STATION_LISTENERS_PATH = 'station/station-listeners.json'
+export const STATION_LISTENER_METRICS_PATH = 'station/station-listener-metrics.json'
+interface StationListenerMetric { t: number; station: string; count: number }
+interface StationListenerEntry { t: number; station: string }
+
+/** Station-scoped heartbeat analytics; no personal identity or song title is stored. */
+export async function recordStationListener(id: string, station: string, active: boolean) {
+  if (!LISTENER_ID_PATTERN.test(id)) throw new Error('Invalid listener ID.')
+  return withListenerLock(async () => {
+    const now = Date.now()
+    const saved = await readJson<Record<string, StationListenerEntry>>(STATION_LISTENERS_PATH, {})
+    const listeners = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
+    if (active) listeners[id] = { t: now, station }
+    else delete listeners[id]
+    const activeEntries = Object.values(listeners).filter((entry) => entry && typeof entry.t === 'number' && entry.t >= now - LISTENER_TTL_MS)
+    const current = activeEntries.filter((entry) => entry.station === station).length
+    await writeJson(STATION_LISTENERS_PATH, Object.fromEntries(Object.entries(listeners).filter(([, entry]) => entry && typeof entry.t === 'number' && entry.t >= now - LISTENER_TTL_MS)))
+    const metricSaved = await readJson<unknown>(STATION_LISTENER_METRICS_PATH, [])
+    const metrics = Array.isArray(metricSaved) ? metricSaved.filter((item): item is StationListenerMetric => Boolean(item) && typeof item === 'object' && typeof (item as StationListenerMetric).t === 'number' && typeof (item as StationListenerMetric).station === 'string' && typeof (item as StationListenerMetric).count === 'number') : []
+    metrics.push({ t: now, station, count: current })
+    await writeJson(STATION_LISTENER_METRICS_PATH, metrics.filter((item) => item.t >= now - LISTENER_METRIC_WINDOW_MS).slice(-2000))
+    return { listenersNow: activeEntries.length, stationListenersNow: current }
+  })
+}
+
+export async function getStationListenerStats() {
+  const now = Date.now()
+  const saved = await readJson<unknown>(STATION_LISTENERS_PATH, {})
+  const entries = saved && typeof saved === 'object' && !Array.isArray(saved) ? Object.values(saved as Record<string, StationListenerEntry>) : []
+  const metricsSaved = await readJson<unknown>(STATION_LISTENER_METRICS_PATH, [])
+  const metrics = Array.isArray(metricsSaved) ? metricsSaved.filter((item): item is StationListenerMetric => Boolean(item) && typeof item === 'object' && typeof (item as StationListenerMetric).t === 'number' && typeof (item as StationListenerMetric).station === 'string' && typeof (item as StationListenerMetric).count === 'number' && (item as StationListenerMetric).t >= now - LISTENER_METRIC_WINDOW_MS) : []
+  return metrics
+}
+
 export const SETTINGS_PATH = 'station/settings.json'
 export const STATE_PATH = 'station/state-v2.json'
 export const LIVE_DJ_PATH = 'station/live-dj.json'
@@ -333,7 +367,7 @@ export async function getSettings(): Promise<StationSettings> {
     rjFmNationwideEnabled: typeof saved.rjFmNationwideEnabled === 'boolean' ? saved.rjFmNationwideEnabled : true,
     songRequestsEnabled: typeof saved.songRequestsEnabled === 'boolean' ? saved.songRequestsEnabled : true,
     autoDeletePlayedCache: typeof saved.autoDeletePlayedCache === 'boolean' ? saved.autoDeletePlayedCache : true,
-    djChristopherEnabled: typeof saved.djChristopherEnabled === 'boolean' ? saved.djChristopherEnabled : false,
+    djChristopherEnabled: false,
     djChristopherIntervalMinutes: typeof saved.djChristopherIntervalMinutes === 'number' && Number.isFinite(saved.djChristopherIntervalMinutes) ? Math.min(60, Math.max(30, saved.djChristopherIntervalMinutes)) : 40,
   }
 }

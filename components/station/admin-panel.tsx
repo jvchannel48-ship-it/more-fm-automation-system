@@ -12,7 +12,6 @@ import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
 import { AdminPlayerTest } from './admin-player-test'
-import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -163,15 +162,6 @@ export function AdminPanel() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-400/25 bg-amber-400/5 p-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <Label htmlFor="dj-christopher">DJ Christopher · Auto Voice</Label>
-          <span className="text-xs text-muted-foreground">Microsoft Edge TTS · en-US Christopher male voice · automatic after songs</span>
-          <span className="text-[11px] text-muted-foreground">{data?.djChristopherEnabled ? `ON · Random voice break every ${data.djChristopherIntervalMinutes ?? 40} minutes; requests are announced after playback.` : 'OFF · Music-only AutoDJ.'}</span>
-        </div>
-        <Switch id="dj-christopher" checked={data?.djChristopherEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djChristopherEnabled: checked })} />
-      </div>
-      <AdminTimeChecks />
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="song-requests">Song Requests</Label>
