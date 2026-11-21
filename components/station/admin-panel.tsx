@@ -6,6 +6,7 @@ import { BadgeCheck, ImagePlus, Megaphone, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { RJFM_ARTIST_LIBRARY } from '@/lib/schedule'
 import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
@@ -373,6 +374,21 @@ export function AdminPanel() {
         <Stat label="Queued" value={data?.queued ?? '–'} />
         <Stat label="Total listeners" value={data?.listenersNow ?? '–'} />
         <Stat label="Average listeners" value={data?.averageListeners ?? '–'} />
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label>RJ FM Music Discovery Library · All eras</Label>
+          <span className="text-xs tabular-nums text-muted-foreground">{Object.values(RJFM_ARTIST_LIBRARY).reduce((total, group) => total + group.length, 0)} artist entries</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Classic easy listening, love ballads and newer soft-pop / OPM discovery. Search results still pass RJ FM's original-track and blocked-genre filters.</p>
+        <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+          {Object.entries(RJFM_ARTIST_LIBRARY).map(([era, artists]) => (
+            <details key={era} className="rounded-md border border-border/60 bg-background/60 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold">{era} · {artists.length} artists</summary>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{artists.map((artist) => artist.name).join(' · ')}</p>
+            </details>
+          ))}
+        </div>
       </div>
       <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
         <div className="flex items-center justify-between gap-2">
