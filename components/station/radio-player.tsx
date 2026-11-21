@@ -9,7 +9,6 @@ import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { Equalizer } from './equalizer'
-import { SongRequest } from './song-request'
 import { getStoredStation } from './station-selector'
 import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
@@ -65,10 +64,12 @@ export function RadioPlayer() {
         void mutate()
       })
   }, [mutate, station])
-  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
+  const { onAir, buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
 
   useEffect(() => {
-    if (!playing || data?.offAir) return
+    // Count only a listener whose browser audio element is actually playing
+    // buffered station audio. A Play tap or a buffering/static state is not a listener.
+    if (!onAir || data?.offAir) return
     const getListenerId = () => {
       if (listenerId.current) return listenerId.current
       const storageKey = 'mor-935-listener-id'
@@ -87,15 +88,16 @@ export function RadioPlayer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: getListenerId(), active, station }),
         cache: 'no-store',
+        keepalive: !active,
       }).catch(() => undefined)
     }
     heartbeat(true)
-    const interval = window.setInterval(() => heartbeat(true), 30_000)
+    const interval = window.setInterval(() => heartbeat(true), 20_000)
     return () => { window.clearInterval(interval); heartbeat(false) }
-  }, [playing, data?.offAir])
+  }, [onAir, data?.offAir, station])
 
   const offAir = data?.offAir ?? false
-  const live = playing && !buffering && !offAir
+  const live = onAir && !offAir
   const playerNow = data?.serverTime ?? Date.now()
   const currentTrack = data?.tracks
     .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
@@ -190,8 +192,6 @@ export function RadioPlayer() {
           {meta.name} <span className="text-primary">{meta.frequency}</span>
         </p>
       </div>
-
-      {data?.songRequestsEnabled !== false && <SongRequest station={station} />}
     </section>
   )
 }
