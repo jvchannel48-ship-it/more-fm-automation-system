@@ -15,7 +15,7 @@ import {
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, ListenerMessage, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, getChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -286,7 +286,7 @@ function nextStart(state: StationState, now: number) {
 }
 
 /** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
-function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean, christopherEnabled = true): Track[] {
+async function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean, christopherEnabled = true, existingTracks: Track[] = []): Promise<Track[]> {
   const manilaMusic = mainState.tracks.filter((track) => track.kind === 'music' && track.src).sort((a, b) => a.startAt - b.startAt)
   const out: Track[] = []
   const ident = NATIONWIDE_IDENT_BY_STATION.naga
@@ -310,7 +310,20 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
     const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
     const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
     const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS + identDelay
-    if (startAt + voice.duration * 1000 >= now - 2_000) out.push({ ...voice, uid: `naga-follow-${voice.uid}`, startAt })
+    const followUid = `naga-follow-${voice.uid}`
+    let nagaVoice = existingTracks.find((track) => track.uid === followUid)
+    if (!nagaVoice) {
+      const sourceScriptId = voice.src.split('id=')[1]
+      const sourceScript = sourceScriptId ? await getChristopherScript(sourceScriptId) : null
+      const nagaScript = sourceScript?.replace(/^RJ FM 93\.5(?= Manila time check)/, 'RJ FM Naga 92.3')
+      if (nagaScript && nagaScript !== sourceScript) {
+        const scriptId = await saveChristopherScript(nagaScript)
+        nagaVoice = { ...voice, src: `/api/dj-christopher?id=${scriptId}`, duration: estimateChristopherDuration(nagaScript) }
+      } else {
+        nagaVoice = voice
+      }
+    }
+    if (startAt + nagaVoice.duration * 1000 >= now - 2_000) out.push({ ...nagaVoice, uid: followUid, startAt })
   }
   return out.sort((a, b) => a.startAt - b.startAt)
 }
@@ -414,7 +427,16 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         fromName: selectedMessage.fromName.replace(/[\r\n<>]/g, ' ').slice(0, 40),
         body: selectedMessage.body.replace(/https?:\/\/\S+/gi, ' link ').replace(/[\r\n<>]/g, ' ').slice(0, 180),
       } : undefined
-      const stationName = station === 'main' ? 'RJ FM 93.5' : STATIONS[station].name
+      const stationName: Record<StationId, string> = {
+        main: 'RJ FM 93.5',
+        naga: 'RJ FM Naga 92.3',
+        cebu: 'RJ FM Cebu 105.5',
+        gensan: 'RJ FM General Santos 96.3',
+        cdo: 'RJ FM Cagayan de Oro 102.7',
+        davao: 'RJ FM Davao 104.6',
+        iloilo: 'RJ FM Iloilo 92.3',
+        masbate: 'RJ FM Masbate 103.9',
+      }[station]
       const timeCheckText = buildTimeCheckScript(`Time check is ${philippinesTime}`, safeListenerMessage, stationName)
       if (selectedMessage) {
         await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
@@ -537,7 +559,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         mainSnap.state.fillingUntil = 0
         await writeJson(STATE_PATH, mainSnap.state)
       }
-      const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled)
+      const followed = await buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, state.tracks)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
       const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
       if (prevKey !== nextKey) {
