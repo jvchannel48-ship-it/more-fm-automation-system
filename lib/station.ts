@@ -23,7 +23,6 @@ const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
-const AUTO_DISCOVERED_ARTISTS_PATH = 'station/auto-discovered-artists.json'
 const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
 const SONG_REPEAT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 interface ArtistHistoryRecord { artist: string; plays: number; lastPlayedAt: number }
@@ -35,14 +34,6 @@ async function recordArtistPlay(artist: string, playedAt: number) {
   await writeJson(ARTIST_HISTORY_PATH, saved)
 }
 
-async function saveAutoDiscoveredArtist(artist: Artist) {
-  const saved = await readJson<Artist[]>(AUTO_DISCOVERED_ARTISTS_PATH, [])
-  const exists = saved.some((entry) => normalize(entry.name) === normalize(artist.name))
-  if (!exists && saved.length < 500) {
-    saved.push({ name: artist.name, match: artist.match, language: artist.language })
-    await writeJson(AUTO_DISCOVERED_ARTISTS_PATH, saved)
-  }
-}
 const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
 const NATIONWIDE_IDENT_FADE_SECONDS = 1.5
