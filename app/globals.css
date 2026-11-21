@@ -167,7 +167,7 @@ body {
 .radio-player {
   position: relative;
   width: min(100%, 34rem);
-  padding: 1.25rem 1rem 1.75rem;
+  padding: 0.75rem 0.75rem 1rem;
 }
 
 .live-badge {
