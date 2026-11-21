@@ -8,7 +8,7 @@ Date.now = () => clock
 
 async function main() {
   try {
-    const { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, recordListener, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
+    const { getActiveListenerCount, getAverageListenerCount, getSettings, getActiveStationListenerCounts, isBlobStorageAvailable, recordListener, recordStationListener, SETTINGS_PATH, writeJson } = await import('../lib/storage.ts')
 
     const first = await recordListener('listener-test-000001', true)
     assert.equal(first.listenersNow, 1, 'a playing browser is counted')
@@ -24,6 +24,26 @@ async function main() {
 
     clock += 61_000
     assert.equal(await getActiveListenerCount(), 0, 'stale heartbeats expire after one minute')
+    const stationFirst = await recordStationListener('listener-station-0001', 'main', true)
+    assert.equal(stationFirst.stationListenersNow, 1, 'the station count includes the active device')
+    await recordStationListener('listener-station-0002', 'cebu', true)
+    let network = await getActiveStationListenerCounts()
+    assert.equal(network.totalListenersNow, 2, 'network total counts unique devices across stations')
+    assert.equal(network.stationCounts.main, 1)
+    assert.equal(network.stationCounts.cebu, 1)
+    await recordStationListener('listener-station-0001', 'main', false)
+    network = await getActiveStationListenerCounts()
+    assert.equal(network.totalListenersNow, 1, 'pausing removes the device from the live total')
+    await recordStationListener('listener-station-0001', 'main', true)
+    await recordStationListener('listener-station-0001', 'main', true)
+    network = await getActiveStationListenerCounts()
+    assert.equal(network.totalListenersNow, 2, 'reconnecting and repeated heartbeats do not double-count a device')
+    await recordStationListener('listener-station-0001', 'cebu', true)
+    await recordStationListener('listener-station-0001', 'main', false)
+    network = await getActiveStationListenerCounts()
+    assert.equal(network.totalListenersNow, 2, 'a delayed disconnect from the old station cannot remove the new station session')
+    assert.equal(network.stationCounts.cebu, 2, 'the device is attributed only to its currently selected station')
+
     assert.equal(isBlobStorageAvailable(), false, 'storage status stays false when no Blob token is configured')
 
     assert.equal((await getSettings()).djChristopherEnabled, true, 'DJ Christopher automatic time checks are enabled')
