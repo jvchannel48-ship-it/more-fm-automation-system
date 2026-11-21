@@ -21,6 +21,7 @@ function supabaseUrl() {
 
 function supabaseKey() {
   return (
+    process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
@@ -73,11 +74,14 @@ function supabaseObjectUrl(pathname: string) {
 
 function supabaseHeaders(extra: Record<string, string> = {}) {
   const key = supabaseKey()
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    ...extra,
+  // New sb_publishable_* and sb_secret_* keys are API keys, not JWTs.
+  // Supabase rejects them when sent as Authorization: Bearer; send apikey only.
+  const headers: Record<string, string> = { apikey: key, ...extra }
+  if (!/^sb_(?:publishable|secret)_/.test(key)) {
+    // Legacy anon/service_role keys are JWTs and remain valid as Bearer tokens.
+    headers.Authorization = `Bearer ${key}`
   }
+  return headers
 }
 
 async function readFromSupabase(pathname: string): Promise<string | null> {
