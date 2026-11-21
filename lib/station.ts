@@ -595,9 +595,12 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       state.fillingUntil = now + FILL_LOCK_MS
       await writeJson(statePath, state)
       await withAutoDjFillLock(async () => {
-        await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        state.fillingUntil = 0
-        await writeJson(statePath, state)
+        try {
+          await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+        } finally {
+          state.fillingUntil = 0
+          await writeJson(statePath, state)
+        }
       })
     } else if (changed) { await writeJson(statePath, state) }
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
