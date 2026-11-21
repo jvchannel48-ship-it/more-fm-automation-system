@@ -280,16 +280,18 @@ async function findRequestedSong(title: string, artist: string, history: History
 }
 function trackEnd(track: Track) { return track.startAt + track.duration * 1000 }
 function nextStart(state: StationState, now: number) {
-  // Always wait for the item that finishes last. In particular, never start
-  // music underneath DJ Christopher or another voice clip.
-  const last = state.tracks.reduce<Track | null>((latest, track) =>
-    !latest || trackEnd(track) > trackEnd(latest) ? track : latest, null)
-  if (!last) return now
-  // Voice clips must finish completely; only music may use the normal crossfade.
-  const nextAt = last.kind === 'dj-mic'
-    ? trackEnd(last)
-    : trackEnd(last) - last.fadeOut * 1000
-  return Math.max(now, nextAt)
+  // Music may crossfade, but it must never overlap any DJ voice clip.
+  const latestMusic = state.tracks
+    .filter((track) => track.kind === 'music')
+    .reduce<Track | null>((latest, track) =>
+      !latest || trackEnd(track) > trackEnd(latest) ? track : latest, null)
+  const latestVoiceEnd = state.tracks
+    .filter((track) => track.kind === 'dj-mic')
+    .reduce((latest, track) => Math.max(latest, trackEnd(track)), now)
+  const musicNextAt = latestMusic
+    ? trackEnd(latestMusic) - latestMusic.fadeOut * 1000
+    : now
+  return Math.max(now, musicNextAt, latestVoiceEnd)
 }
 
 /** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
