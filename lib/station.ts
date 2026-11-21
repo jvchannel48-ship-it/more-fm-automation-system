@@ -357,7 +357,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
   const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !localHistoryIds.has(entry.id))]
   let guard = 0
   // Add one future track per request so search retries stay within the API time budget.
-  while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
+  while (state.tracks.filter((t) => t.kind === 'music' && t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
     const startAt = nextStart(state, now)
     const program = station === 'naga'
       ? nagaProgramAt(startAt)
@@ -595,7 +595,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     if (mainLiveKeys.size) {
       state.history = [...state.history, ...[...mainLiveKeys].map((key) => ({ id: `block-main-${key}`, key, artist: 'main-live', t: now }))].slice(-80)
     }
-    const needsFill = state.tracks.filter((track) => track.startAt > now).length < PRELOAD_AHEAD_TRACKS
+    const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
       state.fillingUntil = now + FILL_LOCK_MS
       await writeJson(statePath, state)
