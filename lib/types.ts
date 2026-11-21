@@ -37,6 +37,8 @@ export interface StationSettings {
   rjFmNationwideEnabled: boolean
   songRequestsEnabled: boolean
   autoDeletePlayedCache: boolean
+  djChristopherEnabled: boolean
+  djChristopherIntervalMinutes: number
 }
 
 export interface LiveDjState {
@@ -64,6 +66,7 @@ export interface NowResponse {
   songRequestsEnabled?: boolean
   transmitterWatts: 5000 | 25000
   liveDj?: LiveDjState | null
+  djChristopherEnabled?: boolean
 }
 
 export interface AdminStatus extends StationSettings {

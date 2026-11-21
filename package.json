@@ -37,7 +37,8 @@
     "@capacitor/android": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@onesignal/capacitor-plugin": "^1.2.3",
-    "@capacitor/app": "^8.0.0"
+    "@capacitor/app": "^8.0.0",
+    "node-edge-tts": "^1.2.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

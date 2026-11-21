@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 180_000
+const PRELOAD_AHEAD_MS = 240_000
 const DRIFT_TOLERANCE_S = 15
-const MAX_MEDIA_RETRIES = 5
-const RETRY_BACKOFF_MS = 1_500
-const START_TIMEOUT_MS = 8_000
+const MAX_MEDIA_RETRIES = 10
+const RETRY_BACKOFF_MS = 2_000
+const START_TIMEOUT_MS = 20_000
 
 interface Slot {
   el: HTMLAudioElement
@@ -111,7 +111,7 @@ export function useBroadcast(
       }
     }
     if (context?.state === 'suspended') void context.resume().catch(() => undefined)
-    slots.current = Array.from({ length: 4 }, () => {
+    slots.current = Array.from({ length: 6 }, () => {
       const el = new Audio()
       el.preload = 'auto'
       // Remove only this device's temporary offline copy after the track finishes.
