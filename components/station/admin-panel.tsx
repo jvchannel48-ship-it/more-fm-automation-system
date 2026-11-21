@@ -9,7 +9,6 @@ import { Switch } from '@/components/ui/switch'
 import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
-import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
 import { AdminPlayerTest } from './admin-player-test'
 import { AdminTimeChecks } from './admin-time-checks'
@@ -181,7 +180,6 @@ export function AdminPanel() {
       <AdminStationOverview />
       <AdminTimeChecks />
       <AdminPlayerTest />
-      <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="broadcast">Manila 93.5 Broadcast</Label>
