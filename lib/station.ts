@@ -240,6 +240,10 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
       nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
     } else nextFadeIn = null
   }
+  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
+    const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS
+    if (startAt + voice.duration * 1000 >= now - 2_000) out.push({ ...voice, uid: `naga-follow-${voice.uid}`, startAt })
+  }
   return out.sort((a, b) => a.startAt - b.startAt)
 }
 
@@ -411,6 +415,14 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const statePath = statePathFor(station)
     const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
+    if (!settings.djChristopherEnabled) {
+      const kept = state.tracks.filter((track) => !track.uid.startsWith('dj-christopher-') && !track.uid.includes('dj-christopher-'))
+      if (kept.length !== state.tracks.length || state.christopherNextAt !== 0) {
+        state.tracks = kept
+        state.christopherNextAt = 0
+        await writeJson(statePath, state)
+      }
+    }
     const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
     if (offAir) {
       if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
@@ -471,6 +483,14 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
+  if (!settings.djChristopherEnabled) {
+    const kept = state.tracks.filter((track) => !track.uid.startsWith('dj-christopher-'))
+    if (kept.length !== state.tracks.length || state.christopherNextAt !== 0) {
+      state.tracks = kept
+      state.christopherNextAt = 0
+      await writeJson(STATE_PATH, state)
+    }
+  }
   const offAir = isOffAir(now) || !settings.broadcastEnabled
   if (offAir) {
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
