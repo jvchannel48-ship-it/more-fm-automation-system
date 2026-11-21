@@ -5,10 +5,12 @@ import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 const PRELOAD_AHEAD_MS = 240_000
+const PRELOAD_DJ_VOICE_AHEAD_MS = 10 * 60_000
 const DRIFT_TOLERANCE_S = 15
 const MAX_MEDIA_RETRIES = 10
 const RETRY_BACKOFF_MS = 2_000
 const START_TIMEOUT_MS = 20_000
+const DJ_VOICE_START_TIMEOUT_MS = 55_000
 
 interface Slot {
   el: HTMLAudioElement
@@ -196,7 +198,7 @@ export function useBroadcast(
       const upcoming = availableTracks
         .filter((track) => !activeIds.has(track.uid)
           && track.startAt > now
-          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid || (track.kind === 'dj-mic' && track.uid.includes('dj-christopher-timecheck'))))
+          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid || (track.kind === 'dj-mic' && track.startAt - now < PRELOAD_DJ_VOICE_AHEAD_MS)))
         .sort((a, b) => a.startAt - b.startAt)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))
@@ -300,7 +302,8 @@ export function useBroadcast(
         // for HAVE_CURRENT_DATA here delayed the initial request and audible playback.
         if (el.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
           if (slot.activeWaitSince === null) slot.activeWaitSince = now
-          if (now - slot.activeWaitSince >= START_TIMEOUT_MS) {
+          const startTimeout = track.kind === 'dj-mic' ? DJ_VOICE_START_TIMEOUT_MS : START_TIMEOUT_MS
+          if (now - slot.activeWaitSince >= startTimeout) {
             if (retrySource(slot, track)) continue
             failSource(slot, track)
             continue
