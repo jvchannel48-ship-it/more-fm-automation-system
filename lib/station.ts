@@ -206,7 +206,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) continue
       if (!isOriginalArtistTrack(item.title, artist)) continue
-      const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' ')
+      const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist, item.url].filter(Boolean).join(' ')
       if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) continue
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) continue
       if (playedIds.has(item.id) || playedKeys.has(songKey(item.title))) continue
