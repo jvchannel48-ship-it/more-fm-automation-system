@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Heart, Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
@@ -28,11 +28,16 @@ export function RadioPlayer() {
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
+  const [likedSongKeys, setLikedSongKeys] = useState<string[]>([])
   const listenerId = useRef<string | null>(null)
 
   useEffect(() => {
     setStation(getStoredStation())
     setPlayerPreferences(readPlayerPreferences())
+    try {
+      const savedLikes = JSON.parse(window.localStorage.getItem('rjfm-liked-songs') ?? '[]') as unknown
+      if (Array.isArray(savedLikes)) setLikedSongKeys(savedLikes.filter((item): item is string => typeof item === 'string'))
+    } catch { /* Favorites stay available for the current session if storage is blocked. */ }
     const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
     window.addEventListener('morefm-player-preferences', update)
     return () => window.removeEventListener('morefm-player-preferences', update)
@@ -96,6 +101,22 @@ export function RadioPlayer() {
 
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir
+  const playerNow = data?.serverTime ?? Date.now()
+  const currentTrack = data?.tracks
+    .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
+    .sort((a, b) => b.startAt - a.startAt)[0]
+  const currentSongKey = currentTrack ? `${currentTrack.artist ?? ''}::${currentTrack.title ?? ''}`.toLocaleLowerCase() : ''
+  const currentSongLiked = Boolean(currentSongKey && likedSongKeys.includes(currentSongKey))
+  const toggleFavorite = () => {
+    if (!currentSongKey) return
+    setLikedSongKeys((previous) => {
+      const next = currentSongLiked
+        ? previous.filter((key) => key !== currentSongKey)
+        : [...previous, currentSongKey]
+      try { window.localStorage.setItem('rjfm-liked-songs', JSON.stringify(next)) } catch { /* Keep the like in memory for this session. */ }
+      return next
+    })
+  }
 
   const togglePlay = () => { unlock(); setPlaying((p) => !p) }
   const onAirAgain = data?.nextOnAir
@@ -147,14 +168,14 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="vinyl relative flex size-40 items-center justify-center rounded-full sm:size-44">
+      <div className="vinyl relative flex size-44 items-center justify-center rounded-full sm:size-48">
         <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
         <div className={`vinyl-record absolute inset-3 rounded-full border ${playing && !offAir ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
         <div className="vinyl-label absolute inset-[28%] flex items-center justify-center rounded-full">
           <span className="vinyl-label-mark">{meta.vinylMark}</span>
         </div>
         <div className="vinyl-hole absolute size-3 rounded-full" aria-hidden="true" />
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-16 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-7">
+        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
           {playing ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
@@ -163,6 +184,17 @@ export function RadioPlayer() {
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {meta.shortName} <span className="text-primary">{meta.frequency}</span>
         </p>
+        {currentTrack && (
+          <div className="mt-2 flex w-full max-w-sm flex-col items-center gap-1 rounded-xl border border-primary/15 bg-background/45 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Now Playing</span>
+            <span className="max-w-full truncate text-sm font-semibold">{currentTrack.title}</span>
+            <span className="max-w-full truncate text-xs text-muted-foreground">{currentTrack.artist}</span>
+            <Button type="button" size="sm" variant={currentSongLiked ? 'default' : 'outline'} onClick={toggleFavorite} aria-label={currentSongLiked ? 'Unlike this song' : 'Like this song'} className="mt-1 h-9 gap-2 rounded-full px-4">
+              <Heart className={currentSongLiked ? 'size-4 fill-current' : 'size-4'} />
+              {currentSongLiked ? 'Liked' : 'Like this song'}
+            </Button>
+          </div>
+        )}
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
