@@ -26,6 +26,7 @@ async function main() {
     assert.equal(await getActiveListenerCount(), 0, 'stale heartbeats expire after one minute')
     assert.equal(isBlobStorageAvailable(), false, 'storage status stays false when no Blob token is configured')
 
+    assert.equal((await getSettings()).djChristopherEnabled, false, 'DJ Christopher voice breaks are disabled')
     assert.equal((await getSettings()).sundayScheduleEnabled, true, 'Sunday special programming defaults ON')
     assert.equal((await getSettings()).newTagalogOpmEnabled, true, 'modern Tagalog OPM mode defaults ON')
     assert.equal((await getSettings()).bassBoostDb, 0, 'bass boost defaults to neutral 0 dB')
