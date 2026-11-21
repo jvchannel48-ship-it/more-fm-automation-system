@@ -5,6 +5,30 @@ export const DJ_CHRISTOPHER_SCRIPTS_PATH = 'station/dj-christopher-scripts.json'
 export const DJ_CHRISTOPHER_TIMECHECKS_PATH = 'station/dj-christopher-timechecks.json'
 export interface ChristopherTimeCheck { id: string; scriptId: string; text: string; createdAt: number; mode: 'after3' | 'dzmm'; afterSongNumber: number; scheduledAt: number | null }
 export interface ChristopherScript { id: string; text: string; createdAt: number }
+
+const DJ_CHRISTOPHER_PROMPT_HISTORY_PATH = 'station/dj-christopher-prompt-history.json'
+const songPromptTemplates = [
+  { id: 'melody-memory', text: (title: string, artist: string) => `That was ${title} by ${artist}. Some songs bring back special memories, and we hope this one made your day a little brighter.` },
+  { id: 'artist-appreciation', text: (title: string, artist: string) => `You just heard ${title} from ${artist}. We love bringing great music and memorable artists together here on RJ FM.` },
+  { id: 'keep-listening', text: (title: string, artist: string) => `A great track from ${artist}, ${title}. Keep listening to RJ FM, because more music you love is on the way.` },
+  { id: 'music-mood', text: (title: string, artist: string) => `That was ${title} by ${artist}. Let the music lift your mood, wherever you are listening today.` },
+  { id: 'classic-feeling', text: (title: string, artist: string) => `Enjoyed that one? It was ${title} by ${artist}. RJ FM is here to keep the songs and good memories playing.` },
+  { id: 'song-connection', text: (title: string, artist: string) => `Music connects us all. That was ${title} by ${artist}, right here on RJ FM. Thanks for sharing this moment with us.` },
+  { id: 'next-favorite', text: (title: string, artist: string) => `That was ${artist} with ${title}. Stay with us; your next favorite song could be coming up soon.` },
+  { id: 'daily-soundtrack', text: (title: string, artist: string) => `Adding a little music to your day with ${title} by ${artist}. This is RJ FM, playing the songs that stay with you.` },
+  { id: 'good-vibes', text: (title: string, artist: string) => `Good vibes from ${artist}. You heard ${title} on RJ FM. Keep enjoying the music and make this moment yours.` },
+  { id: 'thank-listeners', text: (title: string, artist: string) => `That beautiful song was ${title} by ${artist}. Thank you for making RJ FM part of your day.` },
+  { id: 'music-break', text: (title: string, artist: string) => `A little music break with ${title} from ${artist}. Take a breath, relax, and enjoy more favorites here on RJ FM.` },
+  { id: 'favorite-artist', text: (title: string, artist: string) => `For everyone who loves great songs, that was ${title} by ${artist}. More music is coming your way on RJ FM.` },
+]
+export async function buildRandomChristopherSongPrompt(title: string, artist: string) {
+  const history = await readJson<string[]>(DJ_CHRISTOPHER_PROMPT_HISTORY_PATH, [])
+  const available = songPromptTemplates.filter((template) => !history.includes(template.id))
+  const pool = available.length ? available : songPromptTemplates
+  const selected = pool[Math.floor(Math.random() * pool.length)]
+  await writeJson(DJ_CHRISTOPHER_PROMPT_HISTORY_PATH, [...history, selected.id].slice(-8))
+  return selected.text(title, artist)
+}
 const openings = [
   'Hello RJ FM family, this is DJ Christopher, keeping you company with the songs you love.',
   'Good day, music lovers. Christopher here, your friendly voice on RJ FM.',
