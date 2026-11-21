@@ -91,7 +91,7 @@ assert.equal(SIGN_OFF_HOUR, SIGN_ON_HOUR, '24/7 RJ FM has no daily sign-off gap'
 assert.equal(isOffAir(manilaTime(sunday, 3, 0)), false, 'RJ FM remains on-air at 3 AM')
 assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'RJ FM remains on-air before 4 AM')
 assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'RJ FM remains on-air at 4 AM')
-assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(16, 4), '24/7 station reports the next daily schedule marker without signing off')
+assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), '24/7 station reports the next daily schedule marker without signing off')
 assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next daily schedule marker is 4 AM tomorrow')
 assert.equal(programAt(manilaTime(16, 16, 0)).id, 'daytime-love', '4:00 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'daytime-love', '6:02 PM stays on classic love songs')
