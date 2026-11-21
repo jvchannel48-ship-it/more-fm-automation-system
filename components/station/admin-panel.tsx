@@ -12,6 +12,7 @@ import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
 import { AdminPlayerTest } from './admin-player-test'
+import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -143,6 +144,7 @@ export function AdminPanel() {
     <>
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <AdminLiveDesk />
+      <AdminTimeChecks />
       <AdminPlayerTest />
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
