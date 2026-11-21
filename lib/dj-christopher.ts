@@ -3,6 +3,7 @@ import { readJson, writeJson } from './storage'
 
 export const DJ_CHRISTOPHER_SCRIPTS_PATH = 'station/dj-christopher-scripts.json'
 export const DJ_CHRISTOPHER_TIMECHECKS_PATH = 'station/dj-christopher-timechecks.json'
+const AUTO_DJ_SCRIPTS_PATH = 'station/auto-dj-scripts.json'
 export interface ChristopherTimeCheck { id: string; scriptId: string; text: string; createdAt: number; mode: 'after3' | 'dzmm'; afterSongNumber: number; scheduledAt: number | null }
 export interface ChristopherScript { id: string; text: string; createdAt: number }
 
@@ -100,6 +101,18 @@ export async function saveChristopherScript(text: string): Promise<string> {
 }
 export async function getChristopherScript(id: string): Promise<string | null> {
   const saved = await readJson<ChristopherScript[]>(DJ_CHRISTOPHER_SCRIPTS_PATH, [])
+  return saved.find((item) => item.id === id)?.text ?? null
+}
+
+export async function saveAutoDjScript(text: string): Promise<string> {
+  const saved = await readJson<ChristopherScript[]>(AUTO_DJ_SCRIPTS_PATH, [])
+  const id = crypto.randomUUID()
+  await writeJson(AUTO_DJ_SCRIPTS_PATH, [...saved, { id, text: text.slice(0, 1200), createdAt: Date.now() }].slice(-200))
+  return id
+}
+
+export async function getAutoDjScript(id: string): Promise<string | null> {
+  const saved = await readJson<ChristopherScript[]>(AUTO_DJ_SCRIPTS_PATH, [])
   return saved.find((item) => item.id === id)?.text ?? null
 }
 
