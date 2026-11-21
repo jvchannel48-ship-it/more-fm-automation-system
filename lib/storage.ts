@@ -344,7 +344,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   rjFmNationwideEnabled: true,
   songRequestsEnabled: true,
   autoDeletePlayedCache: true,
-  djChristopherEnabled: false,
+  djChristopherEnabled: true,
   djChristopherIntervalMinutes: 40,
 }
 
