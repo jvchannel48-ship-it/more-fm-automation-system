@@ -297,7 +297,7 @@ export async function recordStationListener(id: string, station: string, active:
     const saved = await readJson<Record<string, StationListenerEntry>>(STATION_LISTENERS_PATH, {})
     const listeners = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
     if (active) listeners[id] = { t: now, station }
-    else delete listeners[id]
+    else if (listeners[id]?.station === station) delete listeners[id]
     const activeEntries = Object.values(listeners).filter((entry) => entry && typeof entry.t === 'number' && entry.t >= now - LISTENER_TTL_MS)
     const current = activeEntries.filter((entry) => entry.station === station).length
     await writeJson(STATION_LISTENERS_PATH, Object.fromEntries(Object.entries(listeners).filter(([, entry]) => entry && typeof entry.t === 'number' && entry.t >= now - LISTENER_TTL_MS)))
@@ -306,6 +306,25 @@ export async function recordStationListener(id: string, station: string, active:
     metrics.push({ t: now, station, count: current })
     await writeJson(STATION_LISTENER_METRICS_PATH, metrics.filter((item) => item.t >= now - LISTENER_METRIC_WINDOW_MS).slice(-2000))
     return { listenersNow: activeEntries.length, stationListenersNow: current }
+  })
+}
+
+/** Unique active devices across the whole network, with one current station per device. */
+export async function getActiveStationListenerCounts() {
+  return withListenerLock(async () => {
+    const now = Date.now()
+    const saved = await readJson<unknown>(STATION_LISTENERS_PATH, {})
+    const entries = saved && typeof saved === 'object' && !Array.isArray(saved)
+      ? Object.entries(saved as Record<string, StationListenerEntry>)
+      : []
+    const active = entries.filter(([, entry]) => entry && typeof entry.t === 'number'
+      && Number.isFinite(entry.t) && entry.t >= now - LISTENER_TTL_MS)
+    const counts: Record<string, number> = {}
+    for (const [, entry] of active) counts[entry.station] = (counts[entry.station] ?? 0) + 1
+    if (active.length !== entries.length) {
+      await writeJson(STATION_LISTENERS_PATH, Object.fromEntries(active))
+    }
+    return { totalListenersNow: active.length, stationCounts: counts }
   })
 }
 
