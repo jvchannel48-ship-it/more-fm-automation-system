@@ -10,7 +10,7 @@ import type { StationId } from '@/lib/stations'
 
 type RequestStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreditInfo = { creditsRemaining: number; dailyCredits: number; bonusCredits: number }
-type RequestResult = { error?: string; position?: number; creditsRemaining?: number; creditEmpty?: boolean; autoDjQueued?: boolean }
+type RequestResult = { error?: string; position?: number; creditsRemaining?: number; creditEmpty?: boolean; autoDjQueued?: boolean; resolved?: boolean; duplicate?: boolean }
 
 export function SongRequest({ station }: { station: StationId }) {
   const [open, setOpen] = useState(false)
@@ -66,8 +66,8 @@ export function SongRequest({ station }: { station: StationId }) {
       if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : current)
       setStatus('success')
       setMessage(data.autoDjQueued
-        ? `Saved in the ${station.toUpperCase()} Auto DJ queue at position #${data.position ?? 1}. The current scheduled song(s) will finish first; Auto DJ will then play this request in queue order. 15 credits were used.`
-        : `Request accepted for ${station.toUpperCase()}. Auto DJ will schedule it after the songs already lined up. 15 credits were used.`)
+        ? `Accepted by ${station.toUpperCase()} Auto DJ at queue position #${data.position ?? 1}. Auto DJ will keep checking for a playable version and schedule it after the current track. 15 credits were used.`
+        : `Accepted by ${station.toUpperCase()} Auto DJ. Auto DJ will check the song source and schedule it after the current track. 15 credits were used.`)
     } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'Could not submit the song request.') }
   }
 
