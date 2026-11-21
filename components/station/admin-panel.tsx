@@ -11,6 +11,7 @@ import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
+import { AdminPlayerTest } from './admin-player-test'
 import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
@@ -143,6 +144,7 @@ export function AdminPanel() {
     <>
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <AdminLiveDesk />
+      <AdminPlayerTest />
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
