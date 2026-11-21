@@ -356,7 +356,9 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
   const selectionHistory = networkHistory
   let guard = 0
   // Add one future track per request so search retries stay within the API time budget.
-  while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
+  // Count future music, not voice clips: Christopher's time check must not
+  // be mistaken for the next song in the AutoDJ queue.
+  while (state.tracks.filter((t) => t.kind === 'music' && t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
     const startAt = nextStart(state, now)
     const program = station === 'naga'
       ? nagaProgramAt(startAt)
