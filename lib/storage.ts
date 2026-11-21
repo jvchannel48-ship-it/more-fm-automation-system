@@ -367,7 +367,7 @@ export async function getSettings(): Promise<StationSettings> {
     rjFmNationwideEnabled: typeof saved.rjFmNationwideEnabled === 'boolean' ? saved.rjFmNationwideEnabled : true,
     songRequestsEnabled: typeof saved.songRequestsEnabled === 'boolean' ? saved.songRequestsEnabled : true,
     autoDeletePlayedCache: typeof saved.autoDeletePlayedCache === 'boolean' ? saved.autoDeletePlayedCache : true,
-    djChristopherEnabled: typeof saved.djChristopherEnabled === 'boolean' ? saved.djChristopherEnabled : false,
+    djChristopherEnabled: false,
     djChristopherIntervalMinutes: typeof saved.djChristopherIntervalMinutes === 'number' && Number.isFinite(saved.djChristopherIntervalMinutes) ? Math.min(60, Math.max(30, saved.djChristopherIntervalMinutes)) : 40,
   }
 }
