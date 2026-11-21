@@ -58,7 +58,7 @@ export function buildTimeCheckScript(prompt: string) {
   return `${greeting}, RJ FM family. This is DJ Christopher with your official RJ FM time check. The time is ${time}. Wherever you are listening, thank you for making RJ FM part of your day. Stay tuned for more great music and good company, right here on RJ FM.`
 }
 export function estimateChristopherDuration(text: string) {
-  return Math.max(12, Math.ceil(text.trim().split(/\\s+/).length / 2.45))
+  return Math.max(12, Math.ceil(text.trim().split(/\s+/).length / 2.45))
 }
 export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3' | 'dzmm', songCount: number) {
   const text = buildTimeCheckScript(prompt)
