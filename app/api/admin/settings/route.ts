@@ -25,6 +25,7 @@ export async function PUT(request: NextRequest) {
     rjOfficialAutoMessage?: unknown
     rjFmNationwideEnabled?: unknown
     songRequestsEnabled?: unknown
+    autoDeletePlayedCache?: unknown
   }
   const current = await getSettings()
   const blockedGenres = Array.isArray(body.blockedGenres)
@@ -56,6 +57,9 @@ export async function PUT(request: NextRequest) {
     songRequestsEnabled: typeof body.songRequestsEnabled === 'boolean'
       ? body.songRequestsEnabled
       : current.songRequestsEnabled,
+    autoDeletePlayedCache: typeof body.autoDeletePlayedCache === 'boolean'
+      ? body.autoDeletePlayedCache
+      : current.autoDeletePlayedCache,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'
