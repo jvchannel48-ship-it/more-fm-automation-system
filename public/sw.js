@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rjfm-offline-v2'
+const CACHE_NAME = 'rjfm-offline-v3'
 const APP_SHELL = ['/', '/offline.html', '/manifest.json', '/rjfm-app-icon.svg']
 const MAX_CACHED_AUDIO_BYTES = 20 * 1024 * 1024
 
