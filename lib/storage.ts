@@ -333,3 +333,39 @@ export async function getSettings(): Promise<StationSettings> {
     autoDeletePlayedCache: typeof saved.autoDeletePlayedCache === 'boolean' ? saved.autoDeletePlayedCache : true,
   }
 }
+
+
+/** Returns the actual stored object sizes from the configured Supabase bucket. */
+export async function getStorageUsage(): Promise<{ available: boolean; usedBytes: number; objectCount: number; provider: string; error?: string }> {
+  if (!hasSupabaseCredentials()) {
+    return { available: false, usedBytes: 0, objectCount: 0, provider: hasVercelBlobCredentials() ? 'Vercel Blob' : 'Not configured', error: 'Exact bucket usage is not available for this storage provider.' }
+  }
+  try {
+    let offset = 0
+    let usedBytes = 0
+    let objectCount = 0
+    const limit = 1000
+    while (true) {
+      const response = await fetch(`${supabaseUrl()}/storage/v1/object/list/${SUPABASE_BUCKET}`, {
+        method: 'POST',
+        headers: supabaseHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ prefix: '', limit, offset, sortBy: { column: 'name', order: 'asc' } }),
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error(`Storage usage query failed (${response.status})`)
+      const entries = await response.json() as Array<{ name?: string; id?: string | null; metadata?: { size?: number | string; contentLength?: number | string } }>
+      if (!Array.isArray(entries)) throw new Error('Unexpected storage usage response.')
+      for (const entry of entries) {
+        if (!entry.name || entry.id === null) continue
+        const size = Number(entry.metadata?.size ?? entry.metadata?.contentLength ?? 0)
+        if (Number.isFinite(size) && size >= 0) usedBytes += size
+        objectCount += 1
+      }
+      if (entries.length < limit) break
+      offset += limit
+    }
+    return { available: true, usedBytes, objectCount, provider: 'Supabase Storage' }
+  } catch (error) {
+    return { available: false, usedBytes: 0, objectCount: 0, provider: 'Supabase Storage', error: error instanceof Error ? error.message : 'Storage usage could not be read.' }
+  }
+}
