@@ -1,10 +1,11 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "minVersion": "0.1.2",
   "apkUrl": "https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk",
   "whatsNew": [
-    "Mas malinaw na app update checks at version tracking.",
-    "May What's New screen pagkatapos ng update.",
-    "Mas madaling pamahalaan ang app permissions sa Settings."
+    "Smarter music rotation helps prevent recently played songs from repeating across RJ FM stations.",
+    "Approved song requests are scheduled right after the song currently on air.",
+    "Improved listener profile layout with a clearer profile number and upgraded credits display.",
+    "Refreshed app experience and performance improvements."
   ]
 }
