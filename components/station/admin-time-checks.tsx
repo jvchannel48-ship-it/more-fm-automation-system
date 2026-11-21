@@ -28,10 +28,10 @@ export function AdminTimeChecks() {
         </div>
         <div>
           <h3 className="text-sm font-semibold">DJ Christopher · Automatic Time Check</h3>
-          <p className="text-xs text-muted-foreground">Short English announcements play automatically after every 5 songs.</p>
+          <p className="text-xs text-muted-foreground">Short, faster English time checks play immediately after every 2 songs.</p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">The live Philippines time (Asia/Manila, UTC+8) is spoken automatically. The next song starts as soon as the time check finishes. No DZMM schedule interruptions.</p>
+      <p className="text-xs text-muted-foreground">The live Philippines time (Asia/Manila, UTC+8) is spoken automatically. DJ Christopher may read one random admin-reviewed listener message during the time check, once only. The next song starts as soon as he finishes.</p>
       <div className="flex items-center justify-between gap-2">
         <Label className="flex items-center gap-1.5"><ListMusic className="size-4" /> Previously queued time checks</Label>
         <span className="text-[11px] text-muted-foreground">{items.length} saved</span>
