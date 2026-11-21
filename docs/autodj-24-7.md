@@ -1,6 +1,6 @@
 # RJ FM 24/7 AutoDJ keeper
 
-The web app keeps three future music tracks queued for each independent RJ FM station. The background keeper calls the authenticated AutoDJ heartbeat so queues continue to be refreshed even when no listener has the player page open.
+The web app keeps two future music tracks queued for each independent RJ FM station. Song repeat protection uses a shared network-wide history across the independent stations and blocks songs played in the previous 30 days. The background keeper calls the authenticated AutoDJ heartbeat so queues continue to be refreshed even when no listener has the player page open.
 
 ## Deploy the background worker on Render
 
@@ -14,7 +14,7 @@ Create a **Background Worker** from this same GitHub repository and branch/commi
 
 Also set the exact same `AUTODJ_CRON_SECRET` value in the RJ FM **Web Service** environment, then redeploy both services. Do not expose this secret in browser code.
 
-The worker rotates through Manila, Naga, Cebu, General Santos, Cagayan de Oro, Davao, Iloilo and Masbate, requesting a fresh queue every cycle. If the music search/download provider is unavailable, it logs the failure and retries on the next cycle.
+The worker rotates through Manila, Naga, Cebu, General Santos, Cagayan de Oro, Davao, Iloilo and Masbate, requesting a fresh queue every cycle. The queue filler searches up to 24 shuffled artists per fill, tries two search variants per artist, ranks valid original tracks, and continues to other artist batches when downloads fail. If the music search/download provider is unavailable, it logs the failure and retries on the next cycle.
 
 ## Operational notes
 
