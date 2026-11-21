@@ -19,17 +19,12 @@ const fetcher = (url: string) =>
     return r.json() as Promise<NowResponse>
   })
 
-function getManilaHour() {
-  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', hour12: false }).format(new Date()))
-}
-
 const vinylColors: Record<string, string> = { silver: '#cbd5e1', gold: '#f4b942', blue: '#60a5fa', red: '#fb7185', purple: '#c084fc', green: '#4ade80' }
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
-  const [manilaHour, setManilaHour] = useState(getManilaHour)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
@@ -71,11 +66,6 @@ export function RadioPlayer() {
       })
   }, [mutate, station])
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setManilaHour(getManilaHour()), 30_000)
-    return () => window.clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     if (!playing || data?.offAir) return
