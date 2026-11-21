@@ -441,38 +441,6 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         : timeCheckEndAt
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
-    if (djChristopherEnabled) {
-      if (!state.christopherNextAt || state.christopherNextAt < now) {
-        state.christopherNextAt = now + djChristopherIntervalMinutes * 60_000
-      }
-      const songEndAt = songStart + song.duration * 1000
-      const lastTrack = state.tracks.at(-1)
-      const voiceStartAt = lastTrack && lastTrack.startAt >= songEndAt - 1000 && lastTrack.kind === 'dj-mic'
-        ? trackEnd(lastTrack)
-        : songEndAt
-      if (!request && voiceStartAt >= state.christopherNextAt) {
-        const script = buildChristopherScript()
-        const scriptId = await saveChristopherScript(script)
-        const words = script.trim().split(/\\s+/).length
-        const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
-        const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= songEndAt - 1000)
-        if (previousMusic) previousMusic.fadeOut = Math.min(previousMusic.fadeOut || CROSSFADE_SECONDS, 3)
-        state.tracks.push({
-          uid: `dj-christopher-${station}-${scriptId}`,
-          src: `/api/dj-christopher?id=${scriptId}`,
-          startAt: voiceStartAt,
-          duration: speechSeconds,
-          fadeIn: 0.8,
-          fadeOut: 2.5,
-          kind: 'dj-mic',
-          title: 'DJ Christopher · On-air break',
-          artist: 'DJ Christopher',
-        })
-        const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
-        const maxGap = djChristopherIntervalMinutes + 5
-        state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
-      }
-    }
   }
 }
 async function loadState(now: number, path = STATE_PATH) {
