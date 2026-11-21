@@ -17,6 +17,7 @@ import {
   SIGN_OFF_HOUR,
   SIGN_ON_HOUR,
 } from '../lib/schedule.ts'
+import { STATIONS } from '../lib/stations.ts'
 
 function manilaTime(day: number, hour: number, minute = 0, second = 0) {
   return Date.UTC(2026, 10, day, hour - 8, minute, second)
@@ -88,6 +89,12 @@ assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => arti
 assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Lea Salonga'), 'Sunday Tagalog classics include Lea Salonga')
 
 assert.equal(SIGN_OFF_HOUR, SIGN_ON_HOUR, '24/7 RJ FM has no daily sign-off gap')
+for (const station of Object.values(STATIONS)) {
+  assert.equal(station.signOffHour, station.signOnHour, `${station.name} has no daily off-air gap`)
+  for (let hour = 0; hour < 24; hour++) {
+    assert.equal(isOffAir(manilaTime(sunday, hour)), false, `RJ FM remains on-air at ${hour}:00`)
+  }
+}
 assert.equal(isOffAir(manilaTime(sunday, 3, 0)), false, 'RJ FM remains on-air at 3 AM')
 assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'RJ FM remains on-air before 4 AM')
 assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'RJ FM remains on-air at 4 AM')
