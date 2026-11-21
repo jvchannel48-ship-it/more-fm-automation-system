@@ -616,8 +616,13 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
     return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
-  if (state.tracks.some((track) => track.kind === 'live')) {
-    state.tracks = state.tracks.filter((track) => track.kind !== 'live')
+  const withoutDzmm = state.tracks.filter((track) =>
+    track.kind !== 'live'
+    && !track.uid.startsWith('dzmm-')
+    && !track.uid.startsWith('dj-christopher-dzmm-timecheck-'),
+  )
+  if (withoutDzmm.length !== state.tracks.length) {
+    state.tracks = withoutDzmm
     await writeJson(STATE_PATH, state)
   }
   if (!options.skipFill && state.fillingUntil < now) {
