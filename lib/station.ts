@@ -512,7 +512,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
     if (!settings.djChristopherEnabled) {
-      const kept = state.tracks.filter((track) => !track.uid.startsWith('dj-christopher-') && !track.uid.includes('dj-christopher-'))
+      const kept = state.tracks.filter((track) => track.uid.includes('timecheck') || (!track.uid.startsWith('dj-christopher-') && !track.uid.includes('dj-christopher-')))
       if (kept.length !== state.tracks.length || state.christopherNextAt !== 0) {
         state.tracks = kept
         state.christopherNextAt = 0
