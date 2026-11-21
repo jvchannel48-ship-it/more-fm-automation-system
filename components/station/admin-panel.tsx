@@ -32,7 +32,8 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 
 type AdminStationOverviewData = {
   totalListenersNow: number
-  stations: Array<{ id: string; name: string; frequency: string; listenersNow: number; currentSong: string; status: string }>
+  totalAverageListeners24h: number
+  stations: Array<{ id: string; name: string; frequency: string; listenersNow: number; averageListeners24h: number; currentSong: string; status: string; rjfmRank: number }>
 }
 function AdminStationOverview() {
   const { data } = useSWR('/api/station-status', (url: string) => fetch(url, { cache: 'no-store' }).then((r) => {
@@ -43,7 +44,7 @@ function AdminStationOverview() {
     <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-card p-3">
       <div className="flex items-center justify-between gap-2">
         <div><p className="text-sm font-semibold">All RJ FM stations</p><p className="text-[11px] text-muted-foreground">Live station, frequency and current track</p></div>
-        <div className="text-right"><p className="text-xl font-bold tabular-nums">{data?.totalListenersNow ?? '—'}</p><p className="text-[10px] text-muted-foreground">Unique devices listening</p></div>
+        <div className="text-right"><p className="text-xl font-bold tabular-nums">{data?.totalListenersNow ?? '—'}</p><p className="text-[10px] text-muted-foreground">Unique devices now</p><p className="mt-1 text-sm font-semibold tabular-nums">{data ? data.totalAverageListeners24h.toFixed(1) : '—'} avg / 24h</p></div>
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {(data?.stations ?? []).map((station) => (
@@ -54,7 +55,7 @@ function AdminStationOverview() {
             </div>
             <p className="mt-1 truncate text-xs text-muted-foreground" title={station.currentSong}>♫ {station.currentSong}</p>
             <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>{station.listenersNow} listening</span><span>{station.status}</span>
+              <span>{station.listenersNow} now · {station.averageListeners24h.toFixed(1)} avg/24h</span><span>{station.rjfmRank > 0 ? `#${station.rjfmRank} · ` : ''}{station.status}</span>
             </div>
           </div>
         ))}
