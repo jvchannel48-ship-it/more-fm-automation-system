@@ -423,67 +423,42 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
 const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
 const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
 
+const APPROVED_ENGLISH_SOFT_POOL = [
+  ...ENGLISH_OLDIES_AND_2026,
+  ...ENGLISH_LOVE,
+  ...NIGHT_LOVE,
+]
+
+const ENGLISH_SOFT_VARIANTS = [
+  'classic English oldies soft love song ballad official audio',
+  'easy listening mellow romantic pop ballad original artist',
+  'soft adult contemporary love song official audio',
+  'classic 60s 70s 80s 90s English romantic ballad',
+  '2026 latest English soft pop love ballad official audio',
+  '2026 new mellow English love song original artist',
+]
+
+function englishOnlyProgram(id: ProgramId): Program {
+  return {
+    id,
+    pools: { english: APPROVED_ENGLISH_SOFT_POOL, tagalog: [] },
+    variants: { english: ENGLISH_SOFT_VARIANTS, tagalog: [] },
+    englishOnly: true,
+  }
+}
+
 export const PROGRAMS: Record<ProgramId, Program> = {
-  'sunday-oldies': {
-    id: 'sunday-oldies',
-    pools: { english: [], tagalog: [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s']] },
-    variants: { english: [], tagalog: OPM_VARIANTS },
-    tagalogOnly: true,
-  },
-  'sunday-english-oldies': {
-    id: 'sunday-english-oldies',
-    pools: { english: [...SUNDAY_ENGLISH_OLDIES, ...RJFM_ARTIST_LIBRARY['60s-70s'], ...RJFM_ARTIST_LIBRARY['80s-90s']], tagalog: [] },
-    variants: { english: SUNDAY_OLDIES_VARIANTS, tagalog: [] },
-    englishOnly: true,
-  },
-  'sunday-tagalog-classic': {
-    id: 'sunday-tagalog-classic',
-    pools: { english: [], tagalog: [...SUNDAY_TAGALOG_CLASSICS, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s']] },
-    variants: { english: [], tagalog: OPM_VARIANTS },
-    tagalogOnly: true,
-  },
-  'sunday-english-love': {
-    id: 'sunday-english-love',
-    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: [] },
-    variants: { english: LOVE_VARIANTS, tagalog: [] },
-    englishOnly: true,
-  },
-  'english-love': {
-    id: 'english-love',
-    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
-  },
-  'daytime-love': {
-    id: 'daytime-love',
-    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
-  },
-  disco: {
-    id: 'disco',
-    pools: { english: ENGLISH_DISCO, tagalog: TAGALOG_DISCO },
-    variants: { english: DISCO_VARIANTS, tagalog: DISCO_VARIANTS },
-  },
-  'night-love': {
-    id: 'night-love',
-    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
-  },
-  'masbate-tagalog': {
-    id: 'masbate-tagalog',
-    pools: { english: [], tagalog: MASBATE_TAGALOG },
-    variants: { english: [], tagalog: MASBATE_TAGALOG_VARIANTS },
-    tagalogOnly: true,
-  },
-  'love-mix': {
-    id: 'love-mix',
-    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
-    variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
-  },
-  'off-air': {
-    id: 'off-air',
-    pools: { english: [], tagalog: [] },
-    variants: { english: [], tagalog: [] },
-  },
+  'sunday-oldies': englishOnlyProgram('sunday-oldies'),
+  'sunday-english-oldies': englishOnlyProgram('sunday-english-oldies'),
+  'sunday-tagalog-classic': englishOnlyProgram('sunday-tagalog-classic'),
+  'sunday-english-love': englishOnlyProgram('sunday-english-love'),
+  'english-love': englishOnlyProgram('english-love'),
+  'daytime-love': englishOnlyProgram('daytime-love'),
+  disco: englishOnlyProgram('disco'),
+  'night-love': englishOnlyProgram('night-love'),
+  'masbate-tagalog': englishOnlyProgram('masbate-tagalog'),
+  'love-mix': englishOnlyProgram('love-mix'),
+  'off-air': { id: 'off-air', pools: { english: [], tagalog: [] }, variants: { english: [], tagalog: [] }, englishOnly: true },
 }
 
 export interface ManilaTime {
@@ -651,9 +626,8 @@ export function masbateProgramAt(_ms: number): Program {
 }
 
 /** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */
-export function languageForSlot(program: Program, songCount: number): Language {
-  if (program.tagalogOnly) return 'tagalog'
+export function languageForSlot(program: Program, _songCount: number): Language {
+  // RJ FM's approved station-wide format is English-language soft/easy listening only.
   if (program.englishOnly) return 'english'
-  if (program.id === 'daytime-love') return songCount % 4 === 3 ? 'tagalog' : 'english'
-  return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
+  return 'english'
 }
