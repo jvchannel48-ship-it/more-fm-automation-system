@@ -10,6 +10,7 @@ import {
   languageForSlot,
   manilaDateKey,
   manilaTime,
+  nextSignOn,
   masbateProgramAt,
   nagaProgramAt,
   programAt,
@@ -585,11 +586,9 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
     }
 
-    if (station !== 'naga') {
-      const mainLiveKeys = new Set(mainSnap.state.tracks.filter((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now).map((track) => songKey(track.title ?? '')))
-      if (mainLiveKeys.size) {
-        state.history = [...state.history, ...[...mainLiveKeys].map((key) => ({ id: `block-main-${key}`, key, artist: 'main-live', t: now }))].slice(-80)
-      }
+    const mainLiveKeys = new Set(mainSnap.state.tracks.filter((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now).map((track) => songKey(track.title ?? '')))
+    if (mainLiveKeys.size) {
+      state.history = [...state.history, ...[...mainLiveKeys].map((key) => ({ id: `block-main-${key}`, key, artist: 'main-live', t: now }))].slice(-80)
     }
     const needsFill = state.tracks.filter((track) => track.startAt > now).length < PRELOAD_AHEAD_TRACKS
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
