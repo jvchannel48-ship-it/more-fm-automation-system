@@ -189,7 +189,7 @@ export function RadioPlayer() {
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Now Playing</span>
             <span className="max-w-full truncate text-sm font-semibold">{currentTrack.title}</span>
             <span className="max-w-full truncate text-xs text-muted-foreground">{currentTrack.artist}</span>
-            <Button type="button" size="sm" variant={currentSongLiked ? 'default' : 'outline'} onClick={toggleFavorite} aria-label={currentSongLiked ? 'Unlike this song' : 'Like this song'} className="mt-1 h-9 gap-2 rounded-full px-4">
+            <Button type="button" size="sm" variant={currentSongLiked ? 'default' : 'outline'} onClick={toggleFavorite} aria-label={currentSongLiked ? 'Unlike this song' : 'Like this song'} aria-pressed={currentSongLiked} className="mt-1 h-9 gap-2 rounded-full px-4">
               <Heart className={currentSongLiked ? 'size-4 fill-current' : 'size-4'} />
               {currentSongLiked ? 'Liked' : 'Like this song'}
             </Button>
