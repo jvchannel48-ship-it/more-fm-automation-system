@@ -36,7 +36,6 @@ assert.equal(
 
 for (const title of [
   'Whitney Houston - I Wanna Dance With Somebody',
-  'Whitney Houston - Pop Goes the World',
   'Whitney Houston - Rock the Night',
   'Whitney Houston - I Look to You (Club Remix)',
   'Whitney Houston - I Look to You (Cover by Jane Doe)',
@@ -63,6 +62,11 @@ for (const title of [
   assert.equal(isOriginalArtistTrack(title, whitney), false, `excluded: ${title}`)
 }
 
+assert.equal(
+  isOriginalArtistTrack('Whitney Houston - Pop Goes the World', whitney),
+  true,
+  'the word pop alone is not a blocked genre; soft-pop discovery remains eligible',
+)
 assert.equal(
   isOriginalArtistTrack('Whitney Houston - Saving All My Love for You (Official Audio)', whitney),
   true,

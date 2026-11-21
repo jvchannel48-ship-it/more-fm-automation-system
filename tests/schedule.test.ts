@@ -17,6 +17,7 @@ import {
   SIGN_OFF_HOUR,
   SIGN_ON_HOUR,
 } from '../lib/schedule.ts'
+import { STATIONS } from '../lib/stations.ts'
 
 function manilaTime(day: number, hour: number, minute = 0, second = 0) {
   return Date.UTC(2026, 10, day, hour - 8, minute, second)
@@ -32,7 +33,7 @@ const sundayBlocks = [
 ] as const
 
 for (let hour = 0; hour < 24; hour++) {
-  const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
+  const expectedOffAir = false
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
   const expectedNormalProgram = hour >= 4 && hour < 20 ? 'daytime-love' : 'love-mix'
@@ -78,7 +79,8 @@ assert.ok(PROGRAMS['love-mix'].variants.english.includes('soft ballad'), 'Englis
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('easy listening'), 'English searches prioritize easy listening')
 assert.ok(PROGRAMS['love-mix'].variants.tagalog.includes('classic OPM ballad'), 'Tagalog searches prioritize classic OPM ballads')
 assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Rey Valera'), 'classic Tagalog love rotation includes Rey Valera')
-assert.ok(!PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'classic Tagalog rotation excludes modern OPM artists')
+assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'regular Tagalog love mix includes contemporary OPM artists')
+assert.ok(!PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Dionela'), 'Sunday Tagalog classics remain limited to classic OPM artists')
 assert.ok(NEW_TAGALOG_OPM_ARTISTS.some((artist) => artist.name === 'Adie'), 'new-song pool includes contemporary OPM artists')
 assert.ok(!NEW_TAGALOG_OPM_VARIANTS.includes('Marilag'), 'new-song rotation does not force Marilag')
 assert.ok(PROGRAMS['sunday-english-oldies'].pools.english.some((artist) => artist.name === 'Victor Wood'), 'Sunday English oldies include Victor Wood')
@@ -87,12 +89,18 @@ assert.ok(PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => artist.name =
 assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Rodel Naval'), 'Sunday Tagalog classics include Rodel Naval')
 assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Lea Salonga'), 'Sunday Tagalog classics include Lea Salonga')
 
-assert.equal(isOffAir(manilaTime(sunday, 2, 59)), false, 'station stays on until 3 AM sign-off')
-assert.equal(isOffAir(manilaTime(sunday, 3, 0)), true, 'station signs off at 3 AM')
-assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station remains off before 4 AM')
-assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'station signs on at 4 AM')
-assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), 'next sign-on during off-air is 4 AM the same day')
-assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on after 4 AM is 4 AM the following day')
+assert.equal(SIGN_OFF_HOUR, SIGN_ON_HOUR, '24/7 RJ FM has no daily sign-off gap')
+for (const station of Object.values(STATIONS)) {
+  assert.equal(station.signOffHour, station.signOnHour, `${station.name} has no daily off-air gap`)
+  for (let hour = 0; hour < 24; hour++) {
+    assert.equal(isOffAir(manilaTime(sunday, hour)), false, `RJ FM remains on-air at ${hour}:00`)
+  }
+}
+assert.equal(isOffAir(manilaTime(sunday, 3, 0)), false, 'RJ FM remains on-air at 3 AM')
+assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'RJ FM remains on-air before 4 AM')
+assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'RJ FM remains on-air at 4 AM')
+assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), '24/7 station reports the next daily schedule marker without signing off')
+assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next daily schedule marker is 4 AM tomorrow')
 assert.equal(programAt(manilaTime(16, 16, 0)).id, 'daytime-love', '4:00 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'daytime-love', '6:02 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
@@ -150,4 +158,4 @@ assert.equal(saturdayAnnouncement?.expiresAt, manilaTime(22, 0), 'Saturday annou
 assert.equal(dailyAnnouncementScheduleAt(manilaTime(15, 12)), null, 'Sunday has no announcement clip schedule')
 assert.equal(manilaDateKey(manilaTime(16, 21, 48)), '2026-11-16', 'daily automation uses the Manila calendar date')
 
-console.log('schedule: DZMM morning/evening/overnight windows and 3 AM sign-off / 4 AM sign-on all pass')
+console.log('schedule: DZMM windows and continuous 24/7 RJ FM station schedules all pass')
