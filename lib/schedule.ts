@@ -147,6 +147,8 @@ const SUNDAY_ENGLISH_OLDIES = artists('english', [
 ])
 
 const SUNDAY_TAGALOG_CLASSICS = artists('tagalog', [
+  'Imelda Papin',
+  'Victor Wood',
   'Rodel Naval',
   'Renz Verano',
   'Lea Salonga|lea salonga',
@@ -619,9 +621,11 @@ export function iloiloDzmmWindowAt(ms: number): DzmmWindow | null {
 }
 
 /** RJ FM uses an all-day love-song format; DZMM windows are handled separately. */
-export function programAt(ms: number, sundayScheduleEnabled = true): Program {
+export function programAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
   const { hour, day } = manilaTime(ms)
   if (sundayScheduleEnabled && day === 0) {
+    // Manila 93.5 keeps its own all-day English classic-oldies format on Sundays.
+    if (station === 'main') return PROGRAMS['sunday-english-oldies']
     if (hour >= 4 && hour < 10) return PROGRAMS['sunday-english-oldies']
     if (hour >= 10 && hour < 15) return PROGRAMS['sunday-oldies']
     if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
