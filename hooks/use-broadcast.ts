@@ -119,10 +119,12 @@ export function useBroadcast(
       el.addEventListener('ended', () => {
         const playedUrl = el.currentSrc || el.src
         if (el.dataset.rjfmAutoDelete === 'true' && playedUrl && 'serviceWorker' in navigator) {
-          navigator.serviceWorker.controller?.postMessage({
-            type: 'RJFM_PURGE_PLAYED_AUDIO',
-            url: playedUrl,
-          })
+          const message = { type: 'RJFM_PURGE_PLAYED_AUDIO', url: playedUrl }
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage(message)
+          } else {
+            void navigator.serviceWorker.ready.then((registration) => registration.active?.postMessage(message)).catch(() => undefined)
+          }
         }
       })
       el.setAttribute('playsinline', '')
