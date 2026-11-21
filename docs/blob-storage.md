@@ -16,7 +16,7 @@ Configured project:
 
 1. Open **Storage** → **New bucket**.
 2. Name: **`morefm-station`**
-3. Make it **Public** *or* add policies that allow the publishable key to `SELECT`, `INSERT`, `UPDATE` on this bucket (required for server writes with the publishable key).
+3. Keep the bucket **Private** when using a server-only secret/service-role key. If using only a publishable key, configure Storage policies for the required `SELECT`, `INSERT`, and `UPDATE` operations; a public bucket alone does not grant upload/update permissions.
 4. Optional (recommended for production): create a **service role** key and set `SUPABASE_SERVICE_ROLE_KEY` on Render instead of relying on the publishable key.
 
 ### Render environment (optional overrides)
@@ -25,7 +25,8 @@ Configured project:
 |-----|---------|
 | `SUPABASE_URL` | Project URL (defaults to the URL above) |
 | `SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_ANON_KEY` | Client/publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Prefer this server-side for private buckets |
+| `SUPABASE_SECRET_KEY` | Preferred server-only key for private bucket read/write access |
+| `SUPABASE_SERVICE_ROLE_KEY` | Legacy server-only service-role key |
 | `SUPABASE_STORAGE_BUCKET` | Defaults to `morefm-station` |
 
 Redeploy after changing env vars.
