@@ -384,6 +384,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
     state.history.push(playedEntry)
     networkHistory.push(playedEntry)
+    selectionHistory.push(playedEntry)
     await writeJson(PLAYED_SONG_HISTORY_PATH, networkHistory)
     await recordArtistPlay(song.artist, songStart)
     state.songCount++
