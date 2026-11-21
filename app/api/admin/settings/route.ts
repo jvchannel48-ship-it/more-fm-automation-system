@@ -75,6 +75,6 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, ...noStore })
-  await refreshQueue()
+  await refreshQueue(true)
   return NextResponse.json(await getAdminStatus(), noStore)
 }
