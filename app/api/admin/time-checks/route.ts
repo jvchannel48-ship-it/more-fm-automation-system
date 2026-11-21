@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await request.json().catch(() => ({})) as { prompt?: unknown; mode?: unknown }
   const requestedPrompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
-  const mode = body.mode === 'dzmm' ? 'dzmm' : body.mode === 'after3' ? 'after3' : null
+  const mode = body.mode === 'after3' ? 'after3' : null
   if (!mode) return NextResponse.json({ error: 'Choose when the time check should play.' }, { status: 400 })
   try {
     const prompt = requestedPrompt === 'AUTO_PH_TIME'
