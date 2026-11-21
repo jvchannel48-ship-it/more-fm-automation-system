@@ -4,6 +4,8 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { Activity, AlertTriangle, CheckCircle2, Database, HardDrive, MemoryStick, RefreshCw, Server, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { STATIONS, STATION_ORDER } from '@/lib/stations'
+import { PROGRAMS } from '@/lib/schedule'
 
 type ServerStatus = {
   error?: string
@@ -20,6 +22,8 @@ const fetcher = async (url: string) => {
 }
 const mb = (bytes: number) => (bytes / 1024 / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 })
 const percent = (used: number, total: number) => total > 0 ? Math.min(100, Math.round(used / total * 100)) : 0
+const formatHour = (hour: number) => `${hour % 12 || 12}:00 ${hour >= 12 ? 'PM' : 'AM'}`
+const artistCount = new Set(Object.values(PROGRAMS).flatMap((program) => [...program.pools.english, ...program.pools.tagalog].map((artist) => artist.name))).size
 
 function MetricCard({ icon: Icon, label, value, detail, tone = 'gold' }: {
   icon: typeof Server; label: string; value: string; detail: string; tone?: 'gold' | 'green' | 'blue'
@@ -89,6 +93,44 @@ export function ServerDashboard() {
             <HealthRow icon={Database} label="PostgreSQL database" ok={Boolean(data.database?.ok)} detail={data.database?.ok ? 'Connection successful' : data.database?.error ?? 'Database unavailable'} />
             <HealthRow icon={HardDrive} label="Station storage" ok={Boolean(data.storage?.configured && storage?.available)} detail={storage?.available ? 'Bucket readable and usage measured' : 'Storage connection or usage check needs attention'} />
           </div></section>
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div><h3 className="font-bold">RJ FM station network</h3><p className="text-xs text-muted-foreground">Station sign-off and sign-on schedule · Philippine time</p></div>
+              <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">{STATION_ORDER.length} stations</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {STATION_ORDER.map((id) => {
+                const station = STATIONS[id]
+                return <div key={id} className="rounded-xl border border-border/70 bg-secondary/25 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0"><p className="text-sm font-semibold">{station.name} <span className="font-mono text-primary">{station.frequency}</span></p><p className="text-[11px] text-muted-foreground">{station.city} · {station.modeLabel}</p></div>
+                    <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">AutoDJ</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-background/60 p-2"><p className="text-[10px] text-muted-foreground">Sign off</p><p className="mt-0.5 font-semibold tabular-nums">{formatHour(station.signOffHour)}</p></div>
+                    <div className="rounded-lg bg-background/60 p-2"><p className="text-[10px] text-muted-foreground">Sign on</p><p className="mt-0.5 font-semibold tabular-nums">{formatHour(station.signOnHour)}</p></div>
+                  </div>
+                </div>
+              })}
+            </div>
+          </section>
+          <section className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-4 sm:p-5">
+            <div className="flex items-center gap-2"><Activity className="size-5 text-amber-300" /><h3 className="font-bold">DZMM blocktime schedule</h3></div>
+            <p className="mt-1 text-xs text-muted-foreground">Main RJ FM Manila · Philippine time · Monday to Saturday</p>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 p-3"><div><p className="text-sm font-semibold">Morning blocktime</p><p className="text-[11px] text-muted-foreground">DZMM live stream</p></div><p className="font-mono text-sm font-bold text-primary">7:00–8:00 AM</p></div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 p-3"><div><p className="text-sm font-semibold">Evening blocktime</p><p className="text-[11px] text-muted-foreground">DZMM live stream</p></div><p className="font-mono text-sm font-bold text-primary">6:30–8:00 PM</p></div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 p-3"><div><p className="text-sm font-semibold">Night blocktime</p><p className="text-[11px] text-muted-foreground">Love Connect ident then DZMM</p></div><p className="font-mono text-sm font-bold text-primary">10:00 PM–3:00 AM</p></div>
+            </div>
+            <div className="mt-3 rounded-xl border border-border/70 bg-card/60 p-3">
+              <p className="text-sm font-semibold">RJ FM Iloilo special blocktime</p>
+              <p className="mt-1 text-xs text-muted-foreground">6:30–8:00 PM, Monday to Saturday. Other hours use its own AutoDJ music schedule.</p>
+            </div>
+          </section>
+          <section className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold">AutoDJ artist library</h3><p className="text-xs text-muted-foreground">Artist pools configured in the broadcast schedule</p></div><span className="font-mono text-2xl font-bold text-primary">{artistCount}</span></div>
+            <p className="mt-2 text-xs text-muted-foreground">AutoDJ chooses tracks from the active program’s English and Tagalog artist pools, applies the station schedule, and manages rotation automatically.</p>
+          </section>
           <p className="text-center text-[10px] text-muted-foreground">Auto-refresh every 15 seconds · Last checked {data.server?.checkedAt ? new Date(data.server.checkedAt).toLocaleTimeString() : '—'}</p>
         </>}
         <div className="mt-auto flex gap-2"><Button type="button" className="flex-1" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />Refresh dashboard</Button><Button type="button" variant="outline" onClick={() => setOpen(false)}>Close</Button></div>
