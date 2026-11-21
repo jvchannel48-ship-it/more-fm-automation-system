@@ -419,7 +419,7 @@ const MASBATE_TAGALOG_VARIANTS = ['latest 2026 OPM Tagalog song', 'new Filipino 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
-    pools: { english: [], tagalog: PINOY_OLDIES },
+    pools: { english: [], tagalog: [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s']] },
     variants: { english: [], tagalog: ['', 'official audio', 'lyrics', 'greatest hits'] },
     tagalogOnly: true,
   },
@@ -431,7 +431,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'sunday-tagalog-classic': {
     id: 'sunday-tagalog-classic',
-    pools: { english: [], tagalog: SUNDAY_TAGALOG_CLASSICS },
+    pools: { english: [], tagalog: [...SUNDAY_TAGALOG_CLASSICS, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s']] },
     variants: { english: [], tagalog: OPM_VARIANTS },
     tagalogOnly: true,
   },
