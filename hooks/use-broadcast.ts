@@ -323,12 +323,12 @@ export function useBroadcast(
         }
 
         const isChristopherVoice = track.kind === 'dj-mic' && track.uid.includes('dj-christopher-')
-        const liveDuck = data?.liveDj?.active && !isChristopherVoice ? 0.38 : 1
         const christopherSpeaking = active.some((item) => item.kind === 'dj-mic' && item.uid.includes('dj-christopher-'))
-        // Keep Christopher at full program level and lower the music bed while he speaks.
+        // No automatic night-time or live-DJ master-volume reduction on any RJ FM station.
+        // Keep only the intentional music duck under Christopher's microphone.
         const musicDuck = track.kind === 'music' && christopherSpeaking ? 0.14 : 1
         const fadeGain = isChristopherVoice ? 1 : trackGain(track, now)
-        el.volume = clamp01(fadeGain * volume * liveDuck * musicDuck)
+        el.volume = clamp01(fadeGain * volume * musicDuck)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           void el.play().then(() => {
