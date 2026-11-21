@@ -10,6 +10,7 @@ import type { StationId } from '@/lib/stations'
 
 type RequestStatus = 'idle' | 'submitting' | 'success' | 'error'
 type CreditInfo = { creditsRemaining: number; dailyCredits: number; bonusCredits: number }
+type RequestResult = { error?: string; position?: number; creditsRemaining?: number; creditEmpty?: boolean; autoDjQueued?: boolean }
 
 export function SongRequest({ station }: { station: StationId }) {
   const [open, setOpen] = useState(false)
@@ -56,7 +57,7 @@ export function SongRequest({ station }: { station: StationId }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, artist, station }), cache: 'no-store',
       })
-      const data = await response.json().catch(() => ({})) as { error?: string; position?: number; creditsRemaining?: number; creditEmpty?: boolean }
+      const data = await response.json().catch(() => ({})) as RequestResult
       if (!response.ok) {
         if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : { creditsRemaining: data.creditsRemaining!, dailyCredits: 0, bonusCredits: 0 })
         if (data.creditEmpty) { setStatus('error'); setMessage(data.error ?? "YOUR CREDIT IT'S 0 TRY AGAIN TOMORROW FREE DAILY"); return }
@@ -64,9 +65,9 @@ export function SongRequest({ station }: { station: StationId }) {
       }
       if (typeof data.creditsRemaining === 'number') setCredits((current) => current ? { ...current, creditsRemaining: data.creditsRemaining! } : current)
       setStatus('success')
-      setMessage(data.position && data.position > 1
-        ? `Song request successful for ${station.toUpperCase()}! You are #${data.position} in that station's queue. 15 credits were used (30 for 2 songs). It will play after earlier requests.`
-        : `Song request successful for ${station.toUpperCase()}! Your song is queued at the station you are listening to. 15 credits were used (30 for 2 songs).`)
+      setMessage(data.autoDjQueued
+        ? `Saved in the ${station.toUpperCase()} Auto DJ queue at position #${data.position ?? 1}. The current scheduled song(s) will finish first; Auto DJ will then play this request in queue order. 15 credits were used.`
+        : `Request accepted for ${station.toUpperCase()}. Auto DJ will schedule it after the songs already lined up. 15 credits were used.`)
     } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'Could not submit the song request.') }
   }
 
