@@ -79,33 +79,14 @@ export async function getChristopherScript(id: string): Promise<string | null> {
   return saved.find((item) => item.id === id)?.text ?? null
 }
 
-export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromName: string; body: string }) {
-  const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i)
-  if (!match) throw new Error('Include a time, for example: Generate RJ FM time check is 4:30 AM.')
+export function buildTimeCheckScript(prompt: string) {
+  const match = prompt.match(/(?:time(?:\\s+check)?\\s*(?:is|at)?\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(a\\.?m\\.?|p\\.?m\\.?)?/i)
+  if (!match) throw new Error('Include a time, for example: RJ FM time check is 9:30.')
   const hour = Number(match[1])
   const minute = Number(match[2] ?? '00')
-  if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
-  const period = match[3].replace(/\./g, '').toUpperCase()
-  const time = minute === 0 ? `${hour} ${period}` : `${hour}:${String(minute).padStart(2, '0')} ${period}`
-  const opening = pick([
-    'Hello RJ FM family, DJ Christopher here with a quick time check.',
-    'Hey music lovers, Christopher here. Let us check the Philippine time.',
-    'A pleasant day to all RJ FM listeners. Here is your quick time update.',
-    'You are tuned in to RJ FM. This is DJ Christopher with the latest time check.',
-  ])
-  const listenerLine = listenerMessage
-    ? `A quick message from ${listenerMessage.fromName}: ${listenerMessage.body.slice(0, 180)}.`
-    : pick([
-      'Thank you for listening from Manila and all our RJ FM communities.',
-      'Stay safe wherever you are, and enjoy the easy-listening favourites coming up.',
-      'We appreciate your company. Keep sharing the good music with family and friends.',
-    ])
-  const transition = pick([
-    'And now, back to more great music on RJ FM.',
-    'Stay tuned; another favourite is coming up next.',
-    'Keep listening, because the music continues right here.',
-  ])
-  return `${opening} The time is ${time}, Philippine time. ${listenerLine} Thank you for choosing RJ FM. ${transition}`
+  if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid time, such as 9:30.')
+  const time = `${hour}:${String(minute).padStart(2, '0')}`
+  return `RJ FM time check is ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
