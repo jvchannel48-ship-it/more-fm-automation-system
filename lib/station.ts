@@ -69,11 +69,12 @@ async function withAutoDjFillLock<T>(operation: () => Promise<T>): Promise<T> {
 interface StationState {
   tracks: Track[]; songCount: number; history: HistoryEntry[]; fillingUntil: number; requestQueue: SongRequest[]
   failedDzmmWindowStart: number | null; dailyAnnouncementDay: string | null; dailyAnnouncementSongCount: number; dailyAnnouncementPlayed: boolean
-  christopherNextAt: number
+  christopherNextAt: number; lastChristopherTimeCheckText?: string
 }
 const EMPTY_STATE: StationState = {
   tracks: [], songCount: 0, history: [], fillingUntil: 0, requestQueue: [], failedDzmmWindowStart: null,
   dailyAnnouncementDay: null, dailyAnnouncementSongCount: 0, dailyAnnouncementPlayed: false, christopherNextAt: 0,
+  lastChristopherTimeCheckText: undefined,
 }
 
 async function getLiveDj(): Promise<LiveDjState | null> {
@@ -279,10 +280,12 @@ async function findRequestedSong(title: string, artist: string, history: History
 }
 function trackEnd(track: Track) { return track.startAt + track.duration * 1000 }
 function nextStart(state: StationState, now: number) {
-  const last = state.tracks.at(-1)
+  // Always wait for the item that finishes last. In particular, never start
+  // music underneath DJ Christopher or another voice clip.
+  const last = state.tracks.reduce<Track | null>((latest, track) =>
+    !latest || trackEnd(track) > trackEnd(latest) ? track : latest, null)
   if (!last) return now
-  // A station ID / announcement must finish before the next song begins.
-  // Do not apply the normal music crossfade to voice clips.
+  // Voice clips must finish completely; only music may use the normal crossfade.
   const nextAt = last.kind === 'dj-mic'
     ? trackEnd(last)
     : trackEnd(last) - last.fadeOut * 1000
@@ -442,27 +445,33 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         masbate: 'RJ FM Masbate 103.9',
       }[station]
       const timeCheckText = buildTimeCheckScript(`Time check is ${philippinesTime}`, safeListenerMessage, stationName)
-      if (selectedMessage) {
+      // Suppress an identical repeated time announcement (for example, two fills
+      // occurring within the same minute). A new time is announced normally.
+      const shouldSpeakTimeCheck = state.lastChristopherTimeCheckText !== timeCheckText
+      if (selectedMessage && shouldSpeakTimeCheck) {
         await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
           message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
         ))
       }
-      const scriptId = await saveChristopherScript(timeCheckText)
-      const timeCheckDuration = estimateChristopherDuration(timeCheckText)
-      const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
-      if (previousMusic) previousMusic.fadeOut = Math.min(previousMusic.fadeOut || CROSSFADE_SECONDS, 3)
-      state.tracks.push({
-        uid: `dj-christopher-timecheck-${station}-${state.songCount}-${scriptId}`,
-        src: `/api/dj-christopher?id=${scriptId}`,
-        startAt: timeCheckEndAt,
-        duration: timeCheckDuration,
-        fadeIn: 0.2,
-        fadeOut: 0,
-        kind: 'dj-mic',
-        title: 'DJ Christopher · RJ FM Time Check',
-        artist: 'DJ Christopher',
-      })
-      timeCheckEndAt += timeCheckDuration * 1000
+      if (shouldSpeakTimeCheck) {
+        const scriptId = await saveChristopherScript(timeCheckText)
+        const timeCheckDuration = estimateChristopherDuration(timeCheckText)
+        const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
+        if (previousMusic) previousMusic.fadeOut = Math.min(previousMusic.fadeOut || CROSSFADE_SECONDS, 3)
+        state.tracks.push({
+          uid: `dj-christopher-timecheck-${station}-${state.songCount}-${scriptId}`,
+          src: `/api/dj-christopher?id=${scriptId}`,
+          startAt: timeCheckEndAt,
+          duration: timeCheckDuration,
+          fadeIn: 0.2,
+          fadeOut: 0,
+          kind: 'dj-mic',
+          title: 'DJ Christopher · RJ FM Time Check',
+          artist: 'DJ Christopher',
+        })
+        state.lastChristopherTimeCheckText = timeCheckText
+        timeCheckEndAt += timeCheckDuration * 1000
+      }
     }
     if (identAfterSong && stationIdent) {
       // Keep station ID clips separate from Christopher time checks; air after every eighth song.
@@ -481,6 +490,7 @@ async function loadState(now: number, path = STATE_PATH) {
     dailyAnnouncementSongCount: typeof saved.dailyAnnouncementSongCount === 'number' ? saved.dailyAnnouncementSongCount : 0,
     dailyAnnouncementPlayed: saved.dailyAnnouncementPlayed === true,
     christopherNextAt: typeof saved.christopherNextAt === 'number' ? saved.christopherNextAt : 0,
+    lastChristopherTimeCheckText: typeof saved.lastChristopherTimeCheckText === 'string' ? saved.lastChristopherTimeCheckText : undefined,
   }
   const today = manilaDateKey(now)
   if (state.dailyAnnouncementDay !== today) { state.dailyAnnouncementDay = today; state.dailyAnnouncementSongCount = 0; state.dailyAnnouncementPlayed = false }
