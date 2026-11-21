@@ -323,7 +323,12 @@ export function useBroadcast(
         }
 
         const liveDuck = data?.liveDj?.active ? 0.38 : 1
-        el.volume = clamp01(trackGain(track, now) * volume * liveDuck)
+        const isChristopherVoice = track.kind === 'dj-mic' && track.uid.includes('dj-christopher-')
+        const christopherSpeaking = active.some((item) => item.kind === 'dj-mic' && item.uid.includes('dj-christopher-'))
+        // Keep Christopher at full program level and lower the music bed while he speaks.
+        const musicDuck = track.kind === 'music' && christopherSpeaking ? 0.14 : 1
+        const fadeGain = isChristopherVoice ? 1 : trackGain(track, now)
+        el.volume = clamp01(fadeGain * volume * liveDuck * musicDuck)
         if (el.paused && !el.ended && now - slot.lastPlayAttemptAt >= 1_000) {
           slot.lastPlayAttemptAt = now
           void el.play().then(() => {
