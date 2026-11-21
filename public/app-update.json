@@ -1,6 +1,6 @@
 {
   "version": "0.1.3",
-  "minVersion": "0.1.2",
+  "minVersion": "0.1.3",
   "apkUrl": "https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk",
   "whatsNew": [
     "Smarter music rotation helps prevent recently played songs from repeating across RJ FM stations.",
