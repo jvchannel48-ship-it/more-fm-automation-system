@@ -7,6 +7,9 @@ on:
     paths:
       - 'capacitor.config.ts'
       - 'app/layout.tsx'
+      - 'app/page.tsx'
+      - 'components/station/bottom-navigation.tsx'
+      - 'components/station/vpn-panel.tsx'
       - 'components/pwa-register.tsx'
       - 'public/sw.js'
       - 'public/offline.html'
