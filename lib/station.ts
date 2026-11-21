@@ -15,7 +15,7 @@ import {
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildTimeCheckScript, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import { buildTimeCheckScript, buildRandomChristopherSongPrompt, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -403,8 +403,31 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       })
       timeCheckEndAt += timeCheckDuration * 1000
     }
+    // A short, varied song comment every fourth song. Auto DJ remains responsible
+    // for reading listener request messages; Christopher only comments on music.
+    if (djChristopherEnabled && state.songCount % 4 === 0) {
+      const promptText = await buildRandomChristopherSongPrompt(song.title, song.artist)
+      const promptId = await saveChristopherScript(promptText)
+      const promptDuration = estimateChristopherDuration(promptText)
+      const previousVoiceOrMusic = state.tracks.at(-1)
+      if (previousVoiceOrMusic && previousVoiceOrMusic.kind === 'music') {
+        previousVoiceOrMusic.fadeOut = Math.min(previousVoiceOrMusic.fadeOut || CROSSFADE_SECONDS, 3)
+      }
+      state.tracks.push({
+        uid: `dj-christopher-song-prompt-${station}-${state.songCount}-${promptId}`,
+        src: `/api/dj-christopher?id=${promptId}`,
+        startAt: timeCheckEndAt,
+        duration: promptDuration,
+        fadeIn: 0.5,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'DJ Christopher · Song Commentary',
+        artist: 'DJ Christopher',
+      })
+      timeCheckEndAt += promptDuration * 1000
+    }
     if (identAfterSong && stationIdent) {
-      // Keep station ID clips separate from Christopher time checks; air after every eighth song.
+      // Station ident follows Christopher's completed voice break.
       const identStartAt = timeCheckEndAt
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
