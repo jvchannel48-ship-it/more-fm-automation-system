@@ -63,7 +63,7 @@ export function AdminPanel() {
       if (!res.ok) throw new Error(result.error ?? 'Could not save admin setting.')
       const status = result as AdminStatus
       mutate(status, { revalidate: false })
-      if (method === 'POST') setMessage('Music rotation refreshed.')
+      if (method === 'POST') setMessage('All RJ FM station queues refreshed. Current songs were preserved.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not save admin setting.')
     } finally {
@@ -365,7 +365,7 @@ export function AdminPanel() {
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
         <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
-        Refresh rotation
+        Refresh all RJ FM stations
       </Button>
     </div>
 
