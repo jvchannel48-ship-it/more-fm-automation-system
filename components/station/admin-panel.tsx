@@ -6,12 +6,13 @@ import { BadgeCheck, ImagePlus, Megaphone, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { RJFM_ARTIST_LIBRARY, SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
+import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
 import { AdminPlayerTest } from './admin-player-test'
+import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -24,6 +25,41 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     <div className="flex flex-col gap-0.5 rounded-lg bg-secondary px-3 py-2">
       <span className="text-lg font-semibold tabular-nums">{value}</span>
       <span className="text-[11px] text-muted-foreground">{label}</span>
+    </div>
+  )
+}
+
+
+type AdminStationOverviewData = {
+  totalListenersNow: number
+  totalAverageListeners24h: number
+  stations: Array<{ id: string; name: string; frequency: string; listenersNow: number; averageListeners24h: number; currentSong: string; status: string; rjfmRank: number }>
+}
+function AdminStationOverview() {
+  const { data } = useSWR('/api/station-status', (url: string) => fetch(url, { cache: 'no-store' }).then((r) => {
+    if (!r.ok) throw new Error('Station status unavailable')
+    return r.json() as Promise<AdminStationOverviewData>
+  }), { refreshInterval: 15000, revalidateOnFocus: true })
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-card p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div><p className="text-sm font-semibold">All RJ FM stations</p><p className="text-[11px] text-muted-foreground">Live station, frequency and current track</p></div>
+        <div className="text-right"><p className="text-xl font-bold tabular-nums">{data?.totalListenersNow ?? '—'}</p><p className="text-[10px] text-muted-foreground">Unique devices now</p><p className="mt-1 text-sm font-semibold tabular-nums">{data ? data.totalAverageListeners24h.toFixed(1) : '—'} avg / 24h</p></div>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {(data?.stations ?? []).map((station) => (
+          <div key={station.id} className="min-w-0 rounded-lg border border-border/70 bg-secondary/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-xs font-semibold">{station.name}</p>
+              <span className="shrink-0 text-[10px] font-medium text-primary">{station.frequency} MHz</span>
+            </div>
+            <p className="mt-1 truncate text-xs text-muted-foreground" title={station.currentSong}>♫ {station.currentSong}</p>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>{station.listenersNow} now · {station.averageListeners24h.toFixed(1)} avg/24h</span><span>{station.rjfmRank > 0 ? `#${station.rjfmRank} · ` : ''}{station.status}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -143,6 +179,8 @@ export function AdminPanel() {
     <>
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <AdminLiveDesk />
+      <AdminStationOverview />
+      <AdminTimeChecks />
       <AdminPlayerTest />
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
@@ -175,7 +213,7 @@ export function AdminPanel() {
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="rj-fm-nationwide">RJ FM Nationwide MP3 IDs</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.rjFmNationwideEnabled === false ? 'OFF · Nationwide station IDs are skipped; music continues.' : 'ON · Regional station IDs play after every 2 songs.'}
+            {data?.rjFmNationwideEnabled === false ? 'OFF · Nationwide station IDs are skipped; music continues.' : 'ON · Station ID MP3s play after every 8 songs.'}
           </span>
         </div>
         <Switch id="rj-fm-nationwide" checked={data?.rjFmNationwideEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { rjFmNationwideEnabled: checked })} />
@@ -357,43 +395,12 @@ export function AdminPanel() {
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       {message && <p className="text-xs text-emerald-300" role="status">{message}</p>}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
-        <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
         <Stat label="Total listeners" value={data?.listenersNow ?? '–'} />
         <Stat label="Average listeners" value={data?.averageListeners ?? '–'} />
       </div>
-      <div className="flex flex-col gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <Label>RJ FM Music Discovery Library · All eras</Label>
-          <span className="text-xs tabular-nums text-muted-foreground">{Object.values(RJFM_ARTIST_LIBRARY).reduce((total, group) => total + group.length, 0)} artist entries</span>
-        </div>
-        <p className="text-[11px] text-muted-foreground">Classic easy listening, love ballads and newer soft-pop / OPM discovery. Search results still pass RJ FM's original-track and blocked-genre filters.</p>
-        <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-          {Object.entries(RJFM_ARTIST_LIBRARY).map(([era, artists]) => (
-            <details key={era} className="rounded-md border border-border/60 bg-background/60 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-semibold">{era} · {artists.length} artists</summary>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{artists.map((artist) => artist.name).join(' · ')}</p>
-            </details>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <Label>Artist History Library · All artists</Label>
-          <span className="text-xs tabular-nums text-muted-foreground">{data?.artistHistory?.length ?? 0} artists</span>
-        </div>
-        <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-          {(data?.artistHistory ?? []).length > 0 ? data!.artistHistory.map((entry) => (
-            <div key={entry.artist} className="flex items-center justify-between gap-3 rounded-md bg-background/70 px-2.5 py-2">
-              <span className="min-w-0 truncate text-xs font-medium">{entry.artist}</span>
-              <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{entry.plays} plays · {new Date(entry.lastPlayedAt).toLocaleDateString()}</span>
-            </div>
-          )) : <p className="py-2 text-xs text-muted-foreground">Artist history will appear as AutoDJ plays songs.</p>}
-        </div>
-      </div>
-
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
         <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
         Refresh all RJ FM stations

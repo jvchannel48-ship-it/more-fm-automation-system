@@ -22,17 +22,31 @@ export async function GET(request: NextRequest) {
   const folder = await mkdtemp(join(tmpdir(), 'rjfm-christopher-'))
   const filepath = join(folder, 'christopher.mp3')
   try {
-    const tts = new EdgeTTS({
-      voice: 'en-US-ChristopherNeural',
-      lang: 'en-US',
-      outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate: '-5%',
-      volume: '+20%',
-      timeout: 30000,
-    })
-    await tts.ttsPromise(text, filepath)
-    const audio = await readFile(filepath)
-    if (audio.length < 1024) throw new Error('Edge TTS returned an empty audio file.')
+    let audio: Buffer | null = null
+    let lastError: unknown
+    // Try Christopher first, then a compatible English neural voice if that voice
+    // is temporarily unavailable in the speech service.
+    for (const voice of ['en-US-ChristopherNeural', 'en-US-GuyNeural']) {
+      try {
+        const tts = new EdgeTTS({
+          voice,
+          lang: 'en-US',
+          outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
+          rate: '+12%',
+          volume: '+20%',
+          timeout: 45000,
+        })
+        await tts.ttsPromise(text, filepath)
+        const generated = await readFile(filepath)
+        if (generated.length < 1024) throw new Error('Edge TTS returned an empty audio file.')
+        audio = generated
+        break
+      } catch (error) {
+        lastError = error
+        await rm(filepath, { force: true }).catch(() => undefined)
+      }
+    }
+    if (!audio) throw lastError ?? new Error('All DJ Christopher voices failed.')
     audioCache.set(id, audio)
     if (audioCache.size > 50) audioCache.delete(audioCache.keys().next().value!)
     return new Response(new Uint8Array(audio), { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=86400' } })

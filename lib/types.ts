@@ -16,6 +16,7 @@ export interface SongRequest {
   requestId: string
   title: string
   artist: string
+  location?: string
   submittedAt: number
   id: string
   key: string
@@ -54,6 +55,7 @@ export interface ListenerMessage {
   body: string
   createdAt: number
   read: boolean
+  spokenAt?: number
 }
 
 export interface NowResponse {
