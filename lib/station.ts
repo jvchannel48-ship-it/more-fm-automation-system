@@ -179,8 +179,9 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const discoveredArtists = await readJson<Artist[]>(AUTO_DISCOVERED_ARTISTS_PATH, [])
-  const pool = [...program.pools[language], ...discoveredArtists.filter((artist) => artist.language === language)]
+  // Only the curated RJ FM artist library is approved for automatic rotation.
+  // Ignore auto-discovered artists so an unreviewed artist cannot enter the playlist.
+  const pool = program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
   if (candidatesArtists.length === 0 || variants.length === 0) return null
@@ -246,7 +247,6 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     })
     const playable = await Promise.any(downloadProbes).catch(() => null)
     if (playable) {
-      await saveAutoDiscoveredArtist({ name: playable.artist, match: playable.artist.toLowerCase(), language })
       return playable
     }
   }
