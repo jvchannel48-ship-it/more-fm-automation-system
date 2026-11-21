@@ -281,8 +281,39 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       : await findSong(program, state.songCount, state.history, startAt, blockedGenres, station)
     if (!song) break
     if (request) state.requestQueue.shift()
-    const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
+    let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    let songFadeIn = fadeIn
+    if (request && djChristopherEnabled) {
+      const previousTrack = state.tracks.at(-1)
+      let voiceStartAt = songStart
+      if (previousTrack?.kind === 'music') {
+        previousTrack.fadeOut = 3
+        voiceStartAt = Math.max(songStart, trackEnd(previousTrack) - 3_000)
+      } else if (previousTrack) {
+        voiceStartAt = Math.max(songStart, trackEnd(previousTrack))
+      }
+      const script = buildChristopherScript({ title: request.title, artist: request.artist })
+      const scriptId = await saveChristopherScript(script)
+      const words = script.trim().split(/\\s+/).length
+      const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
+      state.tracks.push({
+        uid: `dj-christopher-request-${station}-${scriptId}`,
+        src: `/api/dj-christopher?id=${scriptId}`,
+        startAt: voiceStartAt,
+        duration: speechSeconds,
+        fadeIn: 0.8,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'DJ Christopher · Song request',
+        artist: 'DJ Christopher',
+      })
+      songStart = voiceStartAt + speechSeconds * 1000
+      songFadeIn = 2.5
+      const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
+      const maxGap = djChristopherIntervalMinutes + 5
+      state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
+    }
+    state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     state.songCount++
     const announcementSchedule = dailyAnnouncementScheduleAt(songStart)
@@ -328,10 +359,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       const voiceStartAt = lastTrack && lastTrack.startAt >= songEndAt - 1000 && lastTrack.kind === 'dj-mic'
         ? trackEnd(lastTrack)
         : songEndAt
-      const shouldReadRequest = Boolean(request)
-      const shouldMakeBreak = !shouldReadRequest && voiceStartAt >= state.christopherNextAt
-      if (shouldReadRequest || shouldMakeBreak) {
-        const script = buildChristopherScript(shouldReadRequest ? { title: song.title, artist: song.artist } : undefined)
+      if (!request && voiceStartAt >= state.christopherNextAt) {
+        const script = buildChristopherScript()
         const scriptId = await saveChristopherScript(script)
         const words = script.trim().split(/\\s+/).length
         const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
@@ -345,14 +374,12 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
           fadeIn: 0.8,
           fadeOut: 2.5,
           kind: 'dj-mic',
-          title: shouldReadRequest ? 'DJ Christopher · Song request' : 'DJ Christopher · On-air break',
+          title: 'DJ Christopher · On-air break',
           artist: 'DJ Christopher',
         })
-        if (!shouldReadRequest) {
-          const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
-          const maxGap = djChristopherIntervalMinutes + 5
-          state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
-        }
+        const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
+        const maxGap = djChristopherIntervalMinutes + 5
+        state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
       }
     }
   }
