@@ -221,7 +221,7 @@ function nextStart(state: StationState, now: number) {
 }
 
 /** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
-function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean): Track[] {
+function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean, christopherEnabled = true): Track[] {
   const manilaMusic = mainState.tracks.filter((track) => track.kind === 'music' && track.src).sort((a, b) => a.startAt - b.startAt)
   const out: Track[] = []
   const ident = NATIONWIDE_IDENT_BY_STATION.naga
@@ -240,7 +240,7 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
       nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
     } else nextFadeIn = null
   }
-  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
+  for (const voice of mainState.tracks.filter((track) => christopherEnabled && track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
     const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
     const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
     const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
@@ -453,7 +453,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         mainSnap.state.fillingUntil = 0
         await writeJson(STATE_PATH, mainSnap.state)
       }
-      const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled)
+      const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
       const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
       if (prevKey !== nextKey) {
