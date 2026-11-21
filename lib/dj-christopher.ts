@@ -107,7 +107,7 @@ export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromNam
   return `${opening} The time is ${time}, Philippine time. ${listenerLine} Thank you for choosing RJ FM. ${transition}`
 }
 export function estimateChristopherDuration(text: string) {
-  return Math.max(12, Math.ceil(text.trim().split(/\s+/).length / 2.45))
+  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
 }
 export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3' | 'dzmm', songCount: number) {
   const text = buildTimeCheckScript(prompt)
