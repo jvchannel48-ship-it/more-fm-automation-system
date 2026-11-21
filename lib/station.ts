@@ -1,7 +1,7 @@
 import 'server-only'
 import { after } from 'next/server'
 import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
-import { STATIONS, type StationId } from './stations'
+import type { StationId } from './stations'
 import {
   DZMM_STREAM_URL,
   LOVE_CONNECT_IDENT_DURATION_SECONDS,
@@ -536,7 +536,6 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   const liveDj = await getLiveDj()
   if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
     const statePath = statePathFor(station)
-    const stationMeta = STATIONS[station]
     const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
     if (!settings.djChristopherEnabled) {
       const kept = state.tracks.filter((track) => track.uid.includes('timecheck') || (!track.uid.startsWith('dj-christopher-') && !track.uid.includes('dj-christopher-')))
