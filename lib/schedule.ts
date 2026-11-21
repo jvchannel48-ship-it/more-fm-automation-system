@@ -90,7 +90,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Moira Dela Torre|moira', 'TJ Monterde', 'Arthur Nery',
     'Zack Tabudlo', 'Adie', 'Dionela', 'Maki', 'Cup of Joe',
     'Earl Agustin', 'Rob Deniel', 'Jan Roberts', 'Mikee Sarmiento',
-    'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso',
+    'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso', 'Mariah Deborah', 'Thea Astley',
     'Morissette Amon|morissette', 'Jona|jona', 'Angeline Quinto',
   ]),
 }
