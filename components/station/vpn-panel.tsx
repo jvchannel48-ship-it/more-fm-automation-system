@@ -14,6 +14,19 @@ const NETWORKS = [
 export function VpnPanel() {
   const [open, setOpen] = useState(false)
   const [network, setNetwork] = useState<(typeof NETWORKS)[number]['id']>('TNT')
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = window.setTimeout(() => setCooldown((seconds) => Math.max(0, seconds - 1)), 1000)
+    return () => window.clearTimeout(timer)
+  }, [cooldown])
+
+  const openFreeVpnSetup = () => {
+    if (cooldown > 0) return
+    setCooldown(40)
+    window.open('https://one.one.one.one/', '_blank', 'noopener,noreferrer')
+  }
 
   useEffect(() => {
     const show = () => setOpen(true)
