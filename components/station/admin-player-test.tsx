@@ -35,8 +35,9 @@ export function AdminPlayerTest() {
     if (!playing) unlock()
     setPlaying((current) => !current)
   }
+  const playerNow = data?.serverTime ?? Date.now()
   const currentTrack = data?.tracks
-    .filter((track) => track.kind === 'music' && track.startAt <= (data.serverTime ?? Date.now()) && track.startAt + track.duration * 1000 > (data.serverTime ?? Date.now()))
+    .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
     .sort((a, b) => b.startAt - a.startAt)[0]
 
   return (
