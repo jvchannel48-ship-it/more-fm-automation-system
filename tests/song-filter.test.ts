@@ -55,6 +55,10 @@ for (const title of [
   'Whitney Houston - I Look to You [Radio Edit]',
   'Whitney Houston - Dance_Mix',
   'Whitney Houston - AI cover generated with Suno',
+  'Whitney Houston - AI vocals (Kits AI)',
+  'Whitney Houston - Official Audio (made with Udio)',
+  'Whitney Houston - RVC voice conversion version',
+  'Whitney Houston - AI generated music by MusicGen',
   'Whitney Houston - Disco Inferno',
   'Whitney Houston - Eurodance Classics',
   'Whitney Houston - Club Dance Version',
@@ -77,4 +81,5 @@ assert.equal(isBlockedByTitleRules('Whitney Houston - I Wanna Dance With Somebod
 
 assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'Disco Dance Remix', blockedGenres: [] }), false, 'genre metadata blocks dance/disco/remix even when admin list is empty')
 assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'AI generated music by Suno', blockedGenres: [] }), false, 'AI metadata is blocked')
+assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'official audio | description: vocals generated with ElevenLabs', blockedGenres: [] }), false, 'AI voice-generation labels in source metadata are blocked')
 console.log('song filter: AI, disco, dance, remix, and alternate versions are blocked')
