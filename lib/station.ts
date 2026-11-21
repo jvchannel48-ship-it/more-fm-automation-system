@@ -167,7 +167,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   // Search many artists in parallel batches. If the first artists have no valid
   // results, keep searching the remaining library instead of ending the fill.
   const batchSize = 12
-  const maxArtistsPerFill = Math.min(candidatesArtists.length, 48)
+  const maxArtistsPerFill = Math.min(candidatesArtists.length, 24)
   const triedIds = new Set<string>()
   for (let offset = 0; offset < maxArtistsPerFill; offset += batchSize) {
     const batch = candidatesArtists.slice(offset, offset + batchSize)
@@ -208,8 +208,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     shortlist.sort((a, b) => b.score - a.score)
     // A broken download link should not stop AutoDJ from testing the other
     // valid results in this batch or moving on to the next artist batch.
-    for (const { item, artist } of shortlist.slice(0, 8)) {
-      const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 18_000)
+    for (const { item, artist } of shortlist.slice(0, 1)) {
+      const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
       if (download?.downloadUrl) {
         return {
           id: item.id,
