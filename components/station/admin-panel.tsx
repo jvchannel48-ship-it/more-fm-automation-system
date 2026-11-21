@@ -178,6 +178,13 @@ export function AdminPanel() {
         </div>
         <Switch id="rj-fm-nationwide" checked={data?.rjFmNationwideEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { rjFmNationwideEnabled: checked })} />
       </div>
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="auto-delete-played-cache">Auto-delete played offline copies</Label>
+          <span className="text-xs text-muted-foreground">{data?.autoDeletePlayedCache === false ? 'OFF · Cached songs stay on this device.' : 'ON · Remove a temporary cached song after it finishes playing. Original MP3s stay safe.'}</span>
+        </div>
+        <Switch id="auto-delete-played-cache" checked={data?.autoDeletePlayedCache ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { autoDeletePlayedCache: checked })} />
+      </div>
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="sunday-schedule">Sunday special schedule</Label>
