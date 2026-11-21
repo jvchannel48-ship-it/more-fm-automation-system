@@ -63,9 +63,15 @@ export function buildChristopherScript(request?: { title: string; artist: string
       'Get ready, because we are about to play your selection:',
       'Here it comes, your special request:',
     ]
-    return `${pick(openings)} ${pick(requestOpenings)} ${pick(shoutouts)} ${pick(thankYous)} You requested ${request.title} by ${request.artist}. ${pick(bridges)} ${pick(leadIns)} ${request.title} by ${request.artist}. Stay tuned and wait for your requested song right here on RJ FM. Keep your messages and song requests coming; we would love to hear from you again. This is DJ Christopher, keeping you company with more great music. ${pick(closings)}`
+    return `Hey RJ FM family, Christopher here. ${pick(requestOpenings)} ${pick(shoutouts)} Thanks for listening and for sending your request. You chose ${request.title} by ${request.artist}, and it is coming up next. ${pick(bridges)} Stay right here, more music is on the way!`
   }
-  return `${pick(openings)} ${pick(features)} Remember, great music is even better when shared. Send a greeting to a friend, tell your family where you are listening, and enjoy this time with us. From Manila to our regional RJ FM communities, we appreciate every listener who chooses to tune in. ${pick(features)} ${pick(closings)}`
+  const shortFeatures = [
+    'Hope your day is going well. Wherever you are, take a breath and enjoy the music with us.',
+    'Thanks for keeping RJ FM on. We are happy to be part of your morning, afternoon, or evening.',
+    'Stay safe wherever you go, and keep sharing good music with the people you care about.',
+    'We have more songs coming your way, so get comfortable and enjoy listening.',
+  ]
+  return `Hey RJ FM family, Christopher here. ${pick(shortFeatures)} ${pick(shortFeatures)} Thanks for spending your time with us. More great music is coming right up!`
 }
 export async function saveChristopherScript(text: string): Promise<string> {
   const saved = await readJson<ChristopherScript[]>(DJ_CHRISTOPHER_SCRIPTS_PATH, [])
@@ -91,7 +97,8 @@ export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromNam
   return `${stationName} ${locationLabel}, it is now ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
-  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
+  // Leave generous room for natural neural-voice pacing so the next song never cuts speech off.
+  return Math.max(12, Math.ceil(text.trim().split(/\s+/).length / 2.15) + 3)
 }
 export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3' | 'dzmm', songCount: number) {
   const text = buildTimeCheckScript(prompt)
