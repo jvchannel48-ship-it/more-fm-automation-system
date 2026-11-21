@@ -100,12 +100,12 @@ export function AdminTimeChecks() {
       <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/70 bg-background/60 p-2">
         {items.length === 0 ? (
           <p className="px-2 py-3 text-xs text-muted-foreground">No generated time checks yet.</p>
-        ) : items.slice().reverse().map((item) => (
+        ) : items.slice().reverse().map((item, index) => (
           <div key={item.id} className="rounded-md bg-secondary/60 p-2.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold">{item.mode === 'dzmm' ? 'Before DZMM · 6:29 PM' : `After song #${item.afterSongNumber}`}</span>
+              <span className="text-[11px] font-semibold">{item.mode === 'dzmm' ? 'Before DZMM · 6:29 PM' : `After 3 songs · queue #${index + 1}`}</span>
               <span className={item.scheduledAt ? 'text-[10px] text-emerald-300' : 'text-[10px] text-amber-300'}>
-                {item.scheduledAt ? 'Scheduled to play' : 'Waiting in queue'}
+                {item.scheduledAt ? 'Added to player queue' : 'Waiting in queue'}
               </span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.text}</p>
