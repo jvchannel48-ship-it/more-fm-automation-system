@@ -19,4 +19,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:schedule
       - run: pnpm test:song-filter
+      - run: pnpm test:listeners
       - run: pnpm exec tsc --noEmit
