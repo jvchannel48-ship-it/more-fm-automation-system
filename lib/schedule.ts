@@ -426,7 +426,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
     id: 'sunday-oldies',
     pools: { english: [], tagalog: [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s']] },
-    variants: { english: [], tagalog: ['', 'official audio', 'lyrics', 'greatest hits'] },
+    variants: { english: [], tagalog: OPM_VARIANTS },
     tagalogOnly: true,
   },
   'sunday-english-oldies': {
