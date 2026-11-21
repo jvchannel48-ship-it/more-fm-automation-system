@@ -36,6 +36,7 @@ export interface StationSettings {
   rjOfficialAutoMessage: string
   rjFmNationwideEnabled: boolean
   songRequestsEnabled: boolean
+  autoDeletePlayedCache: boolean
 }
 
 export interface LiveDjState {
@@ -59,6 +60,7 @@ export interface NowResponse {
   nextOnAir: number | null
   tracks: Track[]
   bassBoostDb: number
+  autoDeletePlayedCache?: boolean
   songRequestsEnabled?: boolean
   transmitterWatts: 5000 | 25000
   liveDj?: LiveDjState | null
