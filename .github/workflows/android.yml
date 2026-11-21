@@ -9,6 +9,7 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'components/station/account-menu.tsx'
+      - 'app/page.tsx'
       - 'components/station/app-update-gate.tsx'
       - 'public/app-update.json'
       - 'lib/app-permissions.ts'
