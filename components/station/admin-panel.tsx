@@ -11,6 +11,7 @@ import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
 import { AdminLiveDesk } from './admin-live-desk'
+import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -168,6 +169,7 @@ export function AdminPanel() {
         </div>
         <Switch id="dj-christopher" checked={data?.djChristopherEnabled ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { djChristopherEnabled: checked })} />
       </div>
+      <AdminTimeChecks />
       <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="song-requests">Song Requests</Label>
@@ -369,6 +371,20 @@ export function AdminPanel() {
         <Stat label="Queued" value={data?.queued ?? '–'} />
         <Stat label="Total listeners" value={data?.listenersNow ?? '–'} />
         <Stat label="Average listeners" value={data?.averageListeners ?? '–'} />
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-secondary/40 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label>Artist History Library · All artists</Label>
+          <span className="text-xs tabular-nums text-muted-foreground">{data?.artistHistory?.length ?? 0} artists</span>
+        </div>
+        <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+          {(data?.artistHistory ?? []).length > 0 ? data!.artistHistory.map((entry) => (
+            <div key={entry.artist} className="flex items-center justify-between gap-3 rounded-md bg-background/70 px-2.5 py-2">
+              <span className="min-w-0 truncate text-xs font-medium">{entry.artist}</span>
+              <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{entry.plays} plays · {new Date(entry.lastPlayedAt).toLocaleDateString()}</span>
+            </div>
+          )) : <p className="py-2 text-xs text-muted-foreground">Artist history will appear as AutoDJ plays songs.</p>}
+        </div>
       </div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
