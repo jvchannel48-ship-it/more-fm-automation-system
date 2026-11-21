@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
 import { STATIONS, STATION_ORDER } from '@/lib/stations'
 import { getActiveStationListenerCounts, getStationListenerStats } from '@/lib/storage'
-import { getStationNowPlayingTitle } from '@/lib/station'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const [metrics, active, nowPlaying] = await Promise.all([
+  const [metrics, active] = await Promise.all([
     getStationListenerStats(),
     getActiveStationListenerCounts(),
-    Promise.all(STATION_ORDER.map((id) => getStationNowPlayingTitle(id))),
   ])
   const windowMs = 24 * 60 * 60 * 1000
   const sampleHoldMs = 60_000
@@ -34,7 +32,6 @@ export async function GET() {
       name: STATIONS[id].name,
       frequency: STATIONS[id].frequency,
       listenersNow: active.stationCounts[id] ?? 0,
-      currentSong: nowPlaying[index],
       averageListeners24h: average,
       samples24h: history.length,
       status: (active.stationCounts[id] ?? 0) > 0 ? 'LIVE' : latest && Date.now() - latest.t < 60_000 ? 'ON AIR' : 'WAITING FOR DATA',

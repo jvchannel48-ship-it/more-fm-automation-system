@@ -10,9 +10,7 @@ import { SIGN_OFF_HOUR, SIGN_ON_HOUR } from '@/lib/schedule'
 import { MAX_BASS_BOOST_DB, type AdminStatus } from '@/lib/types'
 import { STRICT_CLASSIC_LOVE_GENRES } from '@/lib/song-filter'
 import { AdminCreditControls } from './admin-credit-controls'
-import { AdminLiveDesk } from './admin-live-desk'
 import { AdminPlayerTest } from './admin-player-test'
-import { AdminTimeChecks } from './admin-time-checks'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -33,7 +31,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 type AdminStationOverviewData = {
   totalListenersNow: number
   totalAverageListeners24h: number
-  stations: Array<{ id: string; name: string; frequency: string; listenersNow: number; averageListeners24h: number; currentSong: string; status: string; rjfmRank: number }>
+  stations: Array<{ id: string; name: string; frequency: string; listenersNow: number; averageListeners24h: number; status: string; rjfmRank: number }>
 }
 function AdminStationOverview() {
   const { data } = useSWR('/api/station-status', (url: string) => fetch(url, { cache: 'no-store' }).then((r) => {
@@ -53,7 +51,6 @@ function AdminStationOverview() {
               <p className="truncate text-xs font-semibold">{station.name}</p>
               <span className="shrink-0 text-[10px] font-medium text-primary">{station.frequency} MHz</span>
             </div>
-            <p className="mt-1 truncate text-xs text-muted-foreground" title={station.currentSong}>♫ {station.currentSong}</p>
             <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
               <span>{station.listenersNow} now · {station.averageListeners24h.toFixed(1)} avg/24h</span><span>{station.rjfmRank > 0 ? `#${station.rjfmRank} · ` : ''}{station.status}</span>
             </div>
@@ -178,9 +175,7 @@ export function AdminPanel() {
   return (
     <>
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-      <AdminLiveDesk />
       <AdminStationOverview />
-      <AdminTimeChecks />
       <AdminPlayerTest />
       <AdminCreditControls />
       <div className="flex items-center justify-between gap-3">
