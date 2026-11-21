@@ -32,7 +32,7 @@ const sundayBlocks = [
 ] as const
 
 for (let hour = 0; hour < 24; hour++) {
-  const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
+  const expectedOffAir = false
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
   const expectedNormalProgram = hour >= 4 && hour < 20 ? 'daytime-love' : 'love-mix'
@@ -87,12 +87,12 @@ assert.ok(PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => artist.name =
 assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Rodel Naval'), 'Sunday Tagalog classics include Rodel Naval')
 assert.ok(PROGRAMS['sunday-tagalog-classic'].pools.tagalog.some((artist) => artist.name === 'Lea Salonga'), 'Sunday Tagalog classics include Lea Salonga')
 
-assert.equal(isOffAir(manilaTime(sunday, 2, 59)), false, 'station stays on until 3 AM sign-off')
-assert.equal(isOffAir(manilaTime(sunday, 3, 0)), true, 'station signs off at 3 AM')
-assert.equal(isOffAir(manilaTime(sunday, 3, 59)), true, 'station remains off before 4 AM')
-assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'station signs on at 4 AM')
-assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(sunday, 4), 'next sign-on during off-air is 4 AM the same day')
-assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next sign-on after 4 AM is 4 AM the following day')
+assert.equal(SIGN_OFF_HOUR, SIGN_ON_HOUR, '24/7 RJ FM has no daily sign-off gap')
+assert.equal(isOffAir(manilaTime(sunday, 3, 0)), false, 'RJ FM remains on-air at 3 AM')
+assert.equal(isOffAir(manilaTime(sunday, 3, 59)), false, 'RJ FM remains on-air before 4 AM')
+assert.equal(isOffAir(manilaTime(sunday, 4, 0)), false, 'RJ FM remains on-air at 4 AM')
+assert.equal(nextSignOn(manilaTime(sunday, 2)), manilaTime(16, 4), '24/7 station reports the next daily schedule marker without signing off')
+assert.equal(nextSignOn(manilaTime(sunday, 4)), manilaTime(16, 4), 'next daily schedule marker is 4 AM tomorrow')
 assert.equal(programAt(manilaTime(16, 16, 0)).id, 'daytime-love', '4:00 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'daytime-love', '6:02 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
