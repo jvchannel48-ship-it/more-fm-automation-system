@@ -14,10 +14,11 @@ export async function POST(request: NextRequest) {
   if (authResponse) return authResponse
   const settings = await getSettings()
   if (!settings.songRequestsEnabled) return NextResponse.json({ error: 'Song requests are currently turned off.' }, { status: 403, headers: privateJsonHeaders })
-  const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown; station?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { title?: unknown; artist?: unknown; station?: unknown; location?: unknown }
   const station = parseStationId(body.station)
   const title = typeof body.title === 'string' ? body.title.trim() : ''
   const artist = typeof body.artist === 'string' ? body.artist.trim() : ''
+  const location = typeof body.location === 'string' ? body.location.trim().slice(0, 80) : ''
 
   if (!title || !artist) return NextResponse.json({ error: 'Enter both a song title and artist.' }, { status: 400 })
   if (title.length > 120 || artist.length > 120) return NextResponse.json({ error: 'Each field must be 120 characters or fewer.' }, { status: 400 })
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       creditsRemaining = creditResult.creditsRemaining
       if (!creditResult.accepted) throw new Error('CREDITS_EMPTY')
       charged = creditResult.creditsRemaining !== undefined
-    }, station)
+    }, station, location)
     return NextResponse.json({ ...result, station, creditsRemaining }, { status: 202, headers: privateJsonHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'CREDITS_EMPTY') {
