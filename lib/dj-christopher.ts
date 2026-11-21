@@ -29,9 +29,41 @@ function pick<T>(items: T[], avoid?: T) {
   const choices = items.filter((item) => item !== avoid)
   return choices[Math.floor(Math.random() * choices.length)] ?? items[0]
 }
-export function buildChristopherScript(request?: { title: string; artist: string }) {
+export function buildChristopherScript(request?: { title: string; artist: string; location?: string }) {
   if (request) {
-    return `${pick(openings)} We have a special song request from one of our listeners. They asked for ${request.title} by ${request.artist}. Thank you for sending your request and for being part of our RJ FM community. To everyone listening, we hope this song brings back a wonderful memory or makes your day a little brighter. Keep those requests and greetings coming through the station. We are happy to share the music with you. ${pick(closings)}`
+    const location = request.location?.trim() || 'our wonderful RJ FM listening community'
+    const requestOpenings = [
+      'We have a lovely request coming in, and it is always a pleasure to hear from you.',
+      'Now, let us make this next musical moment extra special with a listener request.',
+      'A little radio love is heading your way because one of our listeners has chosen the next song.',
+      'It is time to share another song picked by someone listening right along with us.',
+      'Here is a special musical dedication from one of the voices in our RJ FM family.',
+    ]
+    const thankYous = [
+      'Thank you so much for taking the time to send your request and for making RJ FM part of your day.',
+      'We truly appreciate your message, your song choice, and your continued support of our station.',
+      'Thanks for listening, for reaching out, and for sharing the music you love with our whole radio family.',
+      'Your request means a lot to us. Thank you for being part of this growing community of music lovers.',
+    ]
+    const shoutouts = [
+      `A warm and cheerful hello to everyone listening from ${location}!`,
+      `Sending a big RJ FM shout-out to you and everyone tuning in from ${location}.`,
+      `Special greetings are on the way to our listener in ${location}, and to all your friends and family listening nearby.`,
+      `Wherever you are in ${location}, we hope this moment brings a smile to your day.`,
+    ]
+    const bridges = [
+      'Whether you are at home, at work, travelling, or taking a quiet break, we are glad you chose to spend this time with us.',
+      'We hope the melody brings back a beautiful memory, gives you a little energy, or simply makes the day feel brighter.',
+      'Keep enjoying the moment, share the good vibes with someone special, and remember that great music brings us closer.',
+      'Turn up the volume if you can, get comfortable, and let this song be the soundtrack to your next few minutes.',
+    ]
+    const leadIns = [
+      'And now, coming up next, especially for you:',
+      'All right, your requested song is coming up next:',
+      'Get ready, because we are about to play your selection:',
+      'Here it comes, your special request:',
+    ]
+    return `${pick(openings)} ${pick(requestOpenings)} ${pick(shoutouts)} ${pick(thankYous)} You requested ${request.title} by ${request.artist}. ${pick(bridges)} ${pick(leadIns)} ${request.title} by ${request.artist}. Stay tuned and wait for your requested song right here on RJ FM. Keep your messages and song requests coming; we would love to hear from you again. This is DJ Christopher, keeping you company with more great music. ${pick(closings)}`
   }
   return `${pick(openings)} ${pick(features)} Remember, great music is even better when shared. Send a greeting to a friend, tell your family where you are listening, and enjoy this time with us. From Manila to our regional RJ FM communities, we appreciate every listener who chooses to tune in. ${pick(features)} ${pick(closings)}`
 }
