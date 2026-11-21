@@ -2,60 +2,96 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { HardDrive, RefreshCw, Server, X } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, Database, HardDrive, MemoryStick, RefreshCw, Server, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type ServerStatus = {
   error?: string
   server?: { status: string; uptimeSeconds: number; checkedAt: number }
   database?: { ok: boolean; error?: string }
-  storage?: { configured: boolean; provider: string }
+  storage?: { configured: boolean; provider: string; usage?: { available: boolean; usedBytes: number; objectCount: number; provider: string; error?: string } }
   memory?: { heapUsedMb: number; heapTotalMb: number; rssMb: number }
 }
-
 const fetcher = async (url: string) => {
   const response = await fetch(url, { cache: 'no-store' })
   const data = await response.json() as ServerStatus
   if (!response.ok) throw new Error(data.error || 'Could not load server status.')
   return data
 }
+const mb = (bytes: number) => (bytes / 1024 / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 })
+const percent = (used: number, total: number) => total > 0 ? Math.min(100, Math.round(used / total * 100)) : 0
 
-function StatusLine({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
-  return <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-secondary/40 p-3">
-    <div><p className="text-sm font-medium">{label}</p><p className="text-xs text-muted-foreground">{detail}</p></div>
-    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}`}>{ok ? 'OK' : 'Check'}</span>
+function MetricCard({ icon: Icon, label, value, detail, tone = 'gold' }: {
+  icon: typeof Server; label: string; value: string; detail: string; tone?: 'gold' | 'green' | 'blue'
+}) {
+  const tones = {
+    gold: 'border-amber-400/20 from-amber-400/15 to-amber-400/[0.03] text-amber-300',
+    green: 'border-emerald-400/20 from-emerald-400/15 to-emerald-400/[0.03] text-emerald-300',
+    blue: 'border-sky-400/20 from-sky-400/15 to-sky-400/[0.03] text-sky-300',
+  }
+  return <div className={`rounded-2xl border bg-gradient-to-br p-4 ${tones[tone]}`}>
+    <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-muted-foreground">{label}</span><Icon className="size-4" /></div>
+    <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">{value}</p>
+    <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
+  </div>
+}
+function UsageBar({ label, used, total }: { label: string; used: number; total: number }) {
+  const value = percent(used, total)
+  return <div className="space-y-2">
+    <div className="flex items-center justify-between gap-3 text-xs"><span className="font-medium">{label}</span><span className="tabular-nums text-muted-foreground">{used} / {total} MB · {value}%</span></div>
+    <div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${value}%` }} /></div>
+  </div>
+}
+function HealthRow({ icon: Icon, label, ok, detail }: { icon: typeof Server; label: string; ok: boolean; detail: string }) {
+  return <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/30 p-3">
+    <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-300'}`}><Icon className="size-4" /></span>
+    <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{label}</p><p className="text-xs text-muted-foreground">{detail}</p></div>
+    {ok ? <CheckCircle2 className="size-5 shrink-0 text-emerald-400" /> : <AlertTriangle className="size-5 shrink-0 text-amber-300" />}
   </div>
 }
 
 export function ServerDashboard() {
   const [open, setOpen] = useState(false)
   const { data, error, isLoading, mutate } = useSWR(open ? '/api/admin/server' : null, fetcher, { refreshInterval: 15000, revalidateOnFocus: true })
-
+  const storage = data?.storage?.usage
+  const storageMb = storage?.available ? Number(mb(storage.usedBytes)) : null
   return <>
-    <Button type="button" variant="ghost" className="h-14 w-full flex-col gap-1 rounded-xl text-xs focus-visible:border-transparent focus-visible:ring-0" onClick={() => setOpen(true)}>
-      <Server className="size-5" />Server
-    </Button>
-    {open && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-labelledby="server-dashboard-title" className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-5 text-left shadow-2xl">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary"><Server className="size-5" /></span><div><h2 id="server-dashboard-title" className="text-lg font-semibold">RJ FM Server</h2><p className="text-xs text-muted-foreground">Live infrastructure diagnostics</p></div></div>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Close server dashboard" onClick={() => setOpen(false)}><X /></Button>
-        </div>
-        <div className="mt-5 flex flex-col gap-3">
-          {isLoading && <p className="text-sm text-muted-foreground">Checking server, database and storage…</p>}
-          {error && <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{error.message} Sign in through Admin to view diagnostics.</div>}
-          {data && <>
-            <StatusLine label="Application server" ok={data.server?.status === 'online'} detail={data.server ? `Online · uptime ${Math.floor(data.server.uptimeSeconds / 3600)}h ${Math.floor((data.server.uptimeSeconds % 3600) / 60)}m` : 'Status unavailable'} />
-            <StatusLine label="PostgreSQL" ok={Boolean(data.database?.ok)} detail={data.database?.ok ? 'Database connection successful' : data.database?.error || 'Not connected'} />
-            <StatusLine label="Station storage" ok={Boolean(data.storage?.configured)} detail={data.storage?.configured ? `${data.storage.provider} configured` : 'Storage unavailable; server may use temporary memory'} />
-            <div className="rounded-xl border border-border/70 bg-secondary/40 p-3">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium"><HardDrive className="size-4" />Server memory</div>
-              <div className="grid grid-cols-3 gap-2 text-center">{[['Heap used', data.memory?.heapUsedMb], ['Heap total', data.memory?.heapTotalMb], ['RAM (RSS)', data.memory?.rssMb]].map(([label, value]) => <div key={String(label)}><p className="text-base font-semibold tabular-nums">{value ?? '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">MB</span></p><p className="text-[10px] text-muted-foreground">{label}</p></div>)}</div>
+    <Button type="button" variant="ghost" className="h-14 w-full flex-col gap-1 rounded-xl text-xs focus-visible:border-transparent focus-visible:ring-0" onClick={() => setOpen(true)}><Server className="size-5" />Server</Button>
+    {open && <div className="fixed inset-0 z-[70] overflow-y-auto bg-background/95 p-3 backdrop-blur-md sm:p-6" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="server-dashboard-title" className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 pb-6 pt-3 text-left">
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary"><Server className="size-6" /></span><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Control center</p><h2 id="server-dashboard-title" className="text-xl font-bold sm:text-2xl">RJ FM Server Dashboard</h2><p className="text-xs text-muted-foreground">Live system health and resource usage</p></div></div>
+          <Button type="button" variant="outline" size="icon" aria-label="Close server dashboard" onClick={() => setOpen(false)}><X /></Button>
+        </header>
+        {isLoading && <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Loading live server metrics…</div>}
+        {error && <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{error.message} Sign in through Admin to view diagnostics.</div>}
+        {data && <>
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-3"><div className="flex items-center gap-2"><span className="size-2 animate-pulse rounded-full bg-emerald-400" /><span className="text-sm font-semibold">System {data.server?.status === 'online' ? 'Operational' : 'Status unknown'}</span></div><span className="text-xs tabular-nums text-muted-foreground">Uptime {Math.floor((data.server?.uptimeSeconds ?? 0) / 3600)}h {Math.floor(((data.server?.uptimeSeconds ?? 0) % 3600) / 60)}m</span></div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricCard icon={Server} label="Application" value="ONLINE" detail="App process running" tone="green" />
+            <MetricCard icon={Database} label="PostgreSQL" value={data.database?.ok ? 'CONNECTED' : 'OFFLINE'} detail={data.database?.ok ? 'Database reachable' : 'Connection needs attention'} tone={data.database?.ok ? 'green' : 'gold'} />
+            <MetricCard icon={HardDrive} label="Storage used" value={storageMb === null ? '—' : `${storageMb} MB`} detail={storage?.available ? `${storage.objectCount.toLocaleString()} stored files` : 'Exact usage unavailable'} tone="blue" />
+            <MetricCard icon={MemoryStick} label="RAM (RSS)" value={data.memory ? `${data.memory.rssMb} MB` : '—'} detail="Total process memory" tone="gold" />
+          </div>
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <div className="mb-4 flex items-center gap-2"><Activity className="size-5 text-primary" /><h3 className="font-bold">Resource usage</h3></div>
+            <div className="space-y-5">
+              {data.memory && <UsageBar label="JavaScript heap" used={data.memory.heapUsedMb} total={data.memory.heapTotalMb} />}
+              {data.memory && <div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-secondary/50 p-3"><p className="text-[11px] text-muted-foreground">Heap used</p><p className="mt-1 text-lg font-bold tabular-nums">{data.memory.heapUsedMb} MB</p></div><div className="rounded-xl bg-secondary/50 p-3"><p className="text-[11px] text-muted-foreground">Heap allocated</p><p className="mt-1 text-lg font-bold tabular-nums">{data.memory.heapTotalMb} MB</p></div></div>}
+              <div className="rounded-xl border border-border/70 bg-secondary/30 p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">Station storage</p><span className="text-xs text-muted-foreground">{storage?.provider ?? data.storage?.provider ?? 'Unknown provider'}</span></div>
+                {storage?.available ? <><p className="mt-2 text-2xl font-bold tabular-nums">{storageMb} MB</p><p className="text-xs text-muted-foreground">Actual total size of files in the storage bucket · {storage.objectCount.toLocaleString()} objects</p></> : <p className="mt-2 text-xs text-amber-200">{storage?.error ?? 'Storage usage could not be measured. Check storage connection and permissions.'}</p>}
+                <p className="mt-2 text-[10px] text-muted-foreground">Capacity limit is not reported because the provider does not expose a verified quota here.</p>
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">Checked {data.server?.checkedAt ? new Date(data.server.checkedAt).toLocaleTimeString() : '—'} · Storage status shows configuration/last read health, not total bucket capacity.</p>
-          </>}
-          <Button type="button" variant="outline" className="w-full" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className="size-4" />Refresh status</Button>
-        </div>
+          </section>
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5"><h3 className="mb-3 font-bold">Service health</h3><div className="space-y-2">
+            <HealthRow icon={Server} label="Application server" ok={data.server?.status === 'online'} detail={`Uptime ${Math.floor((data.server?.uptimeSeconds ?? 0) / 60)} minutes`} />
+            <HealthRow icon={Database} label="PostgreSQL database" ok={Boolean(data.database?.ok)} detail={data.database?.ok ? 'Connection successful' : data.database?.error ?? 'Database unavailable'} />
+            <HealthRow icon={HardDrive} label="Station storage" ok={Boolean(data.storage?.configured && storage?.available)} detail={storage?.available ? 'Bucket readable and usage measured' : 'Storage connection or usage check needs attention'} />
+          </div></section>
+          <p className="text-center text-[10px] text-muted-foreground">Auto-refresh every 15 seconds · Last checked {data.server?.checkedAt ? new Date(data.server.checkedAt).toLocaleTimeString() : '—'}</p>
+        </>}
+        <div className="mt-auto flex gap-2"><Button type="button" className="flex-1" onClick={() => void mutate()} disabled={isLoading}><RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} />Refresh dashboard</Button><Button type="button" variant="outline" onClick={() => setOpen(false)}>Close</Button></div>
       </section>
     </div>}
   </>
