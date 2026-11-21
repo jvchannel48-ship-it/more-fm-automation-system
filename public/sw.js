@@ -85,3 +85,16 @@ self.addEventListener('fetch', (event) => {
     })())
   }
 })
+
+
+self.addEventListener('message', (event) => {
+  const message = event.data
+  if (!message || message.type !== 'RJFM_PURGE_PLAYED_AUDIO' || typeof message.url !== 'string') return
+  let url
+  try { url = new URL(message.url, self.location.origin) } catch { return }
+  if (url.origin !== self.location.origin) return
+  if (!(url.pathname.startsWith('/audio/') || url.pathname === '/api/audio')) return
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.delete(url.toString()))
+  )
+})
