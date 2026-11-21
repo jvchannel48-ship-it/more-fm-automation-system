@@ -348,7 +348,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       }
       const script = buildChristopherScript({ title: request.title, artist: request.artist, location: request.location })
       const scriptId = await saveChristopherScript(script)
-      const words = script.trim().split(/\\s+/).length
+      const words = script.trim().split(/\s+/).length
       const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
       state.tracks.push({
         uid: `dj-christopher-request-${station}-${scriptId}`,
