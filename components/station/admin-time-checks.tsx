@@ -21,7 +21,6 @@ const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(async (r
 
 export function AdminTimeChecks() {
   const { data, mutate } = useSWR('/api/admin/time-checks', fetcher, { refreshInterval: 5000 })
-  const [prompt, setPrompt] = useState('Generate RJ FM time check is 4:30 AM')
   const [mode, setMode] = useState<'after3' | 'dzmm'>('after3')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -35,7 +34,7 @@ export function AdminTimeChecks() {
       const response = await fetch('/api/admin/time-checks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode }),
+        body: JSON.stringify({ prompt: 'AUTO_PH_TIME', mode }),
       })
       const result = await response.json() as { error?: string; items?: TimeCheckItem[] }
       if (!response.ok) throw new Error(result.error ?? 'Could not generate time check.')
@@ -62,18 +61,7 @@ export function AdminTimeChecks() {
           <p className="text-xs text-muted-foreground">Generate and save voice clips; queued clips play automatically in order.</p>
         </div>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="christopher-time-prompt">Time-check prompt</Label>
-        <input
-          id="christopher-time-prompt"
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder="Generate RJ FM time check is 4:30 AM"
-          maxLength={180}
-          disabled={busy}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        />
-      </div>
+      <p className="text-xs text-muted-foreground">The spoken time is generated from the live Philippines clock (Asia/Manila, UTC+8) when you queue the announcement.</p>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="christopher-time-mode">Playback schedule</Label>
         <select
@@ -87,7 +75,7 @@ export function AdminTimeChecks() {
           <option value="dzmm">Before DZMM · 6:29 PM handoff</option>
         </select>
       </div>
-      <Button type="button" onClick={generate} disabled={busy || !prompt.trim()}>
+      <Button type="button" onClick={generate} disabled={busy}>
         <WandSparkles className="size-4" />
         {busy ? 'Generating…' : 'Generate and queue time check'}
       </Button>
