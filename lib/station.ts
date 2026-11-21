@@ -29,9 +29,9 @@ const CROSSFADE_SECONDS = 8
 const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
 const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
-const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const SONG_REPEAT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
-const MAX_ARTIST_PLAYS_PER_HOUR = 2
+const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
 const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
 const EVENING_TRANSITION_SECONDS = 12.2
@@ -135,9 +135,9 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
     if (h.t > now - ARTIST_WINDOW_MS) hourCounts.set(h.artist, (hourCounts.get(h.artist) ?? 0) + 1)
   }
   const allowed = unique.filter((a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR)
-  const recent = new Set(history.slice(-12).map((h) => h.artist))
+  const recent = new Set(history.slice(-20).map((h) => h.artist))
   const fresh = allowed.filter((a) => !recent.has(a.name))
-  return shuffle(fresh.length >= 3 ? fresh : allowed)
+  return shuffle(fresh.length > 0 ? fresh : allowed)
 }
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, blockedGenres: string[], station: StationId = 'main') {
   if (isBlockedProgram(program, blockedGenres)) return null
@@ -147,7 +147,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const pool = program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
-  for (const artist of candidatesArtists.slice(0, 5)) {
+  for (const artist of candidatesArtists.slice(0, 12)) {
     const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: `${artist.name} ${variant}`.trim() }), 15_000)
     const candidates = (data?.items ?? []).filter((item) => {
@@ -159,7 +159,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
-    for (const item of shuffle(candidates.slice(0, 10)).slice(0, 2)) {
+    for (const item of shuffle(candidates.slice(0, 15)).slice(0, 5)) {
       const dl = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
       if (dl?.downloadUrl) return { id: item.id, key: songKey(item.title), artist: artist.name, title: item.title, src: dl.downloadUrl, duration: parseDuration(item.duration) }
     }

@@ -135,7 +135,7 @@ export function RadioPlayer() {
   }, [meta])
 
   return (
-    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-4' : 'gap-8'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
+    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
       <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>
         <span className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`} aria-hidden="true" />
         {offAir ? 'Off air' : 'Live'}
@@ -147,14 +147,14 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="vinyl relative flex size-52 items-center justify-center rounded-full sm:size-60">
+      <div className="vinyl relative flex size-40 items-center justify-center rounded-full sm:size-44">
         <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
         <div className={`vinyl-record absolute inset-3 rounded-full border ${playing && !offAir ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
         <div className="vinyl-label absolute inset-[28%] flex items-center justify-center rounded-full">
           <span className="vinyl-label-mark">{meta.vinylMark}</span>
         </div>
         <div className="vinyl-hole absolute size-3 rounded-full" aria-hidden="true" />
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
+        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-16 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-7">
           {playing ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
