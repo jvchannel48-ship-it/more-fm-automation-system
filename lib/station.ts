@@ -159,7 +159,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   // Search many artists in parallel batches. If the first artists have no valid
   // results, keep searching the remaining library instead of ending the fill.
   const batchSize = 12
-  const maxArtistsPerFill = Math.min(candidatesArtists.length, 24)
+  const maxArtistsPerFill = Math.min(candidatesArtists.length, 32)
   const triedIds = new Set<string>()
   for (let offset = 0; offset < maxArtistsPerFill; offset += batchSize) {
     const batch = candidatesArtists.slice(offset, offset + batchSize)
@@ -200,7 +200,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     shortlist.sort((a, b) => b.score - a.score)
     // A broken download link should not stop AutoDJ from testing the other
     // valid results in this batch or moving on to the next artist batch.
-    for (const { item, artist } of shortlist.slice(0, 1)) {
+    for (const { item, artist } of shortlist.slice(0, 3)) {
       const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
       if (download?.downloadUrl) {
         return {
@@ -598,6 +598,14 @@ export async function refreshQueue(preserveCurrent = false) {
     await writeJson(STATE_PATH, state)
   }
   return getNowPlaying()
+}
+/** Read the current/upcoming music title without triggering AutoDJ queue generation. */
+export async function getStationNowPlayingTitle(station: StationId): Promise<string> {
+  const now = Date.now()
+  const { state } = await loadState(now, statePathFor(station))
+  const music = state.tracks.filter((track) => track.kind === 'music').sort((a, b) => a.startAt - b.startAt)
+  const current = music.find((track) => track.startAt <= now && trackEnd(track) > now)
+  return current?.title ?? music.find((track) => track.startAt > now)?.title ?? 'Music rotation preparing'
 }
 export async function recoverFailedTrack(uid: string, options: { station?: StationId } = {}) {
   const station: StationId = options.station ?? 'main'
