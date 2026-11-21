@@ -377,15 +377,14 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       }
       const script = buildChristopherScript({ title: request.title, artist: request.artist, location: request.location })
       const scriptId = await saveChristopherScript(script)
-      const words = script.trim().split(/\s+/).length
-      const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
+      const speechSeconds = Math.max(30, estimateChristopherDuration(script))
       state.tracks.push({
         uid: `dj-christopher-request-${station}-${scriptId}`,
         src: `/api/dj-christopher?id=${scriptId}`,
         startAt: voiceStartAt,
         duration: speechSeconds,
-        fadeIn: 0.8,
-        fadeOut: 2.5,
+        fadeIn: 0.2,
+        fadeOut: 0,
         kind: 'dj-mic',
         title: 'DJ Christopher · Song request',
         artist: 'DJ Christopher',
@@ -453,8 +452,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         src: `/api/dj-christopher?id=${scriptId}`,
         startAt: timeCheckEndAt,
         duration: timeCheckDuration,
-        fadeIn: 0.5,
-        fadeOut: 2.5,
+        fadeIn: 0.2,
+        fadeOut: 0,
         kind: 'dj-mic',
         title: 'DJ Christopher · RJ FM Time Check',
         artist: 'DJ Christopher',
