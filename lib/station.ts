@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
@@ -389,7 +389,22 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       const philippinesTime = philippinesMinute === '00'
         ? `${philippinesHour} ${philippinesPeriod}`
         : `${philippinesHour}:${philippinesMinute} ${philippinesPeriod}`
-      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`)
+      // Only read listener messages that an admin has reviewed (read=true), once each.
+      const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
+      const reviewedMessages = listenerMessages.filter((message) => message.read && !message.spokenAt && message.body.trim())
+      const selectedMessage = reviewedMessages.length
+        ? reviewedMessages[Math.floor(Math.random() * reviewedMessages.length)]
+        : undefined
+      const safeListenerMessage = selectedMessage ? {
+        fromName: selectedMessage.fromName.replace(/[\\r\\n<>]/g, ' ').slice(0, 40),
+        body: selectedMessage.body.replace(/https?:\\/\\/\\S+/gi, ' link ').replace(/[\\r\\n<>]/g, ' ').slice(0, 180),
+      } : undefined
+      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`, safeListenerMessage)
+      if (selectedMessage) {
+        await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
+          message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
+        ))
+      }
       const scriptId = await saveChristopherScript(timeCheckText)
       const timeCheckDuration = estimateChristopherDuration(timeCheckText)
       const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
