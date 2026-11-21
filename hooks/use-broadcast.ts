@@ -322,8 +322,8 @@ export function useBroadcast(
           }
         }
 
-        const liveDuck = data?.liveDj?.active ? 0.38 : 1
         const isChristopherVoice = track.kind === 'dj-mic' && track.uid.includes('dj-christopher-')
+        const liveDuck = data?.liveDj?.active && !isChristopherVoice ? 0.38 : 1
         const christopherSpeaking = active.some((item) => item.kind === 'dj-mic' && item.uid.includes('dj-christopher-'))
         // Keep Christopher at full program level and lower the music bed while he speaks.
         const musicDuck = track.kind === 'music' && christopherSpeaking ? 0.14 : 1
