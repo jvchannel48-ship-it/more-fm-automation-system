@@ -77,6 +77,7 @@ export async function listChristopherTimeChecks() {
 }
 export async function nextChristopherTimeCheck(mode: 'after3' | 'dzmm', songCount = 0) {
   const saved = await listChristopherTimeChecks()
+  if (mode === 'dzmm' && saved.some((item) => item.mode === 'dzmm' && item.scheduledAt !== null && Math.abs(Date.now() - item.scheduledAt) < 24 * 60 * 60 * 1000)) return null
   return saved.find((item) => item.mode === mode && item.scheduledAt === null && (mode === 'dzmm' || item.afterSongNumber <= songCount)) ?? null
 }
 export async function markChristopherTimeCheckScheduled(id: string, scheduledAt: number) {
