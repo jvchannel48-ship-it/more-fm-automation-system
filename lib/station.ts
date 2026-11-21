@@ -147,13 +147,10 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const allowed = unique.filter((a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR)
   const recent = new Set(history.slice(-20).map((h) => h.artist))
   const fresh = allowed.filter((a) => !recent.has(a.name))
-  // Give the requested Kenny Rogers / Anne Murray classic catalog a fair chance in the English love rotation.
-  const featuredClassic = fresh.find((artist) => normalize(artist.name) === 'kenny rogers')
   const relaxed = allowed.length ? allowed : unique.filter((a) => a.name !== lastArtist)
   const rotation = fresh.length > 0 ? fresh : relaxed.length > 0 ? relaxed : unique
-  return featuredClassic
-    ? [featuredClassic, ...shuffle(rotation.filter((artist) => artist.name !== featuredClassic.name))]
-    : shuffle(rotation)
+  // No featured artist: every eligible artist gets an equal randomized turn.
+  return shuffle(rotation)
 }
 /**
  * Live AutoDJ selector: evaluates a rotating pool against the active program,
@@ -361,7 +358,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       ? nagaProgramAt(startAt)
       : station === 'masbate'
         ? masbateProgramAt(startAt)
-        : programAt(startAt, sundayScheduleEnabled)
+        : programAt(startAt, sundayScheduleEnabled, station)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
     const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 8 === 0
