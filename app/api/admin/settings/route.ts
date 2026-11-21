@@ -26,6 +26,8 @@ export async function PUT(request: NextRequest) {
     rjFmNationwideEnabled?: unknown
     songRequestsEnabled?: unknown
     autoDeletePlayedCache?: unknown
+    djChristopherEnabled?: unknown
+    djChristopherIntervalMinutes?: unknown
   }
   const current = await getSettings()
   const blockedGenres = Array.isArray(body.blockedGenres)
@@ -60,6 +62,10 @@ export async function PUT(request: NextRequest) {
     autoDeletePlayedCache: typeof body.autoDeletePlayedCache === 'boolean'
       ? body.autoDeletePlayedCache
       : current.autoDeletePlayedCache,
+    djChristopherEnabled: typeof body.djChristopherEnabled === 'boolean' ? body.djChristopherEnabled : current.djChristopherEnabled,
+    djChristopherIntervalMinutes: typeof body.djChristopherIntervalMinutes === 'number' && Number.isFinite(body.djChristopherIntervalMinutes)
+      ? Math.min(60, Math.max(30, Math.round(body.djChristopherIntervalMinutes)))
+      : current.djChristopherIntervalMinutes,
   }
   await writeJson(SETTINGS_PATH, next)
   if ((typeof body.newTagalogOpmEnabled === 'boolean'
