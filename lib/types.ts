@@ -16,6 +16,7 @@ export interface SongRequest {
   requestId: string
   title: string
   artist: string
+  location?: string
   submittedAt: number
   id: string
   key: string
