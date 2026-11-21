@@ -15,7 +15,7 @@ import {
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, ListenerMessage, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildTimeCheckScript, saveChristopherScript, saveAutoDjScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import { buildTimeCheckScript, buildRandomChristopherSongPrompt, saveChristopherScript, saveAutoDjScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -311,7 +311,7 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
       nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
     } else nextFadeIn = null
   }
-  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && ((christopherEnabled && track.uid.startsWith('dj-christopher-timecheck-')) || track.uid.startsWith('dj-autodj-message-main-')))) {
+  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && ((christopherEnabled && (track.uid.startsWith('dj-christopher-timecheck-') || track.uid.startsWith('dj-christopher-song-prompt-'))) || track.uid.startsWith('dj-autodj-message-main-')))) {
     const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
     const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
     const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
@@ -418,6 +418,25 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       })
       timeCheckEndAt += timeCheckDuration * 1000
     }
+    // Christopher's separate random song prompt runs every fourth song.
+    // Keep the last eight template IDs in history so prompts do not repeat back-to-back.
+    if (djChristopherEnabled && state.songCount % 4 === 0) {
+      const promptText = await buildRandomChristopherSongPrompt(song.title, song.artist)
+      const promptId = await saveChristopherScript(promptText)
+      const promptDuration = estimateChristopherDuration(promptText)
+      state.tracks.push({
+        uid: `dj-christopher-song-prompt-${station}-${state.songCount}-${promptId}`,
+        src: `/api/dj-christopher?id=${promptId}`,
+        startAt: timeCheckEndAt,
+        duration: promptDuration,
+        fadeIn: 0.5,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'DJ Christopher · Song Prompt',
+        artist: 'DJ Christopher',
+      })
+      timeCheckEndAt += promptDuration * 1000
+    }
     // Auto DJ, not Christopher, reads each listener song-request message once per station.
     const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
     const pendingMessage = listenerMessages.find((message) =>
@@ -469,8 +488,8 @@ async function loadState(now: number, path = STATE_PATH) {
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => {
     // Purge legacy Christopher song-commentary/request clips: Christopher is time-check only.
-    if (t.uid.includes('dj-christopher-') && !t.uid.startsWith('dj-christopher-timecheck-')) return false
-    if (t.uid.startsWith('dj-christopher-timecheck-')) return trackEnd(t) >= now - 1000
+    if (t.uid.startsWith('dj-christopher-') && !t.uid.startsWith('dj-christopher-timecheck-') && !t.uid.startsWith('dj-christopher-song-prompt-')) return false
+    if (t.uid.startsWith('dj-christopher-timecheck-') || t.uid.startsWith('dj-christopher-song-prompt-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
     const schedule = dailyAnnouncementScheduleAt(now)
     const isActive = t.startAt <= now && trackEnd(t) > now
