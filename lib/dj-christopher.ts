@@ -54,8 +54,19 @@ export function buildTimeCheckScript(prompt: string) {
   const minute = Number(match[2] ?? '00')
   if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
   const time = `${hour}:${String(minute).padStart(2, '0')} ${match[3].replace(/\./g, '').toUpperCase()}`
-  const greeting = match[3].toLowerCase().startsWith('a') ? 'Good morning' : 'Good afternoon and good evening'
-  return `${greeting}, RJ FM family. This is DJ Christopher with your official RJ FM time check. The time is ${time}. Wherever you are listening, thank you for making RJ FM part of your day. Stay tuned for more great music and good company, right here on RJ FM.`
+  const opening = pick([
+    'RJ FM time check!',
+    'Here is your RJ FM time check!',
+    'A quick time check from RJ FM!',
+    'It is time for your RJ FM update!',
+  ])
+  const followUp = pick([
+    'Keep listening to RJ FM and enjoy more great music.',
+    'Stay with us for more of your favorite songs.',
+    'More great music is coming your way, so keep listening.',
+    'Thanks for being with us. Enjoy the music!',
+  ])
+  return `${opening} It is ${time} in the Philippines. ${followUp}`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(12, Math.ceil(text.trim().split(/\s+/).length / 2.45))
