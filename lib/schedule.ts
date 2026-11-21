@@ -97,7 +97,6 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
 const ENGLISH_ERA_EXPANSION = [
   ...RJFM_ARTIST_LIBRARY['60s-70s'],
   ...RJFM_ARTIST_LIBRARY['80s-90s'],
-  ...RJFM_ARTIST_LIBRARY['2000s'],
   ...RJFM_ARTIST_LIBRARY['2023-2026'],
 ]
 const TAGALOG_ERA_EXPANSION = [
@@ -391,7 +390,7 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Willie Revillame|willie',
 ])
 
-const LOVE_VARIANTS = ['60s 70s 80s 90s classic soft love songs', '2000s soft pop love ballads', '2023 2024 2025 2026 soft pop ballad official audio', 'classic love ballad', 'soft ballad', 'easy listening', 'oldies love song', 'original audio']
+const LOVE_VARIANTS = ['60s 70s 80s 90s classic oldies love song ballad', 'classic oldies romantic love ballad official audio', '2026 new soft pop love song ballad official audio', '2026 latest romantic love ballad official audio', '2026 easy listening love song official audio', 'oldies love song original artist', '2026 soft romantic ballad original artist']
 const DISCO_VARIANTS = [
   '',
   'official audio',
@@ -401,8 +400,8 @@ const DISCO_VARIANTS = [
   'latest 2026 disco pop song',
   '2026 dance music official audio',
 ]
-const OPM_VARIANTS = ['classic OPM ballad', 'old OPM love song', 'easy listening OPM', '2023 2024 2025 2026 new OPM love ballad official audio', 'modern soft Tagalog love song', 'original audio', 'greatest hits']
-const SUNDAY_OLDIES_VARIANTS = ['Mr Lonely', 'classic English oldies', 'old English love songs', 'easy listening oldies']
+const OPM_VARIANTS = ['classic OPM oldies love song ballad', 'old Filipino romantic love song original artist', '2026 new OPM love song ballad official audio', '2026 latest Tagalog romantic ballad official audio', '2026 soft Filipino love song original artist']
+const SUNDAY_OLDIES_VARIANTS = ['classic English oldies love song ballad', 'old English romantic love song original artist', '60s 70s classic oldies love songs']
 const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'BINI',
   'SB19',
@@ -414,8 +413,8 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'Flow G',
   'Kiyo',
 ])
-const MASBATE_TAGALOG = [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...MASBATE_CURRENT_TAGALOG, ...TAGALOG_ERA_EXPANSION]
-const MASBATE_TAGALOG_VARIANTS = ['latest 2026 OPM Tagalog song', 'new Filipino love song', 'modern Tagalog song', 'official audio', 'original audio']
+const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
+const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
 
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': {
