@@ -212,7 +212,7 @@ export function AdminPanel() {
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="rj-fm-nationwide">RJ FM Nationwide MP3 IDs</Label>
           <span className="text-xs text-muted-foreground">
-            {data?.rjFmNationwideEnabled === false ? 'OFF · Nationwide station IDs are skipped; music continues.' : 'ON · Regional station IDs play after every 2 songs.'}
+            {data?.rjFmNationwideEnabled === false ? 'OFF · Nationwide station IDs are skipped; music continues.' : 'ON · Station ID MP3s play after every 8 songs.'}
           </span>
         </div>
         <Switch id="rj-fm-nationwide" checked={data?.rjFmNationwideEnabled ?? true} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { rjFmNationwideEnabled: checked })} />
