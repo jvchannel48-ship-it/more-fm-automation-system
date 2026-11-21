@@ -10,6 +10,7 @@ import {
   masbateProgramAt,
   nagaProgramAt,
   programAt,
+  PROGRAMS,
   type Artist,
   type Program,
 } from './schedule'
@@ -513,7 +514,11 @@ async function loadState(now: number, path = STATE_PATH) {
   const announcementSchedule = dailyAnnouncementScheduleAt(now)
   if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
+  const approvedEnglishArtists = new Set(PROGRAMS['love-mix'].pools.english.map((artist) => normalize(artist.name)))
   state.tracks = state.tracks.filter((t) => {
+    // Let a song already on-air finish, but remove queued future tracks that
+    // are not by an artist in RJ FM's curated English-only approved library.
+    if (t.kind === 'music' && t.startAt > now && !approvedEnglishArtists.has(normalize(t.artist))) return false
     if (t.uid.includes('dj-christopher-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
     const schedule = dailyAnnouncementScheduleAt(now)
