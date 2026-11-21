@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 240_000
+const PRELOAD_AHEAD_MS = 600_000
 const PRELOAD_DJ_VOICE_AHEAD_MS = 10 * 60_000
 const DRIFT_TOLERANCE_S = 15
 const MAX_MEDIA_RETRIES = 10
