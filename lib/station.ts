@@ -377,12 +377,18 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     state.songCount++
     let timeCheckEndAt = songStart + song.duration * 1000
     if (djChristopherEnabled && state.songCount % 5 === 0) {
-      const philippinesTime = new Intl.DateTimeFormat('en-US', {
+      const philippinesParts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Manila',
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-      }).format(new Date())
+      }).formatToParts(new Date())
+      const philippinesHour = philippinesParts.find((part) => part.type === 'hour')?.value ?? '12'
+      const philippinesMinute = philippinesParts.find((part) => part.type === 'minute')?.value ?? '00'
+      const philippinesPeriod = philippinesParts.find((part) => part.type === 'dayPeriod')?.value ?? 'AM'
+      const philippinesTime = philippinesMinute === '00'
+        ? `${philippinesHour} ${philippinesPeriod}`
+        : `${philippinesHour}:${philippinesMinute} ${philippinesPeriod}`
       const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`)
       const scriptId = await saveChristopherScript(timeCheckText)
       const timeCheckDuration = estimateChristopherDuration(timeCheckText)
@@ -478,7 +484,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         await writeJson(statePath, state)
       }
     }
-    // All RJ FM stations remain on-air 24/7; DZMM windows are handled as scheduled inserts.
+    // All RJ FM stations remain on-air 24/7; no DZMM live handoffs are scheduled.
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     if (!settings.rjFmNationwideEnabled) {
       const idents = state.tracks.filter((track) => track.uid.startsWith('rjfm-nationwide-'))
