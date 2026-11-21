@@ -16,7 +16,6 @@ export function SongRequest({ station }: { station: StationId }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
-  const [location, setLocation] = useState('')
   const [status, setStatus] = useState<RequestStatus>('idle')
   const [message, setMessage] = useState('')
   const [credits, setCredits] = useState<CreditInfo | null>(null)
@@ -56,7 +55,7 @@ export function SongRequest({ station }: { station: StationId }) {
       }
       const response = await fetch('/api/requests', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, artist, location, station }), cache: 'no-store',
+        body: JSON.stringify({ title, artist, station }), cache: 'no-store',
       })
       const data = await response.json().catch(() => ({})) as RequestResult
       if (!response.ok) {
@@ -99,7 +98,7 @@ export function SongRequest({ station }: { station: StationId }) {
           </div> : <form onSubmit={submit} className="flex flex-col gap-4">
             {credits && <p className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm">Credits available: <strong>{credits.creditsRemaining}</strong> (15 per song · 30 for 2)</p>}
             <div className="rounded-2xl border border-border/80 bg-background/40 p-4"><div className="flex flex-col gap-2"><Label htmlFor="request-title">Song title</Label><Input id="request-title" className="h-10 bg-background/60" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Ikaw" maxLength={120} required disabled={status === 'submitting'} autoFocus /></div>
-              <div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="e.g. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} /></div><div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-location">Your location / city</Label><Input id="request-location" className="h-10 bg-background/60" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="e.g. Cebu City" maxLength={80} disabled={status === 'submitting'} /></div></div>
+              <div className="mt-4 flex flex-col gap-2"><Label htmlFor="request-artist">Artist</Label><Input id="request-artist" className="h-10 bg-background/60" value={artist} onChange={(event) => setArtist(event.target.value)} placeholder="e.g. Yeng Constantino" maxLength={120} required disabled={status === 'submitting'} /></div></div>
             {status === 'submitting' && <div className="space-y-2" role="status" aria-live="polite"><div className="h-2 w-full overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="Submitting song request" aria-busy="true"><div className="h-full w-1/3 rounded-full bg-primary" style={{ animation: 'request-progress 1.2s ease-in-out infinite' }} /></div></div>}
             {status === 'error' && message && <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert"><p>{message}</p></div>}
             <Button type="submit" className="h-11 w-full" disabled={status === 'submitting' || !title.trim() || !artist.trim()}><MessageCircle aria-hidden="true" />{status === 'submitting' ? 'Checking song…' : 'Submit request'}</Button>
