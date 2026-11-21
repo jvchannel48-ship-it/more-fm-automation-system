@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
@@ -14,8 +14,8 @@ import {
   type Program,
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
-import type { AdminStatus, ListenerMessage, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import type { AdminStatus, LiveDjState, NowResponse, SongRequest, Track } from './types'
+import { buildTimeCheckScript, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -352,36 +352,6 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     if (request) state.requestQueue.shift()
     let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     let songFadeIn = fadeIn
-    if (request && djChristopherEnabled) {
-      const previousTrack = state.tracks.at(-1)
-      let voiceStartAt = songStart
-      if (previousTrack?.kind === 'music') {
-        previousTrack.fadeOut = 3
-        voiceStartAt = Math.max(songStart, trackEnd(previousTrack) - 3_000)
-      } else if (previousTrack) {
-        voiceStartAt = Math.max(songStart, trackEnd(previousTrack))
-      }
-      const script = buildChristopherScript({ title: request.title, artist: request.artist, location: request.location })
-      const scriptId = await saveChristopherScript(script)
-      const words = script.trim().split(/\s+/).length
-      const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
-      state.tracks.push({
-        uid: `dj-christopher-request-${station}-${scriptId}`,
-        src: `/api/dj-christopher?id=${scriptId}`,
-        startAt: voiceStartAt,
-        duration: speechSeconds,
-        fadeIn: 0.8,
-        fadeOut: 2.5,
-        kind: 'dj-mic',
-        title: 'DJ Christopher · Song request',
-        artist: 'DJ Christopher',
-      })
-      songStart = voiceStartAt + speechSeconds * 1000
-      songFadeIn = 2.5
-      const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
-      const maxGap = djChristopherIntervalMinutes + 5
-      state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
-    }
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
     state.history.push(playedEntry)
@@ -400,26 +370,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       }).formatToParts(new Date(timeCheckEndAt))
       const philippinesHour = philippinesParts.find((part) => part.type === 'hour')?.value ?? '12'
       const philippinesMinute = philippinesParts.find((part) => part.type === 'minute')?.value ?? '00'
-      const philippinesPeriod = philippinesParts.find((part) => part.type === 'dayPeriod')?.value ?? 'AM'
-      const philippinesTime = philippinesMinute === '00'
-        ? `${philippinesHour} ${philippinesPeriod}`
-        : `${philippinesHour}:${philippinesMinute} ${philippinesPeriod}`
-      // Only read listener messages that an admin has reviewed (read=true), once each.
-      const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
-      const reviewedMessages = listenerMessages.filter((message) => message.read && !message.spokenAt && message.body.trim())
-      const selectedMessage = reviewedMessages.length
-        ? reviewedMessages[Math.floor(Math.random() * reviewedMessages.length)]
-        : undefined
-      const safeListenerMessage = selectedMessage ? {
-        fromName: selectedMessage.fromName.replace(/[\r\n<>]/g, ' ').slice(0, 40),
-        body: selectedMessage.body.replace(/https?:\/\/\S+/gi, ' link ').replace(/[\r\n<>]/g, ' ').slice(0, 180),
-      } : undefined
-      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`, safeListenerMessage)
-      if (selectedMessage) {
-        await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
-          message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
-        ))
-      }
+      const philippinesTime = `${philippinesHour}:${philippinesMinute}`
+      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`)
       const scriptId = await saveChristopherScript(timeCheckText)
       const timeCheckDuration = estimateChristopherDuration(timeCheckText)
       const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
