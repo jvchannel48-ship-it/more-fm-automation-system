@@ -52,6 +52,9 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Engelbert Humperdinck|engelbert', 'Bobby Vinton', 'The Carpenters|carpenters',
     'Bread', 'Barry Manilow', 'Anne Murray', 'Rita Coolidge', 'Glen Campbell',
     'B.J. Thomas|bj thomas', 'The Righteous Brothers|righteous brothers',
+    'Helen Reddy', 'Vikki Carr', 'Brenda Lee', 'The Stylistics|stylistics',
+    'The Lettermen', 'The Association', 'Bobby Darin', 'Johnny Tillotson',
+    'Lobo', 'Bert Kaempfert', 'Ray Conniff', 'Roger Whittaker', 'Doris Day',
   ]),
   '80s-90s': artists('english', [
     'Sade', 'Anita Baker', 'Luther Vandross', 'Peabo Bryson', 'James Ingram',
@@ -60,6 +63,9 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Toni Braxton', 'Vanessa Williams', 'Brian McKnight', 'Shai',
     'Color Me Badd|color me badd', 'George Michael', 'Gloria Estefan',
     'Natalie Cole', 'Kenny G', 'Sarah McLachlan', 'Seal', 'Savage Garden|savage garden',
+    'Regina Belle', 'Glenn Medeiros', 'Taylor Dayne', 'Richard Clayderman',
+    'Michael W. Smith', 'Amy Grant', 'Roxette', 'Tina Arena', 'Des ree',
+    'Lisa Stansfield', 'The Corrs', 'Boyzone', 'Shayne Ward',
   ]),
   '2000s': artists('english', [
     'Westlife', 'Blue', 'Ronan Keating', 'Daniel Bedingfield',
@@ -68,12 +74,18 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Josh Groban', 'Sara Bareilles', 'Colbie Caillat', 'Corinne Bailey Rae',
     'Natasha Bedingfield', 'David Archuleta', 'Kelly Clarkson',
     'Daniel Powter', 'Gavin DeGraw', 'Jordin Sparks', 'David Cook',
+    'Delta Goodrem', 'LeAnn Rimes', 'Faith Hill', 'Il Divo', 'Josh Kelley',
+    'Vanessa Carlton', 'Michelle Branch', 'Eva Cassidy', 'Katie Melua',
+    'Emilia', 'A1', 'The Calling', 'Duncan James',
   ]),
   '2023-2026': artists('english', [
     'Benson Boone', 'Teddy Swims', 'Alex Warren', 'Stephen Sanchez',
     'Laufey', 'Gracie Abrams', 'Olivia Dean', 'Lizzy McAlpine',
     'Lewis Capaldi', 'Dean Lewis', 'James Arthur', 'NIKI',
     'Sabrina Carpenter', 'Myles Smith', 'sombr', 'd4vd',
+    'Olivia Rodrigo', 'Ruth B.', 'RAYE', 'Adele', 'AURORA', 'JVKE',
+    'Stephen Sanchez', 'Alex Warren', 'Cian Ducrot', 'Benson Boone',
+    'Tate McRae', 'Grentperez', 'beabadoobee',
   ]),
   'OPM 60s-90s': artists('tagalog', [
     'Jose Mari Chan|jose mari chan', 'Pilita Corrales', 'Imelda Papin',
@@ -92,6 +104,10 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Earl Agustin', 'Rob Deniel', 'Jan Roberts', 'Mikee Sarmiento',
     'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso', 'Mariah Deborah', 'Thea Astley',
     'Morissette Amon|morissette', 'Jona|jona', 'Angeline Quinto',
+    'Regine Velasquez|regine', 'Martin Nievera', 'Ariel Rivera',
+    'Kuh Ledesma', 'Pops Fernandez', 'Donna Cruz', 'Jessa Zaragoza',
+    'Roselle Nava', 'Lani Misalucha', 'MYMP', 'Freestyle', 'Side A',
+    'South Border', 'December Avenue', 'Ben&Ben|ben and ben', 'Janine Teñoso',
   ]),
 }
 const ENGLISH_ERA_EXPANSION = [
@@ -531,46 +547,8 @@ export function dailyAnnouncementScheduleAt(ms: number): DailyAnnouncementSchedu
   }
 }
 
-/** Returns a scheduled DZMM window, or null when the station should play its own music. */
-export function dzmmWindowAt(ms: number): DzmmWindow | null {
-  const { hour, minute, day } = manilaTime(ms)
-  if (day === 0) return null
-
-  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(0, 0, 0, 0)
-  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
-  const minuteOfDay = hour * 60 + minute
-
-  if (minuteOfDay >= 420 && minuteOfDay < 480) {
-    const startAt = dayStart + 420 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 480 * 60_000 }
-  }
-
-  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
-    const startAt = dayStart + 1110 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
-  }
-
-  if (minuteOfDay >= 1320) {
-    const endAt = day === 6 ? dayStart + 24 * 60 * 60_000 : dayStart + 27 * 60 * 60_000
-    const startAt = dayStart + 1320 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt,
-    }
-  }
-
-  if (minuteOfDay < 180) {
-    if (day === 1) return null
-    const startAt = dayStart - 120 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt: dayStart + 180 * 60_000,
-    }
-  }
-
+/** 93.5 RJ FM Manila has no DZMM blocktime; AutoDJ runs continuously. */
+export function dzmmWindowAt(_ms: number): DzmmWindow | null {
   return null
 }
 

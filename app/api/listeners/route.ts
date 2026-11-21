@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { recordListener, recordStationListener } from '@/lib/storage'
+import { getActiveStationListenerCounts, recordListener, recordStationListener } from '@/lib/storage'
 import { parseStationId, STATIONS } from '@/lib/stations'
 import { getAccountFromToken, USER_SESSION_COOKIE } from '@/lib/account-store'
 import { getDb } from '@/lib/db'
@@ -7,6 +7,22 @@ import { getDb } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 const noStore = { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+
+export async function GET(request: NextRequest) {
+  const station = parseStationId(request.nextUrl.searchParams.get('station'))
+  try {
+    const counts = await getActiveStationListenerCounts()
+    return NextResponse.json({
+      station,
+      listenersNow: counts.stationCounts[station] ?? 0,
+      totalListenersNow: counts.totalListenersNow,
+      updatedAt: Date.now(),
+    }, noStore)
+  } catch (error) {
+    console.error('[morefm] listener count read failed', error)
+    return NextResponse.json({ error: 'Could not read live listener count.' }, { status: 503, ...noStore })
+  }
+}
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as { id?: unknown; active?: unknown; station?: unknown }

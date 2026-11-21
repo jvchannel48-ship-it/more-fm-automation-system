@@ -4,7 +4,6 @@ import {
   languageForSlot,
   NEW_TAGALOG_OPM_ARTISTS,
   NEW_TAGALOG_OPM_VARIANTS,
-  LOVE_CONNECT_IDENT_DURATION_SECONDS,
   dailyAnnouncementScheduleAt,
   dzmmWindowAt,
   manilaDateKey,
@@ -105,46 +104,15 @@ assert.equal(programAt(manilaTime(16, 16, 0)).id, 'daytime-love', '4:00 PM stays
 assert.equal(programAt(manilaTime(16, 18, 2)).id, 'daytime-love', '6:02 PM stays on classic love songs')
 assert.equal(programAt(manilaTime(16, 18, 3)).id, 'daytime-love', '6:03 PM starts the love-song mix')
 
-const mondayMorning = dzmmWindowAt(manilaTime(16, 7))
-assert.equal(mondayMorning?.endAt, manilaTime(16, 8), 'weekday morning DZMM ends at 8:00 AM')
-assert.equal(mondayMorning?.liveStartAt, mondayMorning?.startAt, 'morning DZMM has no additional ident delay')
-assert.equal(dzmmWindowAt(manilaTime(16, 6, 59)), null, 'weekday music remains on before 7:00 AM')
-assert.equal(dzmmWindowAt(manilaTime(16, 12)), null, 'weekday noon remains RJ FM music')
-assert.equal(dzmmWindowAt(manilaTime(16, 18, 29)), null, 'RJ FM music remains on before the 6:30 PM DZMM handoff')
-assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.startAt, manilaTime(16, 18, 30), 'weekday evening DZMM starts at 6:30 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.endAt, manilaTime(16, 20), 'weekday evening DZMM ends at 8:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only at noon')
-assert.equal(dzmmWindowAt(manilaTime(16, 18, 30))?.endAt, manilaTime(16, 20), 'weekday TV Patrol runs until 8:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(21, 18, 30))?.endAt, manilaTime(21, 20), 'Saturday TV Patrol ends at 8:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(21, 20, 1)), null, 'Saturday music resumes at 8:01 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'weekday evening music remains before 10:00 PM')
-assert.equal(dzmmWindowAt(manilaTime(16, 0)), null, 'Monday after midnight remains music-only after Sunday')
-assert.equal(dzmmWindowAt(manilaTime(16, 2, 59)), null, 'Monday remains music-only before the 3:00 AM sign-off')
-const mondayOvernight = dzmmWindowAt(manilaTime(16, 22))
-assert.equal(mondayOvernight?.startAt, manilaTime(16, 22), 'weekday Love Connect ident starts at 10:00 PM')
-assert.equal(
-  mondayOvernight?.liveStartAt,
-  manilaTime(16, 22) + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-  'weekday DZMM live starts after the complete Love Connect ident',
-)
-const saturdayOvernight = dzmmWindowAt(manilaTime(21, 22))
-assert.ok(saturdayOvernight, 'Saturday evening has an overnight DZMM window')
-assert.equal(saturdayOvernight.liveStartAt, saturdayOvernight.startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000, 'Saturday DZMM follows the full ident')
-assert.equal(saturdayOvernight?.endAt, manilaTime(22, 0), 'Saturday overnight DZMM ends at midnight Sunday')
-assert.equal(dzmmWindowAt(manilaTime(22, 0)), null, 'Sunday remains music-only after the Saturday window ends')
-const tuesdayOvernight = dzmmWindowAt(manilaTime(17, 2, 59))
-assert.equal(tuesdayOvernight?.startAt, mondayOvernight?.startAt, 'Tuesday after-midnight DZMM continues Monday evening’s window')
-assert.equal(tuesdayOvernight?.liveStartAt, mondayOvernight?.liveStartAt, 'the ident delay is not restarted after midnight')
-const mondayTvPatrol = dzmmWindowAt(manilaTime(16, 18, 30))
-assert.equal(mondayTvPatrol?.liveStartAt, mondayTvPatrol?.startAt, 'the TV Patrol window keeps its current live start')
-assert.equal(tuesdayOvernight?.endAt, manilaTime(17, 3), 'overnight DZMM ends at 3:00 AM')
-assert.equal(dzmmWindowAt(manilaTime(15, 12)), null, 'Sunday remains music-only')
-assert.equal(dzmmWindowAt(manilaTime(15, 14)), null, 'Sunday afternoon remains music-only')
-
-const mondayAfternoonDzmm = dzmmWindowAt(manilaTime(16, 14))
-assert.equal(mondayAfternoonDzmm, null, 'RJ FM music runs after the noon DZMM block')
-assert.equal(dzmmWindowAt(manilaTime(16, 8, 1)), null, 'MOR music resumes at 8:01 AM')
-assert.equal(dzmmWindowAt(manilaTime(16, 21, 59)), null, 'MOR music remains on before the 10:00 PM DZMM return')
+// 93.5 RJ FM Manila is music automation only: no DZMM morning, evening, or 10 PM blocktime.
+for (const [hour, minute] of [[6, 29], [6, 30], [8, 0], [18, 29], [18, 30], [19, 59], [20, 0], [21, 59], [22, 0], [23, 0], [2, 59]] as const) {
+  assert.equal(dzmmWindowAt(manilaTime(16, hour, minute)), null, `Manila has no DZMM handoff at ${hour}:${String(minute).padStart(2, '0')}`)
+}
+assert.equal(programAt(manilaTime(16, 18, 30)).id, 'daytime-love', '6:30 PM remains RJ FM AutoDJ')
+assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', '7:59 PM remains RJ FM AutoDJ')
+assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', '8:00 PM continues into evening automation')
+assert.equal(programAt(manilaTime(16, 22)).id, 'love-mix', '10:00 PM stays on overnight AutoDJ')
+assert.equal(programAt(manilaTime(17, 2, 59)).id, 'love-mix', 'overnight AutoDJ continues after midnight')
 
 const mondayAnnouncement = dailyAnnouncementScheduleAt(manilaTime(16, 12))
 assert.equal(mondayAnnouncement?.kind, 'weekday', 'Monday uses the new weekday announcement')
@@ -158,4 +126,4 @@ assert.equal(saturdayAnnouncement?.expiresAt, manilaTime(22, 0), 'Saturday annou
 assert.equal(dailyAnnouncementScheduleAt(manilaTime(15, 12)), null, 'Sunday has no announcement clip schedule')
 assert.equal(manilaDateKey(manilaTime(16, 21, 48)), '2026-11-16', 'daily automation uses the Manila calendar date')
 
-console.log('schedule: DZMM windows and continuous 24/7 RJ FM station schedules all pass')
+console.log('schedule: Manila music-only automation and continuous 24/7 RJ FM station schedules all pass')

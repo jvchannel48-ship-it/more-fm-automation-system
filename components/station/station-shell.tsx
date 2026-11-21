@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { Home, ChartNoAxesCombined } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { getStoredStation } from './station-selector'
 import { AppUpdateGate } from './app-update-gate'
@@ -30,6 +32,16 @@ export function StationShell({ children }: { children: ReactNode }) {
       />
       {children}
       <AllStationsStatus />
+      <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-[90] border-t border-primary/20 bg-background/95 px-5 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur-xl">
+        <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-3">
+          <Button type="button" variant="ghost" className="h-12 flex-col gap-0.5 rounded-xl text-xs" onClick={() => window.dispatchEvent(new Event('morefm:close-all-stations'))}>
+            <Home className="size-5" />Home
+          </Button>
+          <Button type="button" variant="ghost" className="h-12 flex-col gap-0.5 rounded-xl text-xs" onClick={() => window.dispatchEvent(new Event('morefm:open-all-stations'))}>
+            <ChartNoAxesCombined className="size-5" />All Station
+          </Button>
+        </div>
+      </nav>
       <AppUpdateGate />
     </div>
   )

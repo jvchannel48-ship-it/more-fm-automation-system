@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'RJ FM',
   webDir: 'public',
   server: {
-    url: 'https://more-fm-automation-system.onrender.com',
+    url: 'https://rj-fm-radio-production.up.railway.app',
     cleartext: false,
-    allowNavigation: ['more-fm-automation-system.onrender.com'],
+    allowNavigation: ['rj-fm-radio-production.up.railway.app'],
   },
 }
 

@@ -192,13 +192,16 @@ export function useBroadcast(
         .filter((track) => now >= track.startAt && now < track.startAt + track.duration * 1000)
         .sort((a, b) => a.startAt - b.startAt)
       const activeIds = new Set(active.map((track) => track.uid))
-      const firstUpcomingMusic = availableTracks
+      const upcomingMusic = availableTracks
         .filter((track) => track.kind === 'music' && track.startAt > now)
-        .sort((a, b) => a.startAt - b.startAt)[0]
+        .sort((a, b) => a.startAt - b.startAt)
+      const protectedMusicIds = new Set(upcomingMusic.slice(0, PRELOAD_AHEAD_TRACKS).map((track) => track.uid))
       const upcoming = availableTracks
         .filter((track) => !activeIds.has(track.uid)
           && track.startAt > now
-          && (track.startAt - now < PRELOAD_AHEAD_MS || track.uid === firstUpcomingMusic?.uid || (track.kind === 'dj-mic' && track.startAt - now < PRELOAD_DJ_VOICE_AHEAD_MS)))
+          && (track.startAt - now < PRELOAD_AHEAD_MS
+            || protectedMusicIds.has(track.uid)
+            || (track.kind === 'dj-mic' && track.startAt - now < PRELOAD_DJ_VOICE_AHEAD_MS)))
         .sort((a, b) => a.startAt - b.startAt)
       const wanted = [...active, ...upcoming].slice(0, slots.current.length)
       const wantedIds = new Set(wanted.map((t) => t.uid))

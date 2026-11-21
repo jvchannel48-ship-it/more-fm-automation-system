@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Moon, Pause, Play, Users, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { Equalizer } from './equalizer'
-import { SongRequest } from './song-request'
 import { getStoredStation } from './station-selector'
 import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
@@ -44,6 +43,15 @@ export function RadioPlayer() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
+  const { data: listenerCount } = useSWR<{ listenersNow: number }>(
+    `/api/listeners?station=${station}`,
+    async (url: string) => {
+      const response = await fetch(url, { cache: 'no-store' })
+      if (!response.ok) throw new Error('Live listener count unavailable')
+      return response.json() as Promise<{ listenersNow: number }>
+    },
+    { refreshInterval: 10_000, revalidateOnFocus: true },
+  )
   const recoverStream = useCallback((uid: string) => {
     setRecoveryIssue('Recovering audio source…')
     void fetch(`/api/now?station=${station}`, {
@@ -65,10 +73,12 @@ export function RadioPlayer() {
         void mutate()
       })
   }, [mutate, station])
-  const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
+  const { onAir, buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
 
   useEffect(() => {
-    if (!playing || data?.offAir) return
+    // Count only a listener whose browser audio element is actually playing
+    // buffered station audio. A Play tap or a buffering/static state is not a listener.
+    if (!onAir || data?.offAir) return
     const getListenerId = () => {
       if (listenerId.current) return listenerId.current
       const storageKey = 'mor-935-listener-id'
@@ -87,15 +97,16 @@ export function RadioPlayer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: getListenerId(), active, station }),
         cache: 'no-store',
+        keepalive: !active,
       }).catch(() => undefined)
     }
     heartbeat(true)
-    const interval = window.setInterval(() => heartbeat(true), 30_000)
+    const interval = window.setInterval(() => heartbeat(true), 20_000)
     return () => { window.clearInterval(interval); heartbeat(false) }
-  }, [playing, data?.offAir])
+  }, [onAir, data?.offAir, station])
 
   const offAir = data?.offAir ?? false
-  const live = playing && !buffering && !offAir
+  const live = onAir && !offAir
   const playerNow = data?.serverTime ?? Date.now()
   const currentTrack = data?.tracks
     .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
@@ -167,6 +178,11 @@ export function RadioPlayer() {
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {meta.shortName} <span className="text-primary">{meta.frequency}</span>
         </p>
+        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+          <Users className="size-3.5 text-primary" aria-hidden="true" />
+          <span className="font-semibold tabular-nums text-foreground">{listenerCount?.listenersNow ?? 0}</span>
+          listening now · live count
+        </p>
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
@@ -190,8 +206,6 @@ export function RadioPlayer() {
           {meta.name} <span className="text-primary">{meta.frequency}</span>
         </p>
       </div>
-
-      {data?.songRequestsEnabled !== false && <SongRequest station={station} />}
     </section>
   )
 }
