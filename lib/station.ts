@@ -23,6 +23,7 @@ const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
+const AUTO_DISCOVERED_ARTISTS_PATH = 'station/auto-discovered-artists.json'
 const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
 const SONG_REPEAT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 interface ArtistHistoryRecord { artist: string; plays: number; lastPlayedAt: number }
@@ -32,6 +33,15 @@ async function recordArtistPlay(artist: string, playedAt: number) {
   if (index >= 0) saved[index] = { ...saved[index], plays: saved[index].plays + 1, lastPlayedAt: Math.max(saved[index].lastPlayedAt, playedAt) }
   else saved.push({ artist, plays: 1, lastPlayedAt: playedAt })
   await writeJson(ARTIST_HISTORY_PATH, saved)
+}
+
+async function saveAutoDiscoveredArtist(artist: Artist) {
+  const saved = await readJson<Artist[]>(AUTO_DISCOVERED_ARTISTS_PATH, [])
+  const exists = saved.some((entry) => normalize(entry.name) === normalize(artist.name))
+  if (!exists && saved.length < 500) {
+    saved.push({ name: artist.name, match: artist.match, language: artist.language })
+    await writeJson(AUTO_DISCOVERED_ARTISTS_PATH, saved)
+  }
 }
 const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
@@ -151,15 +161,16 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const pool = program.pools[language]
+  const discoveredArtists = await readJson<Artist[]>(AUTO_DISCOVERED_ARTISTS_PATH, [])
+  const pool = [...program.pools[language], ...discoveredArtists.filter((artist) => artist.language === language)]
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
   if (candidatesArtists.length === 0 || variants.length === 0) return null
 
   // Search many artists in parallel batches. If the first artists have no valid
   // results, keep searching the remaining library instead of ending the fill.
-  const batchSize = 16
-  const maxArtistsPerFill = Math.min(candidatesArtists.length, 32)
+  const batchSize = 12
+  const maxArtistsPerFill = Math.min(candidatesArtists.length, 12)
   const triedIds = new Set<string>()
   for (let offset = 0; offset < maxArtistsPerFill; offset += batchSize) {
     const batch = candidatesArtists.slice(offset, offset + batchSize)
@@ -169,7 +180,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const secondary = variants[(variantIndex + 1) % variants.length] ?? ''
       const queries = [...new Set([primary, secondary].map((value) => `${artist.name} ${value}`.trim()))]
       const responses = await Promise.all(queries.map((query) =>
-        fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: query }), 10_000),
+        fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: query }), 7_000),
       ))
       return responses.flatMap((response) => response?.items ?? []).map((item) => ({ item, artist }))
     }))
@@ -201,7 +212,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
     // Probe the three best sources in parallel so a slow/broken source cannot
     // hold the station queue for multiple sequential 12-second timeouts.
     const downloadProbes = shortlist.slice(0, 3).map(async ({ item, artist }) => {
-      const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
+      const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 8_000)
       if (!download?.downloadUrl) throw new Error('No downloadable source')
       return {
         id: item.id,
@@ -213,7 +224,10 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       }
     })
     const playable = await Promise.any(downloadProbes).catch(() => null)
-    if (playable) return playable
+    if (playable) {
+      await saveAutoDiscoveredArtist({ name: playable.artist, match: playable.artist.toLowerCase(), language })
+      return playable
+    }
   }
   return null
 }
