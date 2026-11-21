@@ -27,7 +27,7 @@ import { buildChristopherScript, saveChristopherScript, nextChristopherTimeCheck
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
-const PRELOAD_AHEAD_TRACKS = 2
+const PRELOAD_AHEAD_TRACKS = 3
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
@@ -145,7 +145,9 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const allowed = unique.filter((a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR)
   const recent = new Set(history.slice(-20).map((h) => h.artist))
   const fresh = allowed.filter((a) => !recent.has(a.name))
-  return shuffle(fresh.length > 0 ? fresh : allowed)
+  // Relax artist spacing only when the current library has no other eligible artist.
+  const relaxed = allowed.length ? allowed : unique.filter((a) => a.name !== lastArtist)
+  return shuffle(fresh.length > 0 ? fresh : relaxed.length > 0 ? relaxed : unique)
 }
 /**
  * Live AutoDJ selector: evaluates a rotating pool against the active program,
@@ -160,51 +162,63 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const pool = program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
-  const shortlist: Array<{ item: SearchItem; artist: Artist; score: number }> = []
+  if (candidatesArtists.length === 0 || variants.length === 0) return null
 
-  for (const [artistIndex, artist] of candidatesArtists.slice(0, 8).entries()) {
-    if (variants.length === 0) continue
-    // Rotate search intent instead of repeatedly asking for the same type of result.
-    const variant = variants[(songCount + artistIndex) % variants.length] ?? ''
-    const data = await fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: `${artist.name} ${variant}`.trim() }), 15_000)
-    const candidates = (data?.items ?? []).filter((item) => {
+  // Search many artists in parallel batches. If the first artists have no valid
+  // results, keep searching the remaining library instead of ending the fill.
+  const batchSize = 12
+  const maxArtistsPerFill = Math.min(candidatesArtists.length, 48)
+  const triedIds = new Set<string>()
+  for (let offset = 0; offset < maxArtistsPerFill; offset += batchSize) {
+    const batch = candidatesArtists.slice(offset, offset + batchSize)
+    const results = await Promise.all(batch.map(async (artist, index) => {
+      const variantIndex = (songCount + offset + index + Math.floor(now / 60_000)) % variants.length
+      const primary = variants[variantIndex] ?? ''
+      const secondary = variants[(variantIndex + 1) % variants.length] ?? ''
+      const queries = [...new Set([primary, secondary].map((value) => `${artist.name} ${value}`.trim()))]
+      const responses = await Promise.all(queries.map((query) =>
+        fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: query }), 10_000),
+      ))
+      return responses.flatMap((response) => response?.items ?? []).map((item) => ({ item, artist }))
+    }))
+
+    const shortlist: Array<{ item: SearchItem; artist: Artist; score: number }> = []
+    for (const { item, artist } of results.flat()) {
+      if (!item?.id || triedIds.has(item.id)) continue
+      triedIds.add(item.id)
       const seconds = parseDuration(item.duration ?? '')
-      if (seconds < 120 || seconds > 420) return false
-      const allowDancePop = ['main', 'naga', 'cebu', 'davao', 'iloilo'].includes(station) && program.id === 'disco'
-      if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
+      if (seconds < 120 || seconds > 420) continue
+      if (!isOriginalArtistTrack(item.title, artist)) continue
       const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' ')
-      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) return false
-      if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
-      return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
-    })
+      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) continue
+      if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) continue
+      if (playedIds.has(item.id) || playedKeys.has(songKey(item.title))) continue
 
-    for (const item of candidates.slice(0, 12)) {
-      const seconds = parseDuration(item.duration ?? '')
-      const metadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
-      const title = normalize(item.title)
+      const normalizedMetadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
+      const normalizedTitle = normalize(item.title)
       const durationScore = Math.max(0, 24 - Math.abs(seconds - 240) / 6)
-      const sourceScore = /official audio|official music|topic$/.test(metadata + ' ' + title) ? 12 : 0
-      const cleanTitleScore = /official audio|audio only/.test(title) ? 6 : 0
-      const artistCreditScore = metadata.includes(normalize(artist.name)) ? 10 : 0
+      const sourceScore = /official audio|official music|topic$/.test(normalizedMetadata + ' ' + normalizedTitle) ? 12 : 0
+      const cleanTitleScore = /official audio|audio only/.test(normalizedTitle) ? 6 : 0
+      const artistCreditScore = normalizedMetadata.includes(normalize(artist.name)) ? 10 : 0
       const artistHistory = history.filter((entry) => entry.artist === artist.name).length
       const freshnessScore = Math.max(0, 12 - artistHistory * 2)
-      const score = durationScore + sourceScore + cleanTitleScore + artistCreditScore + freshnessScore + Math.random() * 3
-      shortlist.push({ item, artist, score })
+      shortlist.push({ item, artist, score: durationScore + sourceScore + cleanTitleScore + artistCreditScore + freshnessScore + Math.random() * 3 })
     }
-  }
 
-  // The agent compares multiple valid candidates before deciding what goes next.
-  shortlist.sort((a, b) => b.score - a.score)
-  for (const { item, artist } of shortlist.slice(0, 12)) {
-    const dl = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
-    if (dl?.downloadUrl) {
-      return {
-        id: item.id,
-        key: songKey(item.title),
-        artist: artist.name,
-        title: item.title,
-        src: dl.downloadUrl,
-        duration: parseDuration(item.duration),
+    shortlist.sort((a, b) => b.score - a.score)
+    // A broken download link should not stop AutoDJ from testing the other
+    // valid results in this batch or moving on to the next artist batch.
+    for (const { item, artist } of shortlist.slice(0, 8)) {
+      const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 18_000)
+      if (download?.downloadUrl) {
+        return {
+          id: item.id,
+          key: songKey(item.title),
+          artist: artist.name,
+          title: item.title,
+          src: download.downloadUrl,
+          duration: parseDuration(item.duration),
+        }
       }
     }
   }
@@ -310,7 +324,6 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 6) {
     const startAt = nextStart(state, now)
-    if (isOffAir(startAt)) break
     const program = station === 'naga'
       ? nagaProgramAt(startAt)
       : station === 'masbate'
@@ -519,11 +532,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         await writeJson(statePath, state)
       }
     }
-    const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
-    if (offAir) {
-      if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
-      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
-    }
+    // All RJ FM stations remain on-air 24/7; DZMM windows are handled as scheduled inserts.
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     if (!settings.rjFmNationwideEnabled) {
       const idents = state.tracks.filter((track) => track.uid.startsWith('rjfm-nationwide-'))
@@ -587,7 +596,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       await writeJson(STATE_PATH, state)
     }
   }
-  const offAir = isOffAir(now) || !settings.broadcastEnabled
+  const offAir = !settings.broadcastEnabled
   if (offAir) {
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
     return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
