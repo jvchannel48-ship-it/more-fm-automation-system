@@ -1,11 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ExternalLink, ShieldCheck, X, AlertTriangle } from 'lucide-react'
+import { ExternalLink, ShieldCheck, X, AlertTriangle, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
+const NETWORKS = [
+  { id: 'DITO', name: 'DITO', url: 'https://dito.ph/promos', note: 'Level-Up, Data Maxx, Socials at UNLI 5G' },
+  { id: 'TNT', name: 'TNT', url: 'https://tntph.com/Pages/sayaall', note: 'Saya All at TikTok Saya' },
+  { id: 'SMART', name: 'SMART', url: 'https://store.smart.com.ph/promos-and-add-ons/smart-prepaid', note: 'Power All, Magic Data at daily data' },
+  { id: 'GOMO', name: 'GOMO', url: 'https://www.gomo.ph/data-offers', note: 'No-expiry data at UNLI offers' },
+] as const
 
 export function VpnPanel() {
   const [open, setOpen] = useState(false)
+  const [network, setNetwork] = useState<(typeof NETWORKS)[number]['id']>('TNT')
 
   useEffect(() => {
     const show = () => setOpen(true)
@@ -14,36 +22,43 @@ export function VpnPanel() {
   }, [])
 
   if (!open) return null
+  const selected = NETWORKS.find((item) => item.id === network) ?? NETWORKS[0]
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-labelledby="vpn-title" className="relative w-full max-w-md rounded-3xl border border-primary/25 bg-card p-6 shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="vpn-title" className="relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-6 shadow-2xl">
         <Button type="button" variant="ghost" size="icon-sm" aria-label="Close VPN" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
         <div className="flex items-center gap-3 pr-8">
           <span className="flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary"><ShieldCheck /></span>
           <div>
-            <h2 id="vpn-title" className="text-xl font-semibold">RJ FM VPN</h2>
-            <p className="text-sm text-muted-foreground">Public VPN server configurations</p>
+            <h2 id="vpn-title" className="text-xl font-semibold">RJ FM VPN & Network</h2>
+            <p className="text-sm text-muted-foreground">Choose your SIM network and check its official promos</p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4 text-amber-400" />Public volunteer servers</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">These servers are operated by independent volunteers, not RJ FM. Their speed, location and availability can change. Do not use them for banking or sensitive activity. This page does not claim that a VPN tunnel is connected.</p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {NETWORKS.map((item) => (
+            <button key={item.id} type="button" onClick={() => setNetwork(item.id)} aria-pressed={network === item.id} className={`rounded-xl border p-3 text-left transition ${network === item.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-secondary/40 text-muted-foreground'}`}>
+              <span className="block font-semibold">{item.name}</span>
+              <span className="mt-1 block text-[11px] leading-snug">{item.note}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="mt-4 space-y-3">
-          <a href="https://www.vpngate.net/en/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-border/70 bg-secondary/50 p-4 hover:bg-secondary">
-            <span><span className="block font-medium">Browse free VPN servers</span><span className="mt-1 block text-xs text-muted-foreground">Choose a public relay and download its OpenVPN (.ovpn) profile</span></span>
-            <ExternalLink className="size-4 shrink-0 text-primary" />
-          </a>
-          <a href="https://www.vpngate.net/en/howto_openvpn.aspx" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-border/70 bg-secondary/50 p-4 hover:bg-secondary">
-            <span><span className="block font-medium">How to connect on Android</span><span className="mt-1 block text-xs text-muted-foreground">Import the profile in OpenVPN Connect, then tap Connect</span></span>
-            <ExternalLink className="size-4 shrink-0 text-primary" />
-          </a>
+        <a href={selected.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 p-4">
+          <span><span className="block font-medium">View {selected.name} official promos</span><span className="mt-1 block text-xs text-muted-foreground">Check current eligibility, price, data and validity</span></span>
+          <ExternalLink className="size-4 shrink-0 text-primary" />
+        </a>
+
+        <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4 text-amber-400" />Important about VPN and promos</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">A VPN does not create free data or turn app-only/social data into all-access data. It may also stop a carrier from recognizing traffic for a promo. Use the data allowance and terms included in your active subscription.</p>
         </div>
 
-        <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">For now, connection is handled by the official OpenVPN app after you import a profile. Built-in RJ FM VPN connect/disconnect needs native Android VPN integration and a verified server tunnel; it is not active yet.</p>
+        <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+          <div className="flex items-center gap-2"><Smartphone className="size-4 text-primary" /><p className="font-medium">Real VPN connection</p></div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Built-in Connect/Disconnect is not active yet. It needs a verified VPN server that we control or are authorized to use, plus native Android VpnService integration and a real tunnel test. Public VPN configs from strangers are not a safe substitute, and this panel does not claim to be connected.</p>
+        </div>
       </section>
     </div>
   )
