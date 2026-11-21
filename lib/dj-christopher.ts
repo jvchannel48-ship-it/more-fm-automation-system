@@ -87,7 +87,8 @@ export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromNam
   if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
   const period = match[3].replace(/\./g, '').toUpperCase()
   const time = minute === 0 ? `${hour} ${period}` : `${hour}:${String(minute).padStart(2, '0')} ${period}`
-  return `${stationName} Manila time check, it is now ${time}.`
+  const locationLabel = stationName === 'RJ FM 93.5' ? 'Manila time check' : 'time check'
+  return `${stationName} ${locationLabel}, it is now ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
