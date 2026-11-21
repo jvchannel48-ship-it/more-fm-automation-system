@@ -355,6 +355,11 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
     await beforeEnqueue?.()
     const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, submittedAt: now, ...resolved }
     state.requestQueue.push(request)
+    // Put the approved request immediately after the track currently on air.
+    // Keep active audio untouched and let the normal station filler rebuild
+    // the upcoming rotation behind the request.
+    state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
+    state.fillingUntil = 0
     await writeJson(statePath, state)
     return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
   })
