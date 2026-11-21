@@ -87,25 +87,7 @@ export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromNam
   if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
   const period = match[3].replace(/\./g, '').toUpperCase()
   const time = minute === 0 ? `${hour} ${period}` : `${hour}:${String(minute).padStart(2, '0')} ${period}`
-  const opening = pick([
-    'Hello RJ FM family, DJ Christopher here with a quick time check.',
-    'Hey music lovers, Christopher here. Let us check the Philippine time.',
-    'A pleasant day to all RJ FM listeners. Here is your quick time update.',
-    'You are tuned in to RJ FM. This is DJ Christopher with the latest time check.',
-  ])
-  const listenerLine = listenerMessage
-    ? `A quick message from ${listenerMessage.fromName}: ${listenerMessage.body.slice(0, 180)}.`
-    : pick([
-      'Thank you for listening from Manila and all our RJ FM communities.',
-      'Stay safe wherever you are, and enjoy the easy-listening favourites coming up.',
-      'We appreciate your company. Keep sharing the good music with family and friends.',
-    ])
-  const transition = pick([
-    'And now, back to more great music on RJ FM.',
-    'Stay tuned; another favourite is coming up next.',
-    'Keep listening, because the music continues right here.',
-  ])
-  return `${opening} ${stationName}, the time is now ${time}, Philippine time. ${listenerLine} Thank you for choosing ${stationName}. ${transition}`
+  return `${stationName} Manila time check, it is now ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
