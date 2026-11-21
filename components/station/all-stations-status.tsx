@@ -10,7 +10,6 @@ interface StationStatus {
   name: string
   frequency: string
   listenersNow: number
-  currentSong: string
   averageListeners24h: number
   samples24h: number
   status: string
@@ -71,7 +70,6 @@ export function AllStationsStatus() {
                 <div className="min-w-0"><p className="truncate font-semibold">{station.name}</p><p className="text-xs text-muted-foreground">{station.frequency} MHz</p></div>
                 <span className={station.status === 'LIVE' ? 'rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-400' : 'rounded-full bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground'}>{station.status}</span>
               </div>
-              <p className="mt-2 truncate text-xs text-muted-foreground" title={station.currentSong}>Now playing: <span className="font-medium text-foreground">{station.currentSong}</span></p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <div><p className="text-lg font-bold tabular-nums">{station.listenersNow}</p><p className="text-[10px] text-muted-foreground">Listening now</p></div>
                 <div><p className="text-lg font-bold tabular-nums">{station.averageListeners24h.toFixed(1)}</p><p className="text-[10px] text-muted-foreground">24h average</p></div>
@@ -84,7 +82,7 @@ export function AllStationsStatus() {
             </div>
           ))}
         </div>
-        <p className="text-center text-[11px] text-muted-foreground">24-hour average is time-weighted from anonymized listener heartbeats. Each heartbeat counts for up to 60 seconds; gaps without a fresh heartbeat count as zero. Only anonymized player heartbeats are counted. Rankings are based on actual recorded listener activity; no song-title or audio-content monitoring is displayed.</p>
+        <p className="text-center text-[11px] text-muted-foreground">Background listener monitoring uses anonymized player heartbeats only. Counts refresh every 15 seconds; 24-hour averages are time-weighted, and stations without verified samples are not ranked. No song title, microphone, or audio-content monitoring is used.</p>
       </div>
     </div>
   )
