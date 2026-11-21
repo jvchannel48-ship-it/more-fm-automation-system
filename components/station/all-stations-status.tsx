@@ -33,8 +33,13 @@ export function AllStationsStatus() {
   const { data, error } = useSWR('/api/station-status', fetcher, { refreshInterval: 15000, revalidateOnFocus: true })
   useEffect(() => {
     const show = () => setOpen(true)
+    const hide = () => setOpen(false)
     window.addEventListener('morefm:open-all-stations', show)
-    return () => window.removeEventListener('morefm:open-all-stations', show)
+    window.addEventListener('morefm:close-all-stations', hide)
+    return () => {
+      window.removeEventListener('morefm:open-all-stations', show)
+      window.removeEventListener('morefm:close-all-stations', hide)
+    }
   }, [])
   if (!open) return null
   const ranked = data?.stations.filter((station) => station.samples24h > 0).sort((a, b) => a.rjfmRank - b.rjfmRank) ?? []
