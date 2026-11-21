@@ -328,7 +328,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         : programAt(startAt, sundayScheduleEnabled)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
-    const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 2 === 0
+    const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 8 === 0
     const request = state.requestQueue[0]
     const song = request
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
@@ -346,7 +346,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       } else if (previousTrack) {
         voiceStartAt = Math.max(songStart, trackEnd(previousTrack))
       }
-      const script = buildChristopherScript({ title: request.title, artist: request.artist })
+      const script = buildChristopherScript({ title: request.title, artist: request.artist, location: request.location })
       const scriptId = await saveChristopherScript(script)
       const words = script.trim().split(/\\s+/).length
       const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
@@ -376,7 +376,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     await recordArtistPlay(song.artist, songStart)
     state.songCount++
     let timeCheckEndAt = songStart + song.duration * 1000
-    if (djChristopherEnabled && state.songCount % 5 === 0) {
+    if (djChristopherEnabled && state.songCount % 2 === 0) {
       const philippinesParts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Manila',
         hour: 'numeric',
@@ -408,8 +408,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       timeCheckEndAt += timeCheckDuration * 1000
     }
     if (identAfterSong && stationIdent) {
-      // Always air the station ID after every second song. If a scheduled daily
-      // announcement also follows this song, let that clip finish before the ID.
+      // Keep station ID clips separate from Christopher time checks; air after every eighth song.
       const identStartAt = timeCheckEndAt
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
@@ -449,7 +448,7 @@ async function withSongRequestLock<T>(operation: () => Promise<T>): Promise<T> {
   await previous
   try { return await operation() } finally { release() }
 }
-export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>, station: StationId = 'main') {
+export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>, station: StationId = 'main', location = '') {
   return withSongRequestLock(async () => {
     const now = Date.now()
     const statePath = statePathFor(station === 'naga' ? 'main' : station)
@@ -458,7 +457,7 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
     const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
     if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
     await beforeEnqueue?.()
-    const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, submittedAt: now, ...resolved }
+    const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, location: location.trim().slice(0, 80), submittedAt: now, ...resolved }
     state.requestQueue.push(request)
     // Put the approved request immediately after the track currently on air.
     // Keep active audio untouched and let the normal station filler rebuild
