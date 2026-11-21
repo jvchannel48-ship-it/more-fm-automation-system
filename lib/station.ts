@@ -382,7 +382,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-      }).formatToParts(new Date())
+      }).formatToParts(new Date(timeCheckEndAt))
       const philippinesHour = philippinesParts.find((part) => part.type === 'hour')?.value ?? '12'
       const philippinesMinute = philippinesParts.find((part) => part.type === 'minute')?.value ?? '00'
       const philippinesPeriod = philippinesParts.find((part) => part.type === 'dayPeriod')?.value ?? 'AM'
@@ -396,8 +396,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         ? reviewedMessages[Math.floor(Math.random() * reviewedMessages.length)]
         : undefined
       const safeListenerMessage = selectedMessage ? {
-        fromName: selectedMessage.fromName.replace(/[\\r\\n<>]/g, ' ').slice(0, 40),
-        body: selectedMessage.body.replace(/https?:\\/\\/\\S+/gi, ' link ').replace(/[\\r\\n<>]/g, ' ').slice(0, 180),
+        fromName: selectedMessage.fromName.replace(/[\r\n<>]/g, ' ').slice(0, 40),
+        body: selectedMessage.body.replace(/https?:\/\/\S+/gi, ' link ').replace(/[\r\n<>]/g, ' ').slice(0, 180),
       } : undefined
       const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`, safeListenerMessage)
       if (selectedMessage) {
