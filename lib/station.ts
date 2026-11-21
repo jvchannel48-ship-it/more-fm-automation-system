@@ -139,6 +139,11 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   const fresh = allowed.filter((a) => !recent.has(a.name))
   return shuffle(fresh.length > 0 ? fresh : allowed)
 }
+/**
+ * Live AutoDJ selector: evaluates a rotating pool against the active program,
+ * recent play history, artist diversity, track length and source quality.
+ * This is an autonomous rules-based selector (not an external LLM agent).
+ */
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, blockedGenres: string[], station: StationId = 'main') {
   if (isBlockedProgram(program, blockedGenres)) return null
   const language = languageForSlot(program, songCount)
@@ -147,21 +152,52 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const pool = program.pools[language]
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
-  for (const artist of candidatesArtists.slice(0, 12)) {
-    const variant = variants[Math.floor(Math.random() * variants.length)] ?? ''
+  const shortlist: Array<{ item: SearchItem; artist: Artist; score: number }> = []
+
+  for (const [artistIndex, artist] of candidatesArtists.slice(0, 8).entries()) {
+    if (variants.length === 0) continue
+    // Rotate search intent instead of repeatedly asking for the same type of result.
+    const variant = variants[(songCount + artistIndex) % variants.length] ?? ''
     const data = await fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search: `${artist.name} ${variant}`.trim() }), 15_000)
     const candidates = (data?.items ?? []).filter((item) => {
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
       const allowDancePop = ['main', 'naga', 'cebu', 'davao', 'iloilo'].includes(station) && program.id === 'disco'
       if (!isOriginalArtistTrack(item.title, artist, { allowDancePop })) return false
-      if (!isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres })) return false
+      const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' ')
+      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) return false
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) return false
       return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
     })
-    for (const item of shuffle(candidates.slice(0, 15)).slice(0, 5)) {
-      const dl = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
-      if (dl?.downloadUrl) return { id: item.id, key: songKey(item.title), artist: artist.name, title: item.title, src: dl.downloadUrl, duration: parseDuration(item.duration) }
+
+    for (const item of candidates.slice(0, 12)) {
+      const seconds = parseDuration(item.duration ?? '')
+      const metadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
+      const title = normalize(item.title)
+      const durationScore = Math.max(0, 24 - Math.abs(seconds - 240) / 6)
+      const sourceScore = /official audio|official music|topic$/.test(metadata + ' ' + title) ? 12 : 0
+      const cleanTitleScore = /official audio|audio only/.test(title) ? 6 : 0
+      const artistCreditScore = metadata.includes(normalize(artist.name)) ? 10 : 0
+      const artistHistory = history.filter((entry) => entry.artist === artist.name).length
+      const freshnessScore = Math.max(0, 12 - artistHistory * 2)
+      const score = durationScore + sourceScore + cleanTitleScore + artistCreditScore + freshnessScore + Math.random() * 3
+      shortlist.push({ item, artist, score })
+    }
+  }
+
+  // The agent compares multiple valid candidates before deciding what goes next.
+  shortlist.sort((a, b) => b.score - a.score)
+  for (const { item, artist } of shortlist.slice(0, 12)) {
+    const dl = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
+    if (dl?.downloadUrl) {
+      return {
+        id: item.id,
+        key: songKey(item.title),
+        artist: artist.name,
+        title: item.title,
+        src: dl.downloadUrl,
+        duration: parseDuration(item.duration),
+      }
     }
   }
   return null
