@@ -79,7 +79,7 @@ export async function getChristopherScript(id: string): Promise<string | null> {
   return saved.find((item) => item.id === id)?.text ?? null
 }
 
-export function buildTimeCheckScript(prompt: string) {
+export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromName: string; body: string }) {
   const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i)
   if (!match) throw new Error('Include a time, for example: Generate RJ FM time check is 4:30 AM.')
   const hour = Number(match[1])
@@ -87,26 +87,24 @@ export function buildTimeCheckScript(prompt: string) {
   if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
   const time = `${hour}:${String(minute).padStart(2, '0')} ${match[3].replace(/\./g, '').toUpperCase()}`
   const opening = pick([
-    'Hello, wonderful RJ FM listeners! Here is a little time check for everyone tuned in.',
-    'Hey there, music lovers! DJ Christopher is here with your latest RJ FM time update.',
-    'A pleasant day to you wherever you are listening. Let us take a quick moment for the time.',
-    'You are spending your day with RJ FM, and it is time for a friendly update from the studio.',
-    'Greetings to our RJ FM family across the Philippines. Here is the time where you are listening.',
+    'Hello RJ FM family, DJ Christopher here with a quick time check.',
+    'Hey music lovers, Christopher here. Let us check the Philippine time.',
+    'A pleasant day to all RJ FM listeners. Here is your quick time update.',
+    'You are tuned in to RJ FM. This is DJ Christopher with the latest time check.',
   ])
-  const followUp = pick([
-    'We hope everything is going well wherever this moment finds you. If you are working, studying, travelling, or relaxing at home, thank you for letting RJ FM be part of your day. Keep comfortable, stay safe, and enjoy the songs coming your way.',
-    'Take a little break, share a smile with someone nearby, and let the music brighten your day. We have more wonderful easy-listening favourites lined up, so stay right here with us.',
-    'To everyone listening from Manila and across our RJ FM communities, thank you for your time and support. Keep the radio close, enjoy every melody, and let us make the rest of your day a little more special.',
-    'If you are on the road, please drive safely. If you are at work, we hope the music keeps you company. Wherever you may be, we are glad you are here. More beautiful songs are coming up next.',
-    'That is your time update from DJ Christopher. Send a greeting, share your favourite song, and keep the good music playing. Thank you for choosing RJ FM, your companion for great songs throughout the day.',
-  ])
+  const listenerLine = listenerMessage
+    ? `A quick message from ${listenerMessage.fromName}: ${listenerMessage.body.slice(0, 180)}.`
+    : pick([
+      'Thank you for listening from Manila and all our RJ FM communities.',
+      'Stay safe wherever you are, and enjoy the easy-listening favourites coming up.',
+      'We appreciate your company. Keep sharing the good music with family and friends.',
+    ])
   const transition = pick([
-    'And now, let us get straight back to the music.',
-    'Stay tuned, because another great song is coming up next.',
-    'Keep listening to RJ FM; the music continues right after this update.',
-    'Thanks for staying with us. Here comes more music to enjoy.',
+    'And now, back to more great music on RJ FM.',
+    'Stay tuned; another favourite is coming up next.',
+    'Keep listening, because the music continues right here.',
   ])
-  return `${opening} The time check is ${time}, Philippine time. ${followUp} ${transition}`
+  return `${opening} The time is ${time}, Philippine time. ${listenerLine} Thank you for choosing RJ FM. ${transition}`
 }
 export function estimateChristopherDuration(text: string) {
   return Math.max(12, Math.ceil(text.trim().split(/\s+/).length / 2.45))
