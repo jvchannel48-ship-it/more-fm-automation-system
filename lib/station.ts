@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, MESSAGES_PATH, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
@@ -14,8 +14,8 @@ import {
   type Program,
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
-import type { AdminStatus, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildTimeCheckScript, buildRandomChristopherSongPrompt, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import type { AdminStatus, ListenerMessage, LiveDjState, NowResponse, SongRequest, Track } from './types'
+import { buildTimeCheckScript, saveChristopherScript, saveAutoDjScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -311,7 +311,7 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
       nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
     } else nextFadeIn = null
   }
-  for (const voice of mainState.tracks.filter((track) => christopherEnabled && track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
+  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && ((christopherEnabled && track.uid.startsWith('dj-christopher-timecheck-')) || track.uid.startsWith('dj-autodj-message-main-')))) {
     const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
     const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
     const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
@@ -403,28 +403,31 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       })
       timeCheckEndAt += timeCheckDuration * 1000
     }
-    // A short, varied song comment every fourth song. Auto DJ remains responsible
-    // for reading listener request messages; Christopher only comments on music.
-    if (djChristopherEnabled && state.songCount % 4 === 0) {
-      const promptText = await buildRandomChristopherSongPrompt(song.title, song.artist)
-      const promptId = await saveChristopherScript(promptText)
-      const promptDuration = estimateChristopherDuration(promptText)
-      const previousVoiceOrMusic = state.tracks.at(-1)
-      if (previousVoiceOrMusic && previousVoiceOrMusic.kind === 'music') {
-        previousVoiceOrMusic.fadeOut = Math.min(previousVoiceOrMusic.fadeOut || CROSSFADE_SECONDS, 3)
-      }
+    // Auto DJ, not Christopher, reads each listener song-request message once per station.
+    const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
+    const pendingMessage = listenerMessages.find((message) =>
+      /(song request|request(?:ing)? (?:a )?song|please play|play me|can you play|request:)/i.test(message.body)
+      && !message.spokenAt?.[station]
+    )
+    if (pendingMessage) {
+      const messageText = `Auto DJ has a song request message from ${pendingMessage.fromName}: ${pendingMessage.body}`
+      const messageId = await saveAutoDjScript(messageText)
+      const messageDuration = estimateChristopherDuration(messageText)
       state.tracks.push({
-        uid: `dj-christopher-song-prompt-${station}-${state.songCount}-${promptId}`,
-        src: `/api/dj-christopher?id=${promptId}`,
+        uid: `dj-autodj-message-${station}-${pendingMessage.id}-${messageId}`,
+        src: `/api/dj-christopher?id=${messageId}&speaker=autodj`,
         startAt: timeCheckEndAt,
-        duration: promptDuration,
+        duration: messageDuration,
         fadeIn: 0.5,
         fadeOut: 2.5,
         kind: 'dj-mic',
-        title: 'DJ Christopher · Song Commentary',
-        artist: 'DJ Christopher',
+        title: 'Auto DJ · Listener Song Request',
+        artist: 'RJ FM Auto DJ',
       })
-      timeCheckEndAt += promptDuration * 1000
+      timeCheckEndAt += messageDuration * 1000
+      await writeJson(MESSAGES_PATH, listenerMessages.map((message) => message.id === pendingMessage.id
+        ? { ...message, spokenAt: { ...message.spokenAt, [station]: Date.now() } }
+        : message))
     }
     if (identAfterSong && stationIdent) {
       // Station ident follows Christopher's completed voice break.
@@ -478,7 +481,6 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
       return { accepted: true, duplicate: true, requestId: state.requestQueue[duplicateIndex].requestId, position: duplicateIndex + 1, resolved: Boolean(state.requestQueue[duplicateIndex].src) }
     }
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
-    const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
     await beforeEnqueue?.()
     const request: SongRequest = {
       requestId: crypto.randomUUID(),
@@ -486,7 +488,6 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
       artist,
       location: location.trim().slice(0, 80),
       submittedAt: now,
-      ...(resolved ?? {}),
     }
     state.requestQueue.push(request)
     // The Auto DJ owns request resolution and playback. If the source is not
@@ -494,7 +495,7 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
     state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
     state.fillingUntil = 0
     await writeJson(statePath, state)
-    return { accepted: true, requestId: request.requestId, position: state.requestQueue.length, resolved: Boolean(resolved) }
+    return { accepted: true, autoDjQueued: true, requestId: request.requestId, position: state.requestQueue.length, resolved: false }
   })
 }
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
