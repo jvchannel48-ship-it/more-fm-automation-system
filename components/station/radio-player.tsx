@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Moon, Pause, Play, Users, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
@@ -43,6 +43,15 @@ export function RadioPlayer() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
+  const { data: listenerCount } = useSWR<{ listenersNow: number }>(
+    `/api/listeners?station=${station}`,
+    async (url: string) => {
+      const response = await fetch(url, { cache: 'no-store' })
+      if (!response.ok) throw new Error('Live listener count unavailable')
+      return response.json() as Promise<{ listenersNow: number }>
+    },
+    { refreshInterval: 10_000, revalidateOnFocus: true },
+  )
   const recoverStream = useCallback((uid: string) => {
     setRecoveryIssue('Recovering audio source…')
     void fetch(`/api/now?station=${station}`, {
@@ -168,6 +177,11 @@ export function RadioPlayer() {
       <div className="flex flex-col items-center gap-1">
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {meta.shortName} <span className="text-primary">{meta.frequency}</span>
+        </p>
+        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+          <Users className="size-3.5 text-primary" aria-hidden="true" />
+          <span className="font-semibold tabular-nums text-foreground">{listenerCount?.listenersNow ?? 0}</span>
+          listening now · live count
         </p>
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
