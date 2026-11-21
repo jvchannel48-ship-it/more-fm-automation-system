@@ -80,7 +80,7 @@ export async function getChristopherScript(id: string): Promise<string | null> {
 }
 
 export function buildTimeCheckScript(prompt: string) {
-  const match = prompt.match(/(?:time(?:\\s+check)?\\s*(?:is|at)?\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(a\\.?m\\.?|p\\.?m\\.?)?/i)
+  const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/i)
   if (!match) throw new Error('Include a time, for example: RJ FM time check is 9:30.')
   const hour = Number(match[1])
   const minute = Number(match[2] ?? '00')
