@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Database, HardDrive, RefreshCw, Server, X } from 'lucide-react'
+import { HardDrive, RefreshCw, Server, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type ServerStatus = {
