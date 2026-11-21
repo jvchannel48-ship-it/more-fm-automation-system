@@ -3,8 +3,33 @@ import { readJson, writeJson } from './storage'
 
 export const DJ_CHRISTOPHER_SCRIPTS_PATH = 'station/dj-christopher-scripts.json'
 export const DJ_CHRISTOPHER_TIMECHECKS_PATH = 'station/dj-christopher-timechecks.json'
+const AUTO_DJ_SCRIPTS_PATH = 'station/auto-dj-scripts.json'
 export interface ChristopherTimeCheck { id: string; scriptId: string; text: string; createdAt: number; mode: 'after3' | 'dzmm'; afterSongNumber: number; scheduledAt: number | null }
 export interface ChristopherScript { id: string; text: string; createdAt: number }
+
+const DJ_CHRISTOPHER_PROMPT_HISTORY_PATH = 'station/dj-christopher-prompt-history.json'
+const songPromptTemplates = [
+  { id: 'melody-memory', text: (title: string, artist: string) => `That was ${title} by ${artist}. Some songs bring back special memories, and we hope this one made your day a little brighter.` },
+  { id: 'artist-appreciation', text: (title: string, artist: string) => `You just heard ${title} from ${artist}. We love bringing great music and memorable artists together here on RJ FM.` },
+  { id: 'keep-listening', text: (title: string, artist: string) => `A great track from ${artist}, ${title}. Keep listening to RJ FM, because more music you love is on the way.` },
+  { id: 'music-mood', text: (title: string, artist: string) => `That was ${title} by ${artist}. Let the music lift your mood, wherever you are listening today.` },
+  { id: 'classic-feeling', text: (title: string, artist: string) => `Enjoyed that one? It was ${title} by ${artist}. RJ FM is here to keep the songs and good memories playing.` },
+  { id: 'song-connection', text: (title: string, artist: string) => `Music connects us all. That was ${title} by ${artist}, right here on RJ FM. Thanks for sharing this moment with us.` },
+  { id: 'next-favorite', text: (title: string, artist: string) => `That was ${artist} with ${title}. Stay with us; your next favorite song could be coming up soon.` },
+  { id: 'daily-soundtrack', text: (title: string, artist: string) => `Adding a little music to your day with ${title} by ${artist}. This is RJ FM, playing the songs that stay with you.` },
+  { id: 'good-vibes', text: (title: string, artist: string) => `Good vibes from ${artist}. You heard ${title} on RJ FM. Keep enjoying the music and make this moment yours.` },
+  { id: 'thank-listeners', text: (title: string, artist: string) => `That beautiful song was ${title} by ${artist}. Thank you for making RJ FM part of your day.` },
+  { id: 'music-break', text: (title: string, artist: string) => `A little music break with ${title} from ${artist}. Take a breath, relax, and enjoy more favorites here on RJ FM.` },
+  { id: 'favorite-artist', text: (title: string, artist: string) => `For everyone who loves great songs, that was ${title} by ${artist}. More music is coming your way on RJ FM.` },
+]
+export async function buildRandomChristopherSongPrompt(title: string, artist: string) {
+  const history = await readJson<string[]>(DJ_CHRISTOPHER_PROMPT_HISTORY_PATH, [])
+  const available = songPromptTemplates.filter((template) => !history.includes(template.id))
+  const pool = available.length ? available : songPromptTemplates
+  const selected = pool[Math.floor(Math.random() * pool.length)]
+  await writeJson(DJ_CHRISTOPHER_PROMPT_HISTORY_PATH, [...history, selected.id].slice(-8))
+  return selected.text(title, artist)
+}
 const openings = [
   'Hello RJ FM family, this is DJ Christopher, keeping you company with the songs you love.',
   'Good day, music lovers. Christopher here, your friendly voice on RJ FM.',
@@ -79,36 +104,31 @@ export async function getChristopherScript(id: string): Promise<string | null> {
   return saved.find((item) => item.id === id)?.text ?? null
 }
 
-export function buildTimeCheckScript(prompt: string, listenerMessage?: { fromName: string; body: string }) {
-  const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i)
-  if (!match) throw new Error('Include a time, for example: Generate RJ FM time check is 4:30 AM.')
+export async function saveAutoDjScript(text: string): Promise<string> {
+  const saved = await readJson<ChristopherScript[]>(AUTO_DJ_SCRIPTS_PATH, [])
+  const id = crypto.randomUUID()
+  await writeJson(AUTO_DJ_SCRIPTS_PATH, [...saved, { id, text: text.slice(0, 1200), createdAt: Date.now() }].slice(-200))
+  return id
+}
+
+export async function getAutoDjScript(id: string): Promise<string | null> {
+  const saved = await readJson<ChristopherScript[]>(AUTO_DJ_SCRIPTS_PATH, [])
+  return saved.find((item) => item.id === id)?.text ?? null
+}
+
+export function buildTimeCheckScript(prompt: string) {
+  const match = prompt.match(/(?:time(?:\s+check)?\s*(?:is|at)?\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/i)
+  if (!match) throw new Error('Include a time, for example: RJ FM time check is 9:30.')
   const hour = Number(match[1])
   const minute = Number(match[2] ?? '00')
-  if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid 12-hour time, such as 4:30 AM.')
-  const period = match[3].replace(/\./g, '').toUpperCase()
-  const time = minute === 0 ? `${hour} ${period}` : `${hour}:${String(minute).padStart(2, '0')} ${period}`
-  const opening = pick([
-    'Hello RJ FM family, DJ Christopher here with a quick time check.',
-    'Hey music lovers, Christopher here. Let us check the Philippine time.',
-    'A pleasant day to all RJ FM listeners. Here is your quick time update.',
-    'You are tuned in to RJ FM. This is DJ Christopher with the latest time check.',
-  ])
-  const listenerLine = listenerMessage
-    ? `A quick message from ${listenerMessage.fromName}: ${listenerMessage.body.slice(0, 180)}.`
-    : pick([
-      'Thank you for listening from Manila and all our RJ FM communities.',
-      'Stay safe wherever you are, and enjoy the easy-listening favourites coming up.',
-      'We appreciate your company. Keep sharing the good music with family and friends.',
-    ])
-  const transition = pick([
-    'And now, back to more great music on RJ FM.',
-    'Stay tuned; another favourite is coming up next.',
-    'Keep listening, because the music continues right here.',
-  ])
-  return `${opening} The time is ${time}, Philippine time. ${listenerLine} Thank you for choosing RJ FM. ${transition}`
+  if (hour < 1 || hour > 12 || minute > 59) throw new Error('Enter a valid time, such as 9:30.')
+  const time = `${hour}:${String(minute).padStart(2, '0')}`
+  return `RJ FM time check is ${time}.`
 }
 export function estimateChristopherDuration(text: string) {
-  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.8))
+  // Conservative speech timing plus a small tail buffer so voice clips finish
+  // before Auto DJ schedules the next music track.
+  return Math.max(10, Math.ceil(text.trim().split(/\s+/).length / 2.2) + 2)
 }
 export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3' | 'dzmm', songCount: number) {
   const text = buildTimeCheckScript(prompt)

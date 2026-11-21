@@ -109,6 +109,10 @@ export function AccountMenu() {
     finally { setBusy(false) }
   }
 
+  const downloadApk = () => {
+    window.location.href = 'https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk'
+  }
+
   const shareAppLink = async () => {
     const apkUrl = 'https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk'
     const shareData = {
@@ -211,7 +215,10 @@ export function AccountMenu() {
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-16 rounded-2xl object-cover ring-2 ring-primary/25" /> : <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-2 ring-primary/20"><UserRound className="size-7" /></span>}
               <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{profile.displayName || 'Listener'}</p><p className="mt-0.5 text-xs text-muted-foreground">RJ FM Listener</p><p className="mt-1 font-mono text-[11px] tracking-wider text-primary">PROFILE NO. {profile.id.slice(-6).toUpperCase()}</p></div>
             </div>
-            <Button type="button" variant="outline" className="w-full" onClick={shareAppLink}><Share2 className="size-4" />Share RJ FM APK link</Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="default" className="w-full" onClick={downloadApk}><Smartphone className="size-4" />Download APK</Button>
+              <Button type="button" variant="outline" className="w-full" onClick={shareAppLink}><Share2 className="size-4" />Share APK link</Button>
+            </div>
             <p className="text-xs text-muted-foreground">Ipadala ang opisyal na link para ma-download o ma-update ng iba ang RJ FM app.</p>
             {profile.creditsEnabled && <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/[0.03] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Available balance</p><p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">{profile.creditsRemaining ?? 0}</p><p className="mt-1 text-[11px] text-muted-foreground">RJ FM credits</p></div>

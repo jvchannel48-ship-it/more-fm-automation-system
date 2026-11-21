@@ -18,10 +18,10 @@ export interface SongRequest {
   artist: string
   location?: string
   submittedAt: number
-  id: string
-  key: string
-  src: string
-  duration: number
+  id?: string
+  key?: string
+  src?: string
+  duration?: number
 }
 
 export interface StationSettings {
@@ -55,7 +55,7 @@ export interface ListenerMessage {
   body: string
   createdAt: number
   read: boolean
-  spokenAt?: number
+  spokenAt?: Record<string, number>
 }
 
 export interface NowResponse {

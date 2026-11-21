@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, MESSAGES_PATH, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
@@ -15,7 +15,7 @@ import {
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, ListenerMessage, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import { buildTimeCheckScript, buildRandomChristopherSongPrompt, saveChristopherScript, saveAutoDjScript, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
@@ -236,39 +236,45 @@ async function findRequestedSong(title: string, artist: string, history: History
     `${title} ${artist}`,
     `"${title}" ${artist}`,
     `${artist} ${title} official audio`,
+    `${title} ${artist} mp3`,
+    `${title} ${artist} lyrics`,
   ])]
   const results = await Promise.all(queries.map((search) =>
-    fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search }), 15_000),
+    fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search }), 12_000),
   ))
-  const items = [...new Map(results.flatMap((result) => result?.items ?? []).map((item) => [item.id, item])).values()]
-  const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id)])
-  const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key)])
+  const items = [...new Map(results.flatMap((result) => result?.items ?? []).filter((item) => item?.id && item?.url).map((item) => [item.id, item])).values()]
+  const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id).filter((id): id is string => Boolean(id))])
+  const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key).filter((key): key is string => Boolean(key))])
   const titleNeedle = normalize(title)
   const artistNeedle = normalize(artist)
   const candidates = items.filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    const officialAttribution = [item.artist, item.channelTitle, item.channel, item.uploader]
-      .filter(Boolean).join(' ')
-    const hasOriginalArtistCredit = isOriginalArtistTrack(item.title, { name: artist, match: artist })
+    const officialAttribution = [item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' ')
+    const metadata = normalize(officialAttribution)
+    const normalizedTitle = normalize(item.title)
+    const artistMatches = isOriginalArtistTrack(item.title, { name: artist, match: artist })
       || (Boolean(officialAttribution) && isOriginalArtistTrack(`${item.title} - ${officialAttribution}`, { name: artist, match: artist }))
-    return seconds >= 120 && seconds <= 420
-      && normalize(item.title).includes(titleNeedle)
-      && hasOriginalArtistCredit
+      || (artistNeedle.length >= 3 && metadata.includes(artistNeedle))
+    return seconds >= 90 && seconds <= 900
+      && normalizedTitle.includes(titleNeedle)
+      && artistMatches
       && isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres })
+      && !matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)
       && !playedIds.has(item.id)
       && !playedKeys.has(songKey(item.title))
   }).map((item) => {
     const metadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
     const normalizedTitle = normalize(item.title)
-    const score = (normalizedTitle.startsWith(titleNeedle) ? 4 : 0)
-      + (normalizedTitle.includes(titleNeedle) ? 2 : 0)
-      + (metadata.includes(artistNeedle) ? 4 : 0)
+    const score = (normalizedTitle.startsWith(titleNeedle) ? 6 : 0)
+      + (normalizedTitle.includes(titleNeedle) ? 3 : 0)
+      + (metadata.includes(artistNeedle) ? 5 : 0)
+      + (/official audio|topic$/.test(metadata + ' ' + normalizedTitle) ? 2 : 0)
     return { item, score }
   }).sort((a, b) => b.score - a.score)
-  for (const { item } of candidates) {
-    const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
+  for (const { item } of candidates.slice(0, 8)) {
+    const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
     if (download?.downloadUrl) {
-      return { id: item.id, key: songKey(item.title), src: download.downloadUrl, duration: parseDuration(item.duration) }
+      return { id: item.id, key: songKey(item.title), title: item.title, artist, src: download.downloadUrl, duration: parseDuration(item.duration) }
     }
   }
   return null
@@ -305,7 +311,7 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
       nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
     } else nextFadeIn = null
   }
-  for (const voice of mainState.tracks.filter((track) => christopherEnabled && track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
+  for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && ((christopherEnabled && (track.uid.startsWith('dj-christopher-timecheck-') || track.uid.startsWith('dj-christopher-song-prompt-'))) || track.uid.startsWith('dj-autodj-message-main-')))) {
     const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
     const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
     const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
@@ -327,11 +333,27 @@ function statePathFor(station: StationId) {
     default: return STATE_PATH
   }
 }
-async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, djChristopherIntervalMinutes = 40) {
+async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, _djChristopherIntervalMinutes = 40) {
   const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
-  const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
-  const localHistoryIds = new Set(state.history.map((entry) => entry.id))
-  const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !localHistoryIds.has(entry.id))]
+  // Merge each station's existing history into one shared network ledger before
+  // selecting the next song. This prevents legacy station queues from replaying
+  // a track that was already heard elsewhere on RJ FM.
+  const mergedHistory = [...savedNetworkHistory, ...state.history]
+    .filter((entry) => entry && typeof entry.t === 'number' && entry.t > now - SONG_REPEAT_WINDOW_MS)
+    .sort((a, b) => b.t - a.t)
+  const seenSongIds = new Set<string>()
+  const seenSongKeys = new Set<string>()
+  const networkHistory: HistoryEntry[] = []
+  for (const entry of mergedHistory) {
+    const id = typeof entry.id === 'string' ? entry.id : ''
+    const key = typeof entry.key === 'string' ? entry.key : ''
+    if ((id && seenSongIds.has(id)) || (key && seenSongKeys.has(key))) continue
+    if (id) seenSongIds.add(id)
+    if (key) seenSongKeys.add(key)
+    networkHistory.push(entry)
+  }
+  networkHistory.sort((a, b) => a.t - b.t)
+  const selectionHistory = networkHistory
   let guard = 0
   // Add one future track per request so search retries stay within the API time budget.
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
@@ -345,43 +367,36 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
     const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 8 === 0
     const request = state.requestQueue[0]
-    const song = request
+    const resolvedRequest = request?.src && request.id && request.key && request.duration
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
+      : request
+        ? await findRequestedSong(request.title, request.artist, selectionHistory, state.requestQueue.slice(1), blockedGenres)
+        : null
+    const song = resolvedRequest
+      ? resolvedRequest
       : await findSong(program, state.songCount, selectionHistory, startAt, blockedGenres, station)
     if (!song) break
-    if (request) state.requestQueue.shift()
-    let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    let songFadeIn = fadeIn
-    if (request && djChristopherEnabled) {
-      const previousTrack = state.tracks.at(-1)
-      let voiceStartAt = songStart
-      if (previousTrack?.kind === 'music') {
-        previousTrack.fadeOut = 3
-        voiceStartAt = Math.max(songStart, trackEnd(previousTrack) - 3_000)
-      } else if (previousTrack) {
-        voiceStartAt = Math.max(songStart, trackEnd(previousTrack))
-      }
-      const script = buildChristopherScript({ title: request.title, artist: request.artist, location: request.location })
-      const scriptId = await saveChristopherScript(script)
-      const words = script.trim().split(/\s+/).length
-      const speechSeconds = Math.max(30, Math.ceil(words / 2.35))
+    let requestAnnouncementDuration = 0
+    if (request && resolvedRequest) {
+      Object.assign(request, resolvedRequest)
+      state.requestQueue.shift()
+      const requestText = `Auto DJ has a listener song request: ${request.title} by ${request.artist}. This one is specially requested for RJ FM. Enjoy the music!`
+      const requestScriptId = await saveAutoDjScript(requestText)
+      requestAnnouncementDuration = estimateChristopherDuration(requestText)
       state.tracks.push({
-        uid: `dj-christopher-request-${station}-${scriptId}`,
-        src: `/api/dj-christopher?id=${scriptId}`,
-        startAt: voiceStartAt,
-        duration: speechSeconds,
-        fadeIn: 0.8,
+        uid: `dj-autodj-message-${station}-request-${request.requestId}-${requestScriptId}`,
+        src: `/api/dj-christopher?id=${requestScriptId}&speaker=autodj`,
+        startAt,
+        duration: requestAnnouncementDuration,
+        fadeIn: 0.5,
         fadeOut: 2.5,
         kind: 'dj-mic',
-        title: 'DJ Christopher · Song request',
-        artist: 'DJ Christopher',
+        title: 'Auto DJ · Song Request Announcement',
+        artist: 'RJ FM Auto DJ',
       })
-      songStart = voiceStartAt + speechSeconds * 1000
-      songFadeIn = 2.5
-      const minGap = Math.max(30, djChristopherIntervalMinutes - 5)
-      const maxGap = djChristopherIntervalMinutes + 5
-      state.christopherNextAt = voiceStartAt + (minGap + Math.random() * (maxGap - minGap)) * 60_000
     }
+    let songStart = Math.max(startAt + requestAnnouncementDuration * 1000, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
+    const songFadeIn = fadeIn
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
     state.history.push(playedEntry)
@@ -400,26 +415,8 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       }).formatToParts(new Date(timeCheckEndAt))
       const philippinesHour = philippinesParts.find((part) => part.type === 'hour')?.value ?? '12'
       const philippinesMinute = philippinesParts.find((part) => part.type === 'minute')?.value ?? '00'
-      const philippinesPeriod = philippinesParts.find((part) => part.type === 'dayPeriod')?.value ?? 'AM'
-      const philippinesTime = philippinesMinute === '00'
-        ? `${philippinesHour} ${philippinesPeriod}`
-        : `${philippinesHour}:${philippinesMinute} ${philippinesPeriod}`
-      // Only read listener messages that an admin has reviewed (read=true), once each.
-      const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
-      const reviewedMessages = listenerMessages.filter((message) => message.read && !message.spokenAt && message.body.trim())
-      const selectedMessage = reviewedMessages.length
-        ? reviewedMessages[Math.floor(Math.random() * reviewedMessages.length)]
-        : undefined
-      const safeListenerMessage = selectedMessage ? {
-        fromName: selectedMessage.fromName.replace(/[\r\n<>]/g, ' ').slice(0, 40),
-        body: selectedMessage.body.replace(/https?:\/\/\S+/gi, ' link ').replace(/[\r\n<>]/g, ' ').slice(0, 180),
-      } : undefined
-      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`, safeListenerMessage)
-      if (selectedMessage) {
-        await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
-          message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
-        ))
-      }
+      const philippinesTime = `${philippinesHour}:${philippinesMinute}`
+      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`)
       const scriptId = await saveChristopherScript(timeCheckText)
       const timeCheckDuration = estimateChristopherDuration(timeCheckText)
       const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
@@ -437,8 +434,53 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       })
       timeCheckEndAt += timeCheckDuration * 1000
     }
+    // Christopher's separate random song prompt runs every fourth song.
+    // Keep the last eight template IDs in history so prompts do not repeat back-to-back.
+    if (djChristopherEnabled && state.songCount % 4 === 0) {
+      const promptText = await buildRandomChristopherSongPrompt(song.title, song.artist)
+      const promptId = await saveChristopherScript(promptText)
+      const promptDuration = estimateChristopherDuration(promptText)
+      state.tracks.push({
+        uid: `dj-christopher-song-prompt-${station}-${state.songCount}-${promptId}`,
+        src: `/api/dj-christopher?id=${promptId}`,
+        startAt: timeCheckEndAt,
+        duration: promptDuration,
+        fadeIn: 0.5,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'DJ Christopher · Song Prompt',
+        artist: 'DJ Christopher',
+      })
+      timeCheckEndAt += promptDuration * 1000
+    }
+    // Auto DJ, not Christopher, reads each listener song-request message once per station.
+    const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
+    const pendingMessage = listenerMessages.find((message) =>
+      /(song\s*request|\brequest\b|please\s+play|play\s+me|can\s+you\s+play|paki[- ]?play|pa[- ]?play|patugtog|pa[- ]?tugtog|kant[aá]\s+(?:naman|po))/i.test(message.body)
+      && !message.spokenAt?.[station]
+    )
+    if (pendingMessage) {
+      const messageText = `Auto DJ has a song request message from ${pendingMessage.fromName}: ${pendingMessage.body}`
+      const messageId = await saveAutoDjScript(messageText)
+      const messageDuration = estimateChristopherDuration(messageText)
+      state.tracks.push({
+        uid: `dj-autodj-message-${station}-${pendingMessage.id}-${messageId}`,
+        src: `/api/dj-christopher?id=${messageId}&speaker=autodj`,
+        startAt: timeCheckEndAt,
+        duration: messageDuration,
+        fadeIn: 0.5,
+        fadeOut: 2.5,
+        kind: 'dj-mic',
+        title: 'Auto DJ · Listener Song Request',
+        artist: 'RJ FM Auto DJ',
+      })
+      timeCheckEndAt += messageDuration * 1000
+      await writeJson(MESSAGES_PATH, listenerMessages.map((message) => message.id === pendingMessage.id
+        ? { ...message, spokenAt: { ...message.spokenAt, [station]: Date.now() } }
+        : message))
+    }
     if (identAfterSong && stationIdent) {
-      // Keep station ID clips separate from Christopher time checks; air after every eighth song.
+      // Station ident follows Christopher's completed voice break.
       const identStartAt = timeCheckEndAt
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
@@ -461,7 +503,9 @@ async function loadState(now: number, path = STATE_PATH) {
   if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => {
-    if (t.uid.includes('dj-christopher-')) return trackEnd(t) >= now - 1000
+    // Purge obsolete Christopher request clips while retaining time checks and current song prompts.
+    if (t.uid.startsWith('dj-christopher-') && !t.uid.startsWith('dj-christopher-timecheck-') && !t.uid.startsWith('dj-christopher-song-prompt-')) return false
+    if (t.uid.startsWith('dj-christopher-timecheck-') || t.uid.startsWith('dj-christopher-song-prompt-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
     const schedule = dailyAnnouncementScheduleAt(now)
     const isActive = t.startAt <= now && trackEnd(t) > now
@@ -483,19 +527,26 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
     const now = Date.now()
     const statePath = statePathFor(station === 'naga' ? 'main' : station)
     const [{ state }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
+    const duplicateIndex = state.requestQueue.findIndex((item) => normalize(item.title) === normalize(title) && normalize(item.artist) === normalize(artist))
+    if (duplicateIndex >= 0) {
+      return { accepted: true, duplicate: true, requestId: state.requestQueue[duplicateIndex].requestId, position: duplicateIndex + 1, resolved: Boolean(state.requestQueue[duplicateIndex].src) }
+    }
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
-    const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
-    if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
     await beforeEnqueue?.()
-    const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, location: location.trim().slice(0, 80), submittedAt: now, ...resolved }
+    const request: SongRequest = {
+      requestId: crypto.randomUUID(),
+      title,
+      artist,
+      location: location.trim().slice(0, 80),
+      submittedAt: now,
+    }
     state.requestQueue.push(request)
-    // Put the approved request immediately after the track currently on air.
-    // Keep active audio untouched and let the normal station filler rebuild
-    // the upcoming rotation behind the request.
+    // The Auto DJ owns request resolution and playback. If the source is not
+    // available yet, keep the accepted request pending and retry on later fills.
     state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
     state.fillingUntil = 0
     await writeJson(statePath, state)
-    return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
+    return { accepted: true, autoDjQueued: true, requestId: request.requestId, position: state.requestQueue.length, resolved: false }
   })
 }
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
@@ -532,9 +583,11 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       const mainHasUpcoming = mainSnap.state.tracks.some((track) => track.startAt > now)
       const mainHasCurrent = mainSnap.state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
       if (!mainHasUpcoming && !mainHasCurrent && !options.skipFill) {
-        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        mainSnap.state.fillingUntil = 0
-        await writeJson(STATE_PATH, mainSnap.state)
+        await withAutoDjFillLock(async () => {
+          await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+          mainSnap.state.fillingUntil = 0
+          await writeJson(STATE_PATH, mainSnap.state)
+        })
       }
       const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
@@ -597,9 +650,14 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (!options.skipFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-    state.fillingUntil = 0
-    await writeJson(STATE_PATH, state)
+    await withAutoDjFillLock(async () => {
+      try {
+        await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+      } finally {
+        state.fillingUntil = 0
+        await writeJson(STATE_PATH, state)
+      }
+    })
   } else if (changed) await writeJson(STATE_PATH, state)
   const hasCurrentMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now)
   const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
