@@ -1,6 +1,6 @@
 export const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000
 
-export const SIGN_OFF_HOUR = 3
+export const SIGN_OFF_HOUR = 4
 export const SIGN_ON_HOUR = 4
 export const DZMM_STREAM_URL = 'https://us1.amfmph.com:8852/live'
 export const LOVE_CONNECT_IDENT_DURATION_SECONDS = 6.191
