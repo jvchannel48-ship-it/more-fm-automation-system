@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import { STATIONS, STATION_ORDER } from '@/lib/stations'
-import { getStationListenerStats } from '@/lib/storage'
+import { getActiveStationListenerCounts, getAverageListenerCount, getStationListenerStats } from '@/lib/storage'
+import { getNowPlaying } from '@/lib/station'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const metrics = await getStationListenerStats()
-  const stations = STATION_ORDER.map((id) => {
+  const [metrics, active, totalAverage, nowPlaying] = await Promise.all([
+    getStationListenerStats(),
+    getActiveStationListenerCounts(),
+    getAverageListenerCount(),
+    Promise.all(STATION_ORDER.map((id) => getNowPlaying({ station: id, skipFill: true }))),
+  ])
+  const stations = STATION_ORDER.map((id, index) => {
     const history = metrics.filter((item) => item.station === id)
     const average = history.length
       ? Math.round(history.reduce((sum, item) => sum + item.count, 0) / history.length)
@@ -16,14 +22,19 @@ export async function GET() {
       id,
       name: STATIONS[id].name,
       frequency: STATIONS[id].frequency,
-      listenersNow: latest && Date.now() - latest.t < 60_000 ? latest.count : 0,
+      listenersNow: active.stationCounts[id] ?? 0,
+      currentSong: (() => {
+        const now = nowPlaying[index].serverTime
+        const tracks = nowPlaying[index].tracks.filter((track) => track.kind === 'music').sort((a, b) => a.startAt - b.startAt)
+        const current = tracks.find((track) => track.startAt <= now && track.startAt + track.duration * 1000 > now)
+        return current?.title ?? tracks.find((track) => track.startAt > now)?.title ?? 'Music rotation preparing'
+      })(),
       averageListeners24h: average,
       samples24h: history.length,
-      status: latest && Date.now() - latest.t < 60_000 ? 'LIVE' : 'WAITING FOR DATA',
+      status: (active.stationCounts[id] ?? 0) > 0 ? 'LIVE' : latest && Date.now() - latest.t < 60_000 ? 'ON AIR' : 'WAITING FOR DATA',
     }
   })
-  const totalNow = stations.reduce((sum, station) => sum + station.listenersNow, 0)
-  const totalAverage = stations.reduce((sum, station) => sum + station.averageListeners24h, 0)
+  const totalNow = active.totalListenersNow
   const ranked = [...stations].sort((a, b) => b.averageListeners24h - a.averageListeners24h || a.name.localeCompare(b.name))
   const rankedStations = stations.map((station) => ({
     ...station,
