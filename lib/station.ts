@@ -370,7 +370,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const offAir = isOffAirHours(now, stationMeta.signOffHour, stationMeta.signOnHour)
     if (offAir) {
       if (state.tracks.length > 0) { state.tracks = []; await writeJson(statePath, state) }
-      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+      return { serverTime: Date.now(), offAir: true, nextOnAir: nextSignOnAtHour(now, stationMeta.signOnHour), tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
     }
     state.tracks = state.tracks.filter((track) => track.kind !== 'live' && !track.uid.startsWith('dzmm-'))
     if (!settings.rjFmNationwideEnabled) {
@@ -407,7 +407,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
         await writeJson(statePath, state)
       }
       // Naga is a delayed simulcast of Manila, never an independently filled playlist.
-      return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+      return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
     }
 
     if (station !== 'naga') {
@@ -424,13 +424,13 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       state.fillingUntil = 0
       await writeJson(statePath, state)
     } else if (changed) { await writeJson(statePath, state) }
-    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
   const offAir = isOffAir(now) || !settings.broadcastEnabled
   if (offAir) {
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
-    return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+    return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   const scheduledDzmm = dzmmWindowAt(now)
   const upcomingDzmm = dzmmWindowAt(now + TRANSITION_LOOKAHEAD_MS)
@@ -451,7 +451,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
     const nextTracks = [...transitionMusic, ...(transitionTrack ? [transitionTrack] : []), liveTrack].sort((a, b) => a.startAt - b.startAt)
     const tracksChanged = nextTracks.length !== state.tracks.length || nextTracks.some((track, index) => { const current = state.tracks[index]; return current?.uid !== track.uid || current?.src !== track.src || current?.fadeOut !== track.fadeOut || current?.startAt !== track.startAt })
     if (tracksChanged) { state.tracks = nextTracks; await writeJson(STATE_PATH, state) }
-    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   if (state.tracks.some((track) => track.kind === 'live')) {
     state.tracks = state.tracks.filter((track) => track.kind !== 'live')
@@ -467,7 +467,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   const hasCurrentMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now)
   const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
   if (!hasCurrentMusic && !hasUpcomingMusic) await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main')
-  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, transmitterWatts: settings.transmitterWatts, liveDj }
+  return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
 }
 export async function refreshQueue(preserveCurrent = false) {
   const now = Date.now()
