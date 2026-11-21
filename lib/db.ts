@@ -3,14 +3,7 @@ import { Pool } from 'pg'
 
 let pool: Pool | null = null
 
-/**
- * External Database URL for mor-naga (Render Postgres).
- * Prefer setting DATABASE_URL on the web service to the Internal URL in production;
- * this default keeps accounts/credits working if the env var is missing.
- */
-const DEFAULT_DATABASE_URL =
-  'postgresql://mor_admin:nHh8ZGNMdb5GELoPjdEGePhHTnUsA3Kl@dpg-dbrvitjrjlhs73co8grg-a.oregon-postgres.render.com/mor_naga'
-
+/** Database credentials must be supplied through the Render environment. */
 /**
  * Prefer DATABASE_URL (Internal URL on Render is best). Accept common aliases.
  */
@@ -20,7 +13,6 @@ export function getDatabaseUrl(): string | null {
     process.env.POSTGRES_URL,
     process.env.POSTGRES_CONNECTION_STRING,
     process.env.RENDER_DATABASE_URL,
-    DEFAULT_DATABASE_URL,
   ]
   for (const value of candidates) {
     const trimmed = value?.trim()
@@ -45,7 +37,7 @@ export function getDb() {
     const useSsl =
       process.env.NODE_ENV === 'production' ||
       /render\.com|amazonaws\.com|sslmode=require/i.test(connectionString) ||
-      connectionString === DEFAULT_DATABASE_URL
+      false
 
     pool = new Pool({
       connectionString,
