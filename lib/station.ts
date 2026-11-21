@@ -327,7 +327,7 @@ function statePathFor(station: StationId) {
     default: return STATE_PATH
   }
 }
-async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, djChristopherIntervalMinutes = 40) {
+async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, _djChristopherIntervalMinutes = 40) {
   const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
   const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
   const localHistoryIds = new Set(state.history.map((entry) => entry.id))
@@ -351,7 +351,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     if (!song) break
     if (request) state.requestQueue.shift()
     let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
-    let songFadeIn = fadeIn
+    const songFadeIn = fadeIn
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
     state.history.push(playedEntry)
