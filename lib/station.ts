@@ -335,9 +335,25 @@ function statePathFor(station: StationId) {
 }
 async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, _djChristopherIntervalMinutes = 40) {
   const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
-  const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
-  const localHistoryIds = new Set(state.history.map((entry) => entry.id))
-  const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !localHistoryIds.has(entry.id))]
+  // Merge each station's existing history into one shared network ledger before
+  // selecting the next song. This prevents legacy station queues from replaying
+  // a track that was already heard elsewhere on RJ FM.
+  const mergedHistory = [...savedNetworkHistory, ...state.history]
+    .filter((entry) => entry && typeof entry.t === 'number' && entry.t > now - SONG_REPEAT_WINDOW_MS)
+    .sort((a, b) => b.t - a.t)
+  const seenSongIds = new Set<string>()
+  const seenSongKeys = new Set<string>()
+  const networkHistory: HistoryEntry[] = []
+  for (const entry of mergedHistory) {
+    const id = typeof entry.id === 'string' ? entry.id : ''
+    const key = typeof entry.key === 'string' ? entry.key : ''
+    if ((id && seenSongIds.has(id)) || (key && seenSongKeys.has(key))) continue
+    if (id) seenSongIds.add(id)
+    if (key) seenSongKeys.add(key)
+    networkHistory.push(entry)
+  }
+  networkHistory.sort((a, b) => a.t - b.t)
+  const selectionHistory = networkHistory
   let guard = 0
   // Add one future track per request so search retries stay within the API time budget.
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 1) {
@@ -567,9 +583,11 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       const mainHasUpcoming = mainSnap.state.tracks.some((track) => track.startAt > now)
       const mainHasCurrent = mainSnap.state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
       if (!mainHasUpcoming && !mainHasCurrent && !options.skipFill) {
-        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        mainSnap.state.fillingUntil = 0
-        await writeJson(STATE_PATH, mainSnap.state)
+        await withAutoDjFillLock(async () => {
+          await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+          mainSnap.state.fillingUntil = 0
+          await writeJson(STATE_PATH, mainSnap.state)
+        })
       }
       const followed = buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled)
       const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
@@ -632,9 +650,14 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (!options.skipFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-    state.fillingUntil = 0
-    await writeJson(STATE_PATH, state)
+    await withAutoDjFillLock(async () => {
+      try {
+        await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+      } finally {
+        state.fillingUntil = 0
+        await writeJson(STATE_PATH, state)
+      }
+    })
   } else if (changed) await writeJson(STATE_PATH, state)
   const hasCurrentMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now)
   const hasUpcomingMusic = state.tracks.some((track) => track.kind === 'music' && track.startAt > now)
