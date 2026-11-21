@@ -73,7 +73,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Benson Boone', 'Teddy Swims', 'Alex Warren', 'Stephen Sanchez',
     'Laufey', 'Gracie Abrams', 'Olivia Dean', 'Lizzy McAlpine',
     'Lewis Capaldi', 'Dean Lewis', 'James Arthur', 'NIKI',
-    'Sabrina Carpenter', 'Myles Smith', ' sombr ', 'd4vd',
+    'Sabrina Carpenter', 'Myles Smith', 'sombr', 'd4vd',
   ]),
   'OPM 60s-90s': artists('tagalog', [
     'Jose Mari Chan|jose mari chan', 'Pilita Corrales', 'Imelda Papin',
@@ -437,7 +437,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'sunday-english-love': {
     id: 'sunday-english-love',
-    pools: { english: NIGHT_LOVE, tagalog: [] },
+    pools: { english: [...NIGHT_LOVE, ...RJFM_ARTIST_LIBRARY['80s-90s'], ...RJFM_ARTIST_LIBRARY['2023-2026']], tagalog: [] },
     variants: { english: LOVE_VARIANTS, tagalog: [] },
     englishOnly: true,
   },
@@ -469,7 +469,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS] },
+    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {
