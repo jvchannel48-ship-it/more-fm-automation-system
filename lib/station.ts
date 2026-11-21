@@ -329,8 +329,8 @@ function statePathFor(station: StationId) {
 async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, djChristopherIntervalMinutes = 40) {
   const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
   const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
-  const networkHistoryKeys = new Set(networkHistory.map((entry) => entry.id))
-  const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !networkHistoryKeys.has(entry.id))]
+  const localHistoryIds = new Set(state.history.map((entry) => entry.id))
+  const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !localHistoryIds.has(entry.id))]
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < PRELOAD_AHEAD_TRACKS && guard++ < 6) {
     const startAt = nextStart(state, now)
