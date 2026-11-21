@@ -140,6 +140,7 @@ export function RadioPlayer() {
         title: `${meta.name} ${meta.frequency}`,
         artist: meta.notificationTagline,
         album: 'RJ FM Live Radio',
+        artwork: [{ src: '/rjfm-app-icon.svg', sizes: 'any', type: 'image/svg+xml' }],
       })
     }
   }, [meta])
