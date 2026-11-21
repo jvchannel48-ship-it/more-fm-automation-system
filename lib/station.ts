@@ -413,6 +413,7 @@ async function loadState(now: number, path = STATE_PATH) {
   if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => {
+    if (t.uid.startsWith('dj-christopher-request-')) return false
     if (t.uid.includes('dj-christopher-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
     const schedule = dailyAnnouncementScheduleAt(now)
