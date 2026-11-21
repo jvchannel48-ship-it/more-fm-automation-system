@@ -157,4 +157,4 @@ assert.equal(saturdayAnnouncement?.expiresAt, manilaTime(22, 0), 'Saturday annou
 assert.equal(dailyAnnouncementScheduleAt(manilaTime(15, 12)), null, 'Sunday has no announcement clip schedule')
 assert.equal(manilaDateKey(manilaTime(16, 21, 48)), '2026-11-16', 'daily automation uses the Manila calendar date')
 
-console.log('schedule: DZMM morning/evening/overnight windows and 3 AM sign-off / 4 AM sign-on all pass')
+console.log('schedule: DZMM windows and continuous 24/7 RJ FM station schedules all pass')
