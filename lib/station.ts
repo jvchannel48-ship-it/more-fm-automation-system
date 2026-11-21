@@ -440,7 +440,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     // Auto DJ, not Christopher, reads each listener song-request message once per station.
     const listenerMessages = await readJson<ListenerMessage[]>(MESSAGES_PATH, [])
     const pendingMessage = listenerMessages.find((message) =>
-      /(song request|request(?:ing)? (?:a )?song|please play|play me|can you play|request:)/i.test(message.body)
+      /(song\s*request|\brequest\b|please\s+play|play\s+me|can\s+you\s+play|paki[- ]?play|pa[- ]?play|patugtog|pa[- ]?tugtog|kant[aá]\s+(?:naman|po))/i.test(message.body)
       && !message.spokenAt?.[station]
     )
     if (pendingMessage) {
@@ -487,7 +487,7 @@ async function loadState(now: number, path = STATE_PATH) {
   if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => {
-    // Purge legacy Christopher song-commentary/request clips: Christopher is time-check only.
+    // Purge obsolete Christopher request clips while retaining time checks and current song prompts.
     if (t.uid.startsWith('dj-christopher-') && !t.uid.startsWith('dj-christopher-timecheck-') && !t.uid.startsWith('dj-christopher-song-prompt-')) return false
     if (t.uid.startsWith('dj-christopher-timecheck-') || t.uid.startsWith('dj-christopher-song-prompt-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
