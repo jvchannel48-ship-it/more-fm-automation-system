@@ -236,39 +236,45 @@ async function findRequestedSong(title: string, artist: string, history: History
     `${title} ${artist}`,
     `"${title}" ${artist}`,
     `${artist} ${title} official audio`,
+    `${title} ${artist} mp3`,
+    `${title} ${artist} lyrics`,
   ])]
   const results = await Promise.all(queries.map((search) =>
-    fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search }), 15_000),
+    fetchJson<{ items?: SearchItem[] }>(betadashUrl({ search }), 12_000),
   ))
-  const items = [...new Map(results.flatMap((result) => result?.items ?? []).map((item) => [item.id, item])).values()]
-  const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id)])
-  const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key)])
+  const items = [...new Map(results.flatMap((result) => result?.items ?? []).filter((item) => item?.id && item?.url).map((item) => [item.id, item])).values()]
+  const playedIds = new Set([...history.map((e) => e.id), ...requestQueue.map((r) => r.id).filter((id): id is string => Boolean(id))])
+  const playedKeys = new Set([...history.map((e) => e.key), ...requestQueue.map((r) => r.key).filter((key): key is string => Boolean(key))])
   const titleNeedle = normalize(title)
   const artistNeedle = normalize(artist)
   const candidates = items.filter((item) => {
     const seconds = parseDuration(item.duration ?? '')
-    const officialAttribution = [item.artist, item.channelTitle, item.channel, item.uploader]
-      .filter(Boolean).join(' ')
-    const hasOriginalArtistCredit = isOriginalArtistTrack(item.title, { name: artist, match: artist })
+    const officialAttribution = [item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' ')
+    const metadata = normalize(officialAttribution)
+    const normalizedTitle = normalize(item.title)
+    const artistMatches = isOriginalArtistTrack(item.title, { name: artist, match: artist })
       || (Boolean(officialAttribution) && isOriginalArtistTrack(`${item.title} - ${officialAttribution}`, { name: artist, match: artist }))
-    return seconds >= 120 && seconds <= 420
-      && normalize(item.title).includes(titleNeedle)
-      && hasOriginalArtistCredit
+      || (artistNeedle.length >= 3 && metadata.includes(artistNeedle))
+    return seconds >= 90 && seconds <= 900
+      && normalizedTitle.includes(titleNeedle)
+      && artistMatches
       && isAllowedStationTrack({ title: item.title, genre: [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist].filter(Boolean).join(' '), blockedGenres })
+      && !matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)
       && !playedIds.has(item.id)
       && !playedKeys.has(songKey(item.title))
   }).map((item) => {
     const metadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
     const normalizedTitle = normalize(item.title)
-    const score = (normalizedTitle.startsWith(titleNeedle) ? 4 : 0)
-      + (normalizedTitle.includes(titleNeedle) ? 2 : 0)
-      + (metadata.includes(artistNeedle) ? 4 : 0)
+    const score = (normalizedTitle.startsWith(titleNeedle) ? 6 : 0)
+      + (normalizedTitle.includes(titleNeedle) ? 3 : 0)
+      + (metadata.includes(artistNeedle) ? 5 : 0)
+      + (/official audio|topic$/.test(metadata + ' ' + normalizedTitle) ? 2 : 0)
     return { item, score }
   }).sort((a, b) => b.score - a.score)
-  for (const { item } of candidates) {
-    const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 30_000)
+  for (const { item } of candidates.slice(0, 8)) {
+    const download = await fetchJson<{ downloadUrl?: string }>(betadashUrl({ download: item.url, type: 'mp3' }), 12_000)
     if (download?.downloadUrl) {
-      return { id: item.id, key: songKey(item.title), src: download.downloadUrl, duration: parseDuration(item.duration) }
+      return { id: item.id, key: songKey(item.title), title: item.title, artist, src: download.downloadUrl, duration: parseDuration(item.duration) }
     }
   }
   return null
@@ -345,11 +351,19 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
     const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 8 === 0
     const request = state.requestQueue[0]
-    const song = request
+    const resolvedRequest = request?.src && request.id && request.key && request.duration
       ? { id: request.id, key: request.key, title: request.title, src: request.src, duration: request.duration, artist: request.artist }
+      : request
+        ? await findRequestedSong(request.title, request.artist, selectionHistory, state.requestQueue.slice(1), blockedGenres)
+        : null
+    const song = resolvedRequest
+      ? resolvedRequest
       : await findSong(program, state.songCount, selectionHistory, startAt, blockedGenres, station)
     if (!song) break
-    if (request) state.requestQueue.shift()
+    if (request && resolvedRequest) {
+      Object.assign(request, resolvedRequest)
+      state.requestQueue.shift()
+    }
     let songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     const songFadeIn = fadeIn
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
@@ -436,19 +450,28 @@ export async function enqueueSongRequest(title: string, artist: string, beforeEn
     const now = Date.now()
     const statePath = statePathFor(station === 'naga' ? 'main' : station)
     const [{ state }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
+    const duplicateIndex = state.requestQueue.findIndex((item) => normalize(item.title) === normalize(title) && normalize(item.artist) === normalize(artist))
+    if (duplicateIndex >= 0) {
+      return { accepted: true, duplicate: true, requestId: state.requestQueue[duplicateIndex].requestId, position: duplicateIndex + 1, resolved: Boolean(state.requestQueue[duplicateIndex].src) }
+    }
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
     const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
-    if (!resolved) throw new Error("We couldn't find that song right now. Please try a different title or artist.")
     await beforeEnqueue?.()
-    const request: SongRequest = { requestId: crypto.randomUUID(), title, artist, location: location.trim().slice(0, 80), submittedAt: now, ...resolved }
+    const request: SongRequest = {
+      requestId: crypto.randomUUID(),
+      title,
+      artist,
+      location: location.trim().slice(0, 80),
+      submittedAt: now,
+      ...(resolved ?? {}),
+    }
     state.requestQueue.push(request)
-    // Put the approved request immediately after the track currently on air.
-    // Keep active audio untouched and let the normal station filler rebuild
-    // the upcoming rotation behind the request.
+    // The Auto DJ owns request resolution and playback. If the source is not
+    // available yet, keep the accepted request pending and retry on later fills.
     state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
     state.fillingUntil = 0
     await writeJson(statePath, state)
-    return { accepted: true, requestId: request.requestId, position: state.requestQueue.length }
+    return { accepted: true, requestId: request.requestId, position: state.requestQueue.length, resolved: Boolean(resolved) }
   })
 }
 export async function getNowPlaying(options: { skipFill?: boolean; station?: StationId } = {}): Promise<NowResponse> {
