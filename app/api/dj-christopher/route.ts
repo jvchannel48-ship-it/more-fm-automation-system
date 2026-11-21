@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       voice: 'en-US-ChristopherNeural',
       lang: 'en-US',
       outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate: '-5%',
+      rate: '+12%',
       volume: '+20%',
       timeout: 30000,
     })
