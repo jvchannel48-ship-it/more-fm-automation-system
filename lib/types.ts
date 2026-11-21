@@ -76,4 +76,5 @@ export interface AdminStatus extends StationSettings {
   songsThisWeek: number
   artistsThisHour: number
   queued: number
+  artistHistory: Array<{ artist: string; plays: number; lastPlayedAt: number }>
 }

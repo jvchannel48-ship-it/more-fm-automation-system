@@ -10,6 +10,7 @@ import {
   manilaDateKey,
   nextSignOn,
   PROGRAMS,
+  RJFM_ARTIST_LIBRARY,
   programAt,
   nagaProgramAt,
   masbateProgramAt,
@@ -34,7 +35,7 @@ for (let hour = 0; hour < 24; hour++) {
   const expectedOffAir = hour >= SIGN_OFF_HOUR && hour < SIGN_ON_HOUR
   assert.equal(isOffAir(manilaTime(sunday, hour)), expectedOffAir, `Sunday ${hour}:00 follows sign-on/off schedule`)
   assert.equal(isOffAir(manilaTime(16, hour)), expectedOffAir, `Monday ${hour}:00 follows sign-on/off schedule`)
-  const expectedNormalProgram = hour >= 4 && hour < 13 ? 'disco' : hour >= 13 && hour < 20 ? 'daytime-love' : 'love-mix'
+  const expectedNormalProgram = hour >= 4 && hour < 20 ? 'daytime-love' : 'love-mix'
   assert.equal(programAt(manilaTime(sunday, hour), false).id, expectedNormalProgram, `Sunday ${hour}:00 uses the expected normal rotation when Sunday schedule is OFF`)
   assert.equal(programAt(manilaTime(16, hour)).id, expectedNormalProgram, `Monday ${hour}:00 selects the expected regular program`)
 
@@ -46,12 +47,12 @@ for (let hour = 0; hour < 24; hour++) {
   }
 }
 
-assert.equal(programAt(manilaTime(16, 12, 59)).id, 'disco', 'weekday pre-1 PM stays on the disco dance mix')
+assert.equal(programAt(manilaTime(16, 12, 59)).id, 'daytime-love', 'weekday pre-1 PM stays on the mellow daytime love rotation')
 assert.equal(programAt(manilaTime(16, 13)).id, 'daytime-love', 'weekday 1 PM starts daytime love songs')
 assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
 assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')
-assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'disco', 'RJ FM Naga starts its distinct dance/pop rotation at 4:00 AM')
-assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'disco', 'RJ FM Naga keeps the dance/pop rotation before 1 PM')
+assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'daytime-love', 'RJ FM Naga follows the mellow Manila rotation at 4:00 AM')
+assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'daytime-love', 'RJ FM Naga keeps the mellow love rotation before 1 PM')
 assert.equal(nagaProgramAt(manilaTime(16, 13)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 1:00 PM')
 assert.equal(masbateProgramAt(manilaTime(16, 10)).id, 'masbate-tagalog', 'RJ FM Masbate stays on its Tagalog-only program')
 assert.equal(languageForSlot(masbateProgramAt(manilaTime(16, 10)), 0), 'tagalog', 'RJ FM Masbate never selects English songs')
@@ -62,6 +63,15 @@ assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', '1 PM keep
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', '1 PM keeps English as the main language')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 3), 'tagalog', 'a Tagalog love song appears occasionally')
 
+assert.deepEqual(Object.keys(RJFM_ARTIST_LIBRARY), ['60s-70s', '80s-90s', '2000s', '2023-2026', 'OPM 60s-90s', 'OPM 2000s-2026'], 'artist discovery library covers classic decades through current OPM')
+assert.ok(RJFM_ARTIST_LIBRARY['60s-70s'].some((artist) => artist.name === 'Nat King Cole'), '60s-70s library includes classic easy listening')
+assert.ok(RJFM_ARTIST_LIBRARY['80s-90s'].some((artist) => artist.name === 'Anita Baker'), '80s-90s library includes classic soul ballads')
+assert.ok(RJFM_ARTIST_LIBRARY['2000s'].some((artist) => artist.name === 'John Legend'), '2000s library includes modern soul ballads')
+assert.ok(RJFM_ARTIST_LIBRARY['2023-2026'].some((artist) => artist.name === 'Benson Boone'), '2023-2026 library includes current soft-pop artists')
+assert.ok(RJFM_ARTIST_LIBRARY['OPM 2000s-2026'].some((artist) => artist.name === 'Cup of Joe'), 'current OPM library includes Cup of Joe')
+assert.ok(PROGRAMS['love-mix'].pools.english.some((artist) => artist.name === 'Benson Boone'), 'current soft-pop artists are available to the live love mix')
+assert.ok(PROGRAMS['love-mix'].pools.tagalog.some((artist) => artist.name === 'Cup of Joe'), 'current OPM artists are available to the live love mix')
+assert.ok(PROGRAMS['sunday-oldies'].pools.tagalog.some((artist) => artist.name === 'Jose Mari Chan'), 'Sunday Pinoy oldies include the expanded classic OPM library')
 assert.ok(PROGRAMS['love-mix'].pools.english.length > 0, 'mellow rotation includes English songs')
 assert.ok(PROGRAMS['love-mix'].pools.tagalog.length > 0, 'mellow rotation includes Tagalog songs')
 assert.ok(PROGRAMS['love-mix'].variants.english.includes('soft ballad'), 'English searches prioritize soft ballads')
