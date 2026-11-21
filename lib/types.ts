@@ -55,7 +55,7 @@ export interface ListenerMessage {
   body: string
   createdAt: number
   read: boolean
-  spokenAt?: number
+  spokenAt?: Record<string, number>
 }
 
 export interface NowResponse {
