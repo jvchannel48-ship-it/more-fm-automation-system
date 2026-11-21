@@ -114,6 +114,17 @@ export function useBroadcast(
     slots.current = Array.from({ length: 4 }, () => {
       const el = new Audio()
       el.preload = 'auto'
+      // Remove only this device's temporary offline copy after the track finishes.
+      // The original MP3 and the server playlist are never modified.
+      el.addEventListener('ended', () => {
+        const playedUrl = el.currentSrc || el.src
+        if (playedUrl && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.controller?.postMessage({
+            type: 'RJFM_PURGE_PLAYED_AUDIO',
+            url: playedUrl,
+          })
+        }
+      })
       el.setAttribute('playsinline', '')
       el.setAttribute('webkit-playsinline', '')
       let bassHighPass: BiquadFilterNode | null = null
