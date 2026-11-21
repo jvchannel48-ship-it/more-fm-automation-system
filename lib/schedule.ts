@@ -547,46 +547,8 @@ export function dailyAnnouncementScheduleAt(ms: number): DailyAnnouncementSchedu
   }
 }
 
-/** Returns a scheduled DZMM window, or null when the station should play its own music. */
-export function dzmmWindowAt(ms: number): DzmmWindow | null {
-  const { hour, minute, day } = manilaTime(ms)
-  if (day === 0) return null
-
-  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(0, 0, 0, 0)
-  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
-  const minuteOfDay = hour * 60 + minute
-
-  if (minuteOfDay >= 420 && minuteOfDay < 480) {
-    const startAt = dayStart + 420 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 480 * 60_000 }
-  }
-
-  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
-    const startAt = dayStart + 1110 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
-  }
-
-  if (minuteOfDay >= 1320) {
-    const endAt = day === 6 ? dayStart + 24 * 60 * 60_000 : dayStart + 27 * 60 * 60_000
-    const startAt = dayStart + 1320 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt,
-    }
-  }
-
-  if (minuteOfDay < 180) {
-    if (day === 1) return null
-    const startAt = dayStart - 120 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt: dayStart + 180 * 60_000,
-    }
-  }
-
+/** 93.5 RJ FM Manila has no DZMM blocktime; AutoDJ runs continuously. */
+export function dzmmWindowAt(_ms: number): DzmmWindow | null {
   return null
 }
 
