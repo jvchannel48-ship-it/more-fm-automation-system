@@ -241,7 +241,10 @@ function buildNagaFollowTracks(mainState: StationState, now: number, nationwideE
     } else nextFadeIn = null
   }
   for (const voice of mainState.tracks.filter((track) => track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
-    const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS
+    const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
+    const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
+    const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
+    const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS + identDelay
     if (startAt + voice.duration * 1000 >= now - 2_000) out.push({ ...voice, uid: `naga-follow-${voice.uid}`, startAt })
   }
   return out.sort((a, b) => a.startAt - b.startAt)
