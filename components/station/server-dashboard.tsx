@@ -23,7 +23,8 @@ const fetcher = async (url: string) => {
 const mb = (bytes: number) => (bytes / 1024 / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 })
 const percent = (used: number, total: number) => total > 0 ? Math.min(100, Math.round(used / total * 100)) : 0
 const formatHour = (hour: number) => `${hour % 12 || 12}:00 ${hour >= 12 ? 'PM' : 'AM'}`
-const artistCount = new Set(Object.values(PROGRAMS).flatMap((program) => [...program.pools.english, ...program.pools.tagalog].map((artist) => artist.name))).size
+const allArtists = [...new Set(Object.values(PROGRAMS).flatMap((program) => [...program.pools.english, ...program.pools.tagalog].map((artist) => artist.name)))].sort((a, b) => a.localeCompare(b))
+const artistCount = allArtists.length
 
 function MetricCard({ icon: Icon, label, value, detail, tone = 'gold' }: {
   icon: typeof Server; label: string; value: string; detail: string; tone?: 'gold' | 'green' | 'blue'
@@ -130,6 +131,9 @@ export function ServerDashboard() {
           <section className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold">AutoDJ artist library</h3><p className="text-xs text-muted-foreground">Artist pools configured in the broadcast schedule</p></div><span className="font-mono text-2xl font-bold text-primary">{artistCount}</span></div>
             <p className="mt-2 text-xs text-muted-foreground">AutoDJ chooses tracks from the active program’s English and Tagalog artist pools, applies the station schedule, and manages rotation automatically.</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {allArtists.map((artist) => <span key={artist} className="rounded-full border border-border/70 bg-secondary/50 px-2.5 py-1 text-[10px] text-foreground/85">{artist}</span>)}
+            </div>
           </section>
           <p className="text-center text-[10px] text-muted-foreground">Auto-refresh every 15 seconds · Last checked {data.server?.checkedAt ? new Date(data.server.checkedAt).toLocaleTimeString() : '—'}</p>
         </>}
