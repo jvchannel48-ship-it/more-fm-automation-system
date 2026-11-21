@@ -35,12 +35,6 @@ async function recordArtistPlay(artist: string, playedAt: number) {
 }
 const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
-const SATURDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-daily-announcement.mp3'
-const SATURDAY_ANNOUNCEMENT_SECONDS = 13.636
-const WEEKDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-weekday-announcement.mp3'
-const WEEKDAY_ANNOUNCEMENT_SECONDS = 5.407
-const SATURDAY_ANNOUNCEMENT_TITLE = 'RJ FM Saturday announcement'
-const WEEKDAY_ANNOUNCEMENT_TITLE = 'RJ FM weekday announcement'
 const NATIONWIDE_IDENT_FADE_SECONDS = 1.5
 const NATIONWIDE_IDENT_BY_STATION: Partial<Record<StationId, { src: string; duration: number; title: string }>> = {
   main: { src: '/audio/rjfmmanila.mp3', duration: 6.03, title: 'RJ FM Manila' },
@@ -407,38 +401,10 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       })
       timeCheckEndAt += timeCheckDuration * 1000
     }
-    const announcementSchedule = dailyAnnouncementScheduleAt(songStart)
-    const inAnnouncementWindow = announcementSchedule && songStart >= announcementSchedule.availableFrom && songStart < announcementSchedule.expiresAt
-    if (inAnnouncementWindow) state.dailyAnnouncementSongCount++
-    const announcementSeconds = announcementSchedule?.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_SECONDS : WEEKDAY_ANNOUNCEMENT_SECONDS
-    const announcementEndAt = timeCheckEndAt + announcementSeconds * 1000
-    let announcementAdded = false
-    if (!state.dailyAnnouncementPlayed && announcementSchedule && state.dailyAnnouncementSongCount >= announcementSchedule.songsRequired && inAnnouncementWindow && announcementEndAt <= announcementSchedule.expiresAt) {
-      const prev = state.tracks.at(-1)
-      if (prev && prev.kind === 'music') prev.fadeOut = Math.min(prev.fadeOut || CROSSFADE_SECONDS, 3)
-      const voxStart = timeCheckEndAt
-      const voxFadeOut = Math.min(ANNOUNCEMENT_CROSSFADE_SECONDS, Math.max(2, announcementSeconds * 0.4))
-      state.tracks.push({
-        uid: `rj-fm-daily-announcement-${state.dailyAnnouncementDay}`,
-        src: announcementSchedule.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_SRC : WEEKDAY_ANNOUNCEMENT_SRC,
-        startAt: voxStart,
-        duration: announcementSeconds,
-        fadeIn: 0.4,
-        fadeOut: voxFadeOut,
-        kind: 'dj-mic',
-        title: announcementSchedule.kind === 'saturday' ? SATURDAY_ANNOUNCEMENT_TITLE : WEEKDAY_ANNOUNCEMENT_TITLE,
-        artist: 'RJ FM',
-      })
-      state.dailyAnnouncementPlayed = true
-      announcementAdded = true
-    }
     if (identAfterSong && stationIdent) {
       // Always air the station ID after every second song. If a scheduled daily
       // announcement also follows this song, let that clip finish before the ID.
-      const announcementTrack = announcementAdded ? state.tracks.at(-1) : null
-      const identStartAt = announcementTrack && announcementTrack.kind === 'dj-mic'
-        ? trackEnd(announcementTrack)
-        : timeCheckEndAt
+      const identStartAt = timeCheckEndAt
       state.tracks.push({ uid: 'rjfm-nationwide-' + station + '-' + songStart, src: stationIdent.src, startAt: identStartAt, duration: stationIdent.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: stationIdent.title, artist: 'RJ FM Nationwide' })
     }
   }
