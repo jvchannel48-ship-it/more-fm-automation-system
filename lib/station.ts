@@ -463,9 +463,16 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         masbate: 'RJ FM Masbate 103.9',
       }[station]
       const timeCheckText = buildTimeCheckScript(`Time check is ${philippinesTime}`, safeListenerMessage, stationName)
-      // Suppress an identical repeated time announcement (for example, two fills
-      // occurring within the same minute). A new time is announced normally.
-      const shouldSpeakTimeCheck = state.lastChristopherTimeCheckText !== timeCheckText
+      // Add only one Christopher time-check clip for this point in the queue.
+      // This also blocks a second clip if another queue fill already scheduled it,
+      // even when the generated wording differs slightly.
+      const timeCheckAlreadyQueued = state.tracks.some((track) =>
+        track.kind === 'dj-mic'
+        && track.uid.startsWith(`dj-christopher-timecheck-${station}-`)
+        && trackEnd(track) > timeCheckEndAt - 30_000,
+      )
+      const shouldSpeakTimeCheck = !timeCheckAlreadyQueued
+        && state.lastChristopherTimeCheckText !== timeCheckText
       if (selectedMessage && shouldSpeakTimeCheck) {
         await writeJson(MESSAGES_PATH, listenerMessages.map((message) =>
           message.id === selectedMessage.id ? { ...message, spokenAt: Date.now() } : message,
