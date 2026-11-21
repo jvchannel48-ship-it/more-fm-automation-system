@@ -6,6 +6,11 @@ on:
     branches: [main]
     paths:
       - 'capacitor.config.ts'
+      - 'app/layout.tsx'
+      - 'components/pwa-register.tsx'
+      - 'public/sw.js'
+      - 'public/offline.html'
+      - 'public/manifest.json'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'components/station/account-menu.tsx'
