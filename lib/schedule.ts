@@ -133,7 +133,6 @@ const PINOY_OLDIES = artists('tagalog', [
 
 const SUNDAY_ENGLISH_OLDIES = artists('english', [
   'Bobby Vinton',
-  'Victor Wood',
   'Jim Reeves',
   'Perry Como',
   'Andy Williams',
