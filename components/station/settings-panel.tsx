@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, RefreshCw, Settings, X } from 'lucide-react'
+import { Bell, Check, RefreshCw, Settings, X } from 'lucide-react'
+import { getPushPermissionStatus, requestPushPermission } from '@/lib/app-permissions'
 import { Button } from '@/components/ui/button'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
@@ -21,6 +22,9 @@ export function SettingsPanel() {
   const [stayAwake, setStayAwake] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [awakeError, setAwakeError] = useState('')
+  const [pushStatus, setPushStatus] = useState<boolean | null>(null)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState('')
   const wakeLock = useRef<WakeLockLike | null>(null)
 
   useEffect(() => {
@@ -29,7 +33,20 @@ export function SettingsPanel() {
     } catch {
       setStayAwake(false)
     }
+    void getPushPermissionStatus().then(setPushStatus).catch(() => setPushStatus(null))
   }, [])
+
+  const enableNotifications = async () => {
+    setPushBusy(true)
+    setPushError('')
+    try {
+      setPushStatus(await requestPushPermission())
+    } catch (error) {
+      setPushError(error instanceof Error ? error.message : 'Could not request notification permission.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const releaseWakeLock = useCallback(async () => {
     const current = wakeLock.current
@@ -141,6 +158,16 @@ export function SettingsPanel() {
               </button>
             </div>
             {awakeError && <p className="mt-3 text-xs text-amber-300" role="status">{awakeError}</p>}
+
+            <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+              <div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><p className="font-medium">Notifications & lock-screen player</p></div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Allow RJ FM notifications in the installed Android app. While playing, Android media controls can show Play/Pause and station artwork on the lock screen.</p>
+              <Button type="button" variant="outline" className="mt-3 w-full" onClick={enableNotifications} disabled={pushBusy || pushStatus === true || pushStatus === null}>
+                {pushBusy ? 'Requesting permission…' : pushStatus === true ? 'Notifications enabled' : pushStatus === false ? 'Enable notifications' : 'Available in Android app'}
+              </Button>
+              {pushError && <p className="mt-2 text-xs text-amber-300" role="status">{pushError}</p>}
+              <p className="mt-2 text-[11px] text-muted-foreground">Nearby Devices access is not required for radio playback; it is only needed if RJ FM adds Bluetooth device discovery.</p>
+            </div>
 
             <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
               <p className="font-medium">App update</p>
