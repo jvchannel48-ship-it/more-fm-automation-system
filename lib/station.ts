@@ -3,13 +3,9 @@ import { after } from 'next/server'
 import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, writeJson } from './storage'
 import type { StationId } from './stations'
 import {
-  DZMM_STREAM_URL,
-  LOVE_CONNECT_IDENT_DURATION_SECONDS,
   dailyAnnouncementScheduleAt,
-  dzmmWindowAt,
   languageForSlot,
   manilaDateKey,
-  manilaTime,
   nextSignOn,
   masbateProgramAt,
   nagaProgramAt,
@@ -19,11 +15,10 @@ import {
 } from './schedule'
 import { effectiveBlockedGenres, isAllowedStationTrack, isBlockedProgramGenre, isOriginalArtistTrack } from './song-filter'
 import type { AdminStatus, LiveDjState, NowResponse, SongRequest, Track } from './types'
-import { buildChristopherScript, saveChristopherScript, nextChristopherTimeCheck, markChristopherTimeCheckScheduled, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
+import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, nextChristopherTimeCheck, markChristopherTimeCheckScheduled, estimateChristopherDuration, enqueueChristopherTimeCheck, listChristopherTimeChecks } from './dj-christopher'
 
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
-const ANNOUNCEMENT_CROSSFADE_SECONDS = 5
 const PRELOAD_AHEAD_TRACKS = 2
 const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
@@ -40,10 +35,6 @@ async function recordArtistPlay(artist: string, playedAt: number) {
 }
 const MAX_ARTIST_PLAYS_PER_HOUR = 1
 const FILL_LOCK_MS = 120_000
-const EVENING_TRANSITION_SRC = '/audio/dzmm-evening-transition.mp3'
-const EVENING_TRANSITION_SECONDS = 12.2
-const LOVE_CONNECT_IDENT_SRC = '/audio/dzmm-love-connect-10pm.mp3'
-const TRANSITION_LOOKAHEAD_MS = 120_000
 const SATURDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-daily-announcement.mp3'
 const SATURDAY_ANNOUNCEMENT_SECONDS = 13.636
 const WEEKDAY_ANNOUNCEMENT_SRC = '/audio/rj-fm-weekday-announcement.mp3'
@@ -391,14 +382,21 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     await recordArtistPlay(song.artist, songStart)
     state.songCount++
     let timeCheckEndAt = songStart + song.duration * 1000
-    const generatedTimeCheck = station === 'main' ? await nextChristopherTimeCheck('after3', state.songCount) : null
-    if (generatedTimeCheck) {
-      const timeCheckDuration = estimateChristopherDuration(generatedTimeCheck.text)
+    if (djChristopherEnabled && state.songCount % 5 === 0) {
+      const philippinesTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).format(new Date())
+      const timeCheckText = buildTimeCheckScript(`RJ FM time check is ${philippinesTime}`)
+      const scriptId = await saveChristopherScript(timeCheckText)
+      const timeCheckDuration = estimateChristopherDuration(timeCheckText)
       const previousMusic = [...state.tracks].reverse().find((track) => track.kind === 'music' && trackEnd(track) >= timeCheckEndAt - 1000)
       if (previousMusic) previousMusic.fadeOut = Math.min(previousMusic.fadeOut || CROSSFADE_SECONDS, 3)
       state.tracks.push({
-        uid: `dj-christopher-timecheck-${generatedTimeCheck.id}`,
-        src: `/api/dj-christopher?id=${generatedTimeCheck.scriptId}`,
+        uid: `dj-christopher-timecheck-${station}-${state.songCount}-${scriptId}`,
+        src: `/api/dj-christopher?id=${scriptId}`,
         startAt: timeCheckEndAt,
         duration: timeCheckDuration,
         fadeIn: 0.5,
@@ -408,7 +406,6 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         artist: 'DJ Christopher',
       })
       timeCheckEndAt += timeCheckDuration * 1000
-      await markChristopherTimeCheckScheduled(generatedTimeCheck.id, Date.now())
     }
     const announcementSchedule = dailyAnnouncementScheduleAt(songStart)
     const inAnnouncementWindow = announcementSchedule && songStart >= announcementSchedule.availableFrom && songStart < announcementSchedule.expiresAt
@@ -618,40 +615,6 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   if (offAir) {
     if (state.tracks.length > 0) { state.tracks = []; await writeJson(STATE_PATH, state) }
     return { serverTime: Date.now(), offAir: true, nextOnAir: settings.broadcastEnabled ? nextSignOn(now) : null, tracks: [], bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
-  }
-  const scheduledDzmm = dzmmWindowAt(now)
-  const upcomingDzmm = dzmmWindowAt(now + TRANSITION_LOOKAHEAD_MS)
-  const dzmmWindow = scheduledDzmm ?? (upcomingDzmm && upcomingDzmm.startAt > now && upcomingDzmm.startAt - now <= TRANSITION_LOOKAHEAD_MS ? upcomingDzmm : null)
-  if (dzmmWindow && state.failedDzmmWindowStart !== dzmmWindow.startAt) {
-    const liveUid = `dzmm-${dzmmWindow.startAt}`
-    const transitionStartAt = dzmmWindow.endAt - CROSSFADE_SECONDS * 1000
-    const isEveningHandoff = manilaTime(dzmmWindow.startAt).hour === 18
-    const isLoveConnectHandoff = manilaTime(dzmmWindow.startAt).hour === 22
-    const transitionTrack: Track | null = isEveningHandoff
-      ? { uid: `dzmm-transition-${dzmmWindow.startAt}`, src: EVENING_TRANSITION_SRC, startAt: dzmmWindow.startAt - EVENING_TRANSITION_SECONDS * 1000, duration: EVENING_TRANSITION_SECONDS, fadeIn: 0, fadeOut: Math.min(ANNOUNCEMENT_CROSSFADE_SECONDS, EVENING_TRANSITION_SECONDS * 0.35), kind: 'dj-mic', title: 'DZMM evening transition announcement', artist: 'RJ FM 93.5 station announcement' }
-      : isLoveConnectHandoff
-        ? { uid: `dzmm-love-connect-${dzmmWindow.startAt}`, src: LOVE_CONNECT_IDENT_SRC, startAt: dzmmWindow.startAt, duration: LOVE_CONNECT_IDENT_DURATION_SECONDS, fadeIn: 0, fadeOut: Math.min(3, LOVE_CONNECT_IDENT_DURATION_SECONDS * 0.4), kind: 'dj-mic', title: 'Love Connect', artist: 'Coach Vanessa Antonio' }
-        : null
-    const queuedDzmmTimeCheck = isEveningHandoff ? await nextChristopherTimeCheck('dzmm') : null
-    const dzmmTimeCheckTrack: Track | null = queuedDzmmTimeCheck ? {
-      uid: `dj-christopher-dzmm-timecheck-${queuedDzmmTimeCheck.id}`,
-      src: `/api/dj-christopher?id=${queuedDzmmTimeCheck.scriptId}`,
-      startAt: dzmmWindow.startAt - 60_000,
-      duration: estimateChristopherDuration(queuedDzmmTimeCheck.text),
-      fadeIn: 0.5,
-      fadeOut: 2.5,
-      kind: 'dj-mic',
-      title: 'DJ Christopher · Before DZMM time check',
-      artist: 'DJ Christopher',
-    } : null
-    if (queuedDzmmTimeCheck && dzmmTimeCheckTrack) await markChristopherTimeCheckScheduled(queuedDzmmTimeCheck.id, dzmmTimeCheckTrack.startAt)
-    const announcementStartAt = dzmmTimeCheckTrack?.startAt ?? transitionTrack?.startAt ?? transitionStartAt
-    const liveTrack: Track = { uid: liveUid, src: DZMM_STREAM_URL, startAt: dzmmWindow.liveStartAt, duration: (dzmmWindow.endAt - dzmmWindow.liveStartAt) / 1000, fadeIn: 0, fadeOut: CROSSFADE_SECONDS, kind: 'live', title: 'DZMM Radyo Patrol 630', artist: 'DZMM live broadcast' }
-    const transitionMusic = state.tracks.filter((track) => track.kind === 'music' && track.startAt < announcementStartAt && trackEnd(track) > now && now < announcementStartAt).map((track) => ({ ...track, duration: Math.max(1, (announcementStartAt - track.startAt) / 1000), fadeOut: 0 }))
-    const nextTracks = [...transitionMusic, ...(dzmmTimeCheckTrack ? [dzmmTimeCheckTrack] : []), ...(transitionTrack ? [transitionTrack] : []), liveTrack].sort((a, b) => a.startAt - b.startAt)
-    const tracksChanged = nextTracks.length !== state.tracks.length || nextTracks.some((track, index) => { const current = state.tracks[index]; return current?.uid !== track.uid || current?.src !== track.src || current?.fadeOut !== track.fadeOut || current?.startAt !== track.startAt })
-    if (tracksChanged) { state.tracks = nextTracks; await writeJson(STATE_PATH, state) }
-    return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   if (state.tracks.some((track) => track.kind === 'live')) {
     state.tracks = state.tracks.filter((track) => track.kind !== 'live')
