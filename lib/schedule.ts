@@ -251,6 +251,12 @@ export const NEW_TAGALOG_OPM_VARIANTS = [
   'soft Tagalog love song',
 ]
 
+const ENGLISH_OLDIES_AND_2026 = [
+  ...RJFM_ARTIST_LIBRARY['60s-70s'], ...RJFM_ARTIST_LIBRARY['80s-90s'], ...RJFM_ARTIST_LIBRARY['2023-2026'],
+]
+const TAGALOG_OLDIES_AND_2026 = [...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
+
+
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
   'Air Supply',
@@ -437,18 +443,18 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'sunday-english-love': {
     id: 'sunday-english-love',
-    pools: { english: [...NIGHT_LOVE, ...RJFM_ARTIST_LIBRARY['80s-90s'], ...RJFM_ARTIST_LIBRARY['2023-2026']], tagalog: [] },
+    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: [] },
     variants: { english: LOVE_VARIANTS, tagalog: [] },
     englishOnly: true,
   },
   'english-love': {
     id: 'english-love',
-    pools: { english: [...ENGLISH_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
+    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'daytime-love': {
     id: 'daytime-love',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
+    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   disco: {
@@ -458,7 +464,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'night-love': {
     id: 'night-love',
-    pools: { english: [...NIGHT_LOVE, ...RJFM_ARTIST_LIBRARY['80s-90s'], ...RJFM_ARTIST_LIBRARY['2023-2026']], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
+    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'masbate-tagalog': {
@@ -469,7 +475,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   },
   'love-mix': {
     id: 'love-mix',
-    pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE, ...ENGLISH_ERA_EXPANSION], tagalog: [...PINOY_LOVE, ...NEW_TAGALOG_OPM_ARTISTS, ...TAGALOG_ERA_EXPANSION] },
+    pools: { english: ENGLISH_OLDIES_AND_2026, tagalog: TAGALOG_OLDIES_AND_2026 },
     variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
   },
   'off-air': {
