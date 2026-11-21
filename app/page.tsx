@@ -1,3 +1,5 @@
+'use client'
+
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationSelector } from '@/components/station/station-selector'
