@@ -13,7 +13,8 @@
     "test:notifications": "node --experimental-strip-types tests/notification-state.test.ts",
     "test:credits": "node --experimental-strip-types tests/credit-math.test.ts",
     "android:sync": "cap sync android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "autodj:keeper": "node workers/autodj-keeper.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
