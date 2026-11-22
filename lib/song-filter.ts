@@ -162,7 +162,7 @@ export function isAllowedStationTrack(input: {
     // window may use clearly labelled AI-generated originals, but not covers/remixes,
     // karaoke, live recordings, news, or non-music uploads.
     if (!input.title || NON_LATIN.test(input.title)) return false
-    if (/\\b(?:cover|karaoke|remix(?:ed)?|mash ?up|bootleg|tribute|parody|live|concert|interview|news|podcast|full album|nonstop|playlist|compilation|reaction|tutorial|sped ?up|slowed|nightcore|ringtone)\\b/i.test(haystack)) return false
+    if (/\b(?:cover|karaoke|remix(?:ed)?|mash ?up|bootleg|tribute|parody|live|concert|interview|news|podcast|full album|nonstop|playlist|compilation|reaction|tutorial|sped ?up|slowed|nightcore|ringtone)\b/i.test(haystack)) return false
     if (FOREIGN_RULE.test(haystack) || NON_MUSIC_OR_ALTERNATE_RULE.test(haystack)) return false
     const blocked = (input.blockedGenres ?? []).filter((genre) => !/^(disco|dance|eurodance|funk|party|club|ai)$/i.test(normalize(genre)))
     return !matchesBlockedGenre(haystack, blocked)
