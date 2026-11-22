@@ -546,3 +546,23 @@ body {
   .player-artwork.is-playing .listener-avatar { animation-duration: 2.1s; }
   .player-artwork.is-playing .avatar-body { animation-duration: 1.8s; }
 }
+
+
+.player-artwork-mark { align-items: flex-start; gap: .4rem; }
+.player-station-logo {
+  display: block;
+  width: clamp(3.5rem, 16vw, 5.25rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(170,245,255,.65);
+  border-radius: 1rem;
+  box-shadow: 0 8px 22px rgba(0,0,0,.35), 0 0 18px rgba(34,211,238,.25);
+}
+.player-artwork-mark small {
+  padding: .28rem .48rem;
+  border: 1px solid rgba(255,211,100,.4);
+  border-radius: 999px;
+  background: rgba(5,13,35,.65);
+  color: #fff0b2;
+  letter-spacing: .08em;
+  backdrop-filter: blur(8px);
+}
