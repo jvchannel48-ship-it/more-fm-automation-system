@@ -54,6 +54,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Engelbert Humperdinck|engelbert', 'Bobby Vinton', 'The Carpenters|carpenters',
     'Bread', 'Barry Manilow', 'Anne Murray', 'Rita Coolidge', 'Glen Campbell',
     'B.J. Thomas|bj thomas', 'The Righteous Brothers|righteous brothers',
+    'Imelda Papin|imelda papin', 'Claire dela Fuente|claire dela fuente',
   ]),
   '80s-90s': artists('english', [
     'Sade', 'Anita Baker', 'Luther Vandross', 'Peabo Bryson', 'James Ingram',
@@ -107,7 +108,7 @@ const TAGALOG_ERA_EXPANSION = [
 ]
 
 const PINOY_OLDIES = artists('tagalog', [
-  'Imelda Papin',
+  'Claire dela Fuente|claire dela fuente',
   'Victor Wood',
   'Bing Rodrigo',
   'Eddie Peregrina',
@@ -147,7 +148,7 @@ const SUNDAY_ENGLISH_OLDIES = artists('english', [
 ])
 
 const SUNDAY_TAGALOG_CLASSICS = artists('tagalog', [
-  'Imelda Papin',
+  'Claire dela Fuente|claire dela fuente',
   'Victor Wood',
   'Rodel Naval',
   'Renz Verano',
@@ -264,6 +265,8 @@ const TAGALOG_OLDIES_AND_2026 = [...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_T
 
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
+  'Imelda Papin|imelda papin',
+  'Claire dela Fuente|claire dela fuente',
   'Air Supply',
   'Lionel Richie',
   'Peter Cetera',
@@ -329,6 +332,8 @@ const ENGLISH_LOVE = artists('english', [
 const NIGHT_LOVE = artists('english', [
   'Natalie Cole',
   'Diana Ross',
+  'Imelda Papin|imelda papin',
+  'Claire dela Fuente|claire dela fuente',
   'Whitney Houston',
   'Anita Baker',
   'Luther Vandross',
@@ -401,7 +406,7 @@ const TAGALOG_DISCO = artists('tagalog', [
   'Willie Revillame|willie',
 ])
 
-const LOVE_VARIANTS = ['60s 70s 80s 90s classic oldies love song ballad', 'classic oldies romantic love ballad official audio', '2026 new soft pop love song ballad official audio', '2026 latest romantic love ballad official audio', '2026 easy listening love song official audio', 'oldies love song original artist', '2026 soft romantic ballad original artist']
+const LOVE_VARIANTS = ['We Could Have It All English version official audio', 'Claire dela Fuente English love song official audio', 'Sayang Claire dela Fuente original Tagalog song official audio', '60s 70s 80s 90s classic oldies love song ballad', 'classic oldies romantic love ballad official audio', '2026 new soft pop love song ballad official audio', '2026 latest romantic love ballad official audio', '2026 easy listening love song official audio', 'oldies love song original artist', '2026 soft romantic ballad original artist']
 const DISCO_VARIANTS = [
   '',
   'official audio',
@@ -477,10 +482,10 @@ function mixedProgram(id: ProgramId): Program {
 }
 
 export const PROGRAMS: Record<ProgramId, Program> = {
-  'sunday-oldies': tagalogProgram('sunday-oldies', [...PINoy_OLDIES_SAFE]),
-  'sunday-english-oldies': tagalogProgram('sunday-english-oldies'),
-  'sunday-tagalog-classic': tagalogProgram('sunday-tagalog-classic', [...PINoy_OLDIES_SAFE, ...SUNDAY_TAGALOG_CLASSICS]),
-  'sunday-english-love': tagalogProgram('sunday-english-love', PINOY_LOVE, OPM_VARIANTS),
+  'sunday-oldies': mixedProgram('sunday-oldies'),
+  'sunday-english-oldies': mixedProgram('sunday-english-oldies'),
+  'sunday-tagalog-classic': mixedProgram('sunday-tagalog-classic'),
+  'sunday-english-love': mixedProgram('sunday-english-love'),
   'english-love': mixedProgram('english-love'),
   'daytime-love': mixedProgram('daytime-love'),
   disco: mixedProgram('disco'),
@@ -589,17 +594,7 @@ export function programAt(ms: number, _sundayScheduleEnabled = true, _station: s
   const { hour, minute, day } = manilaTime(ms)
   const minuteOfDay = hour * 60 + minute
 
-  // Sunday is Tagalog OPM only, all day and all night. No English tracks.
-  if (day === 0) return PROGRAMS['sunday-tagalog-classic']
-
-  // Saturday follows the Filipino oldies format; late evening leans into
-  // classic OPM love songs featuring Rodel Naval, April Boy and peers.
-  if (day === 6) {
-    if (minuteOfDay >= 22 * 60) return PROGRAMS['sunday-english-love']
-    return PROGRAMS['sunday-tagalog-classic']
-  }
-
-  // Monday-Friday: English soft love songs with regular Tagalog OPM inserts.
+  // Every RJ FM station plays a full-day mix of English and Tagalog love songs.
   if (minuteOfDay >= 22 * 60) return PROGRAMS['night-love']
   return PROGRAMS['daytime-love']
 }
@@ -610,17 +605,13 @@ export function nagaProgramAt(ms: number): Program {
 }
 
 /** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
-export function masbateProgramAt(_ms: number): Program {
-  return PROGRAMS['masbate-tagalog']
+export function masbateProgramAt(ms: number): Program {
+  return programAt(ms)
 }
 
-/** Calabanga 95.5: disco from 3:00–8:02 PM, then a distinct English/Tagalog love mix. */
+/** Calabanga 95.5 plays English and Tagalog love songs all day. */
 export function calabangaProgramAt(ms: number): Program {
-  const { hour, minute } = manilaTime(ms)
-  const minuteOfDay = hour * 60 + minute
-  return minuteOfDay >= 15 * 60 && minuteOfDay < 20 * 60 + 3
-    ? PROGRAMS['calabanga-disco']
-    : PROGRAMS['calabanga-love']
+  return programAt(ms)
 }
 
 /** Weekday rotation: three English love songs followed by one Tagalog OPM song. */
