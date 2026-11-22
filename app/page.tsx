@@ -1,8 +1,5 @@
 import { RadioPlayer } from '@/components/station/radio-player'
-import { RadioBrowser } from '@/components/station/radio-browser'
-import { PhRadioMedia } from '@/components/station/ph-radio-media'
 import { NotificationCenter } from '@/components/station/notification-center'
-import { StationSelector } from '@/components/station/station-selector'
 import { StationShell } from '@/components/station/station-shell'
 import { AccountMenu } from '@/components/station/account-menu'
 import { BottomNavigation } from '@/components/station/bottom-navigation'
@@ -12,7 +9,6 @@ export default function Home() {
     <StationShell>
       <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-3">
         <div className="flex items-center gap-1">
-          <StationSelector />
           <NotificationCenter />
         </div>
       </header>
