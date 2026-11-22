@@ -23,6 +23,9 @@ on:
       - 'components/station/radio-player.tsx'
       - 'hooks/use-broadcast.ts'
       - 'components/station/station-shell.tsx'
+      - 'components/station/station-selector.tsx'
+      - 'public/rjfm-app-icon.svg'
+      - 'public/station-logos/**'
       - '.github/workflows/android.yml'
 
 permissions:
