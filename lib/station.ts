@@ -457,6 +457,20 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         })
         state.lastChristopherTimeCheckText = timeCheckText
         timeCheckEndAt += timeCheckDuration * 1000
+        // Play the station's RJ FM All Day Long jingle immediately after Christopher's time check.
+        // The next music track is scheduled after this voice clip by nextStart().
+        state.tracks.push({
+          uid: `dj-christopher-timecheck-jingle-${station}-${state.songCount}`,
+          src: '/audio/rjfm-all-day-long.mp3',
+          startAt: timeCheckEndAt,
+          duration: 9.192,
+          fadeIn: 0.2,
+          fadeOut: 0,
+          kind: 'dj-mic',
+          title: 'RJ FM All Day Long',
+          artist: 'RJ FM',
+        })
+        timeCheckEndAt += 9_192
       }
     }
     if (identAfterSong && stationIdent) {
