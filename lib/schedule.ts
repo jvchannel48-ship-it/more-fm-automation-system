@@ -16,6 +16,8 @@ export type ProgramId =
   | 'night-love'
   | 'love-mix'
   | 'masbate-tagalog'
+  | 'calabanga-disco'
+  | 'calabanga-love'
   | 'off-air'
 
 export type Language = 'english' | 'tagalog'
@@ -424,6 +426,19 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
 ])
 const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
 const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
+const CALABANGA_AI_DISCO = artists('tagalog', ['AI Filipino Disco Originals|ai filipino disco originals', 'AI Tagalog Disco Creator|ai tagalog disco creator'])
+const CALABANGA_DISCO_VARIANTS = ['classic disco dance hit official audio', 'Tagalog Filipino disco dance song', 'AI-generated Tagalog disco song', 'AI Filipino disco original song', 'Nothing Gonna Stop Us Now AI Tagalog disco Tutupad ang Pangarap']
+const CALABANGA_DISCO_POOL = [...TAGALOG_DISCO, ...CALABANGA_AI_DISCO, ...ENGLISH_DISCO]
+const CALABANGA_DISCO_PROGRAM: Program = {
+  id: 'calabanga-disco',
+  pools: { english: ENGLISH_DISCO, tagalog: [...TAGALOG_DISCO, ...CALABANGA_AI_DISCO] },
+  variants: { english: CALABANGA_DISCO_VARIANTS, tagalog: CALABANGA_DISCO_VARIANTS },
+}
+const CALABANGA_LOVE_PROGRAM: Program = {
+  id: 'calabanga-love',
+  pools: { english: [...ENGLISH_LOVE, ...NIGHT_LOVE], tagalog: [...PINOY_LOVE, ...TAGALOG_OLDIES_AND_2026] },
+  variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
+}
 
 const APPROVED_ENGLISH_SOFT_POOL = [
   ...ENGLISH_OLDIES_AND_2026,
@@ -472,6 +487,8 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   disco: mixedProgram('disco'),
   'night-love': mixedProgram('night-love'),
   'masbate-tagalog': tagalogProgram('masbate-tagalog', MASBATE_TAGALOG, MASBATE_TAGALOG_VARIANTS),
+  'calabanga-disco': CALABANGA_DISCO_PROGRAM,
+  'calabanga-love': CALABANGA_LOVE_PROGRAM,
   'love-mix': mixedProgram('love-mix'),
   'off-air': { id: 'off-air', pools: { english: [], tagalog: [] }, variants: { english: [], tagalog: [] }, englishOnly: true },
 }
@@ -596,6 +613,13 @@ export function nagaProgramAt(ms: number): Program {
 /** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
 export function masbateProgramAt(_ms: number): Program {
   return PROGRAMS['masbate-tagalog']
+}
+
+/** Calabanga 95.5: disco from 3:00–8:02 PM, then a distinct English/Tagalog love mix. */
+export function calabangaProgramAt(ms: number): Program {
+  const { hour, minute } = manilaTime(ms)
+  const minuteOfDay = hour * 60 + minute
+  return minuteOfDay >= 20 * 60 + 3 ? PROGRAMS['calabanga-love'] : PROGRAMS['calabanga-disco']
 }
 
 /** Weekday rotation: three English love songs followed by one Tagalog OPM song. */
