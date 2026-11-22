@@ -1,7 +1,6 @@
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationShell } from '@/components/station/station-shell'
-import { AccountMenu } from '@/components/station/account-menu'
 import { BottomNavigation } from '@/components/station/bottom-navigation'
 
 export default function Home() {
@@ -17,7 +16,6 @@ export default function Home() {
         <h1 className="sr-only">Live radio player</h1>
         <RadioPlayer />
       </main>
-      <AccountMenu />
       <BottomNavigation />
     </StationShell>
   )
