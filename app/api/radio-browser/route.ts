@@ -34,9 +34,20 @@ export async function GET(request: NextRequest) {
     })
     if (!response.ok) throw new Error(`Radio Browser returned ${response.status}`)
     const raw = await response.json() as RadioBrowserStation[]
+    const seenStreams = new Set<string>()
+    const seenNames = new Set<string>()
     const stations = (Array.isArray(raw) ? raw : []).flatMap((item) => {
       const stream = item.url_resolved || item.url || ''
       if (!item.stationuuid || !item.name || item.countrycode?.toUpperCase() !== 'PH' || !/^https?:\/\//i.test(stream)) return []
+      const normalizedName = item.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      let normalizedStream = ''
+      try {
+        const parsed = new URL(stream)
+        normalizedStream = `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\\/+$/, '')}`.toLowerCase()
+      } catch { return [] }
+      if (seenStreams.has(normalizedStream) || seenNames.has(normalizedName)) return []
+      seenStreams.add(normalizedStream)
+      seenNames.add(normalizedName)
       return [{
         stationuuid: item.stationuuid,
         name: item.name.slice(0, 160),
