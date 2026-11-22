@@ -121,7 +121,7 @@ export function RadioPlayer() {
       if (!cancelled) return syncBackgroundAudioNotification(live, externalStation?.name ?? `${meta.name} ${meta.frequency}`)
     }).catch((error) => console.warn('[RJ FM] Background audio notification could not sync', error))
     return () => { cancelled = true }
-  }, [live, externalStation, meta])
+  }, [live, externalStation, station])
 
   const togglePlay = () => {
     if (externalStation && externalAudioRef.current) {
