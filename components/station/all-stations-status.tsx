@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, RadioTower, Search, Play, Radio, ExternalLink } from 'lucide-react'
+import { ArrowLeft, RadioTower, Search, Play, Radio } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { STATIONS, STATION_ORDER, type StationId, parseStationId } from '@/lib/stations'
@@ -79,7 +79,7 @@ export function AllStationsStatus() {
 
         <div className="rounded-2xl border border-primary/20 bg-card p-4">
           <div className="mb-2 flex items-center gap-2"><Radio className="size-4 text-primary" /><h3 className="font-semibold">RJ FM Stations</h3></div>
-          <p className="mb-3 text-xs text-muted-foreground">Piliin kung aling RJ FM station ang gagamitin ng main player.</p>
+          <p className="mb-3 text-xs text-muted-foreground">Choose which RJ FM station the main player will use.</p>
           <select aria-label="Select RJ FM station" value={selected} onChange={(event) => chooseRj(parseStationId(event.target.value))} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm">
             {STATION_ORDER.map((id) => <option key={id} value={id}>{STATIONS[id].name} · {STATIONS[id].frequency} FM · {STATIONS[id].city}</option>)}
           </select>
@@ -109,11 +109,6 @@ export function AllStationsStatus() {
               <Button type="button" size="icon" onClick={() => playExternal(station)} aria-label={`Play ${station.name}`}><Play className="size-4" /></Button>
             </div>
           ))}
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <p className="text-sm font-semibold">Zeno.FM Philippines</p>
-          <p className="mt-1 text-xs text-muted-foreground">Browse Filipino stations and public Zeno.FM streams.</p>
-          <a className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary underline" href="https://zeno.fm/radio/countries/Philippines/" target="_blank" rel="noreferrer">Open Zeno Philippine directory <ExternalLink className="size-3" /></a>
         </div>
         <p className="text-center text-[10px] text-muted-foreground">Radio Browser directory · Philippines only. Some station streams may be offline or may block playback in certain browsers.</p>
       </div>
