@@ -417,3 +417,36 @@ body {
   background: linear-gradient(180deg, rgba(14,35,49,.94), rgba(4,13,22,.96));
 }
 .radio-header { text-shadow: 0 0 24px rgba(74,190,219,.18); }
+
+/* RJ FM playback deck — vivid gradient glass player inspired by the supplied reference. */
+.radio-app-shell {
+ background: radial-gradient(ellipse at 14% 8%,rgba(190,45,190,.72),transparent 38%),radial-gradient(ellipse at 88% 28%,rgba(255,91,120,.54),transparent 34%),radial-gradient(ellipse at 10% 88%,rgba(43,128,255,.5),transparent 34%),radial-gradient(ellipse at 88% 92%,rgba(54,220,211,.5),transparent 34%),linear-gradient(145deg,#401b83 0%,#a22d91 34%,#ed7187 62%,#3aa9d6 100%);
+}
+.radio-app-shell::before { opacity:.2; filter:blur(1px); }
+.radio-app-shell::after { background:radial-gradient(ellipse at center,transparent 28%,rgba(23,13,60,.26) 100%); }
+.radio-player-card {
+ width:min(100%,26rem); padding:clamp(1.2rem,5vw,2rem); gap:1.15rem;
+ border:1px solid rgba(255,255,255,.56); border-radius:2rem;
+ background:linear-gradient(155deg,rgba(255,255,255,.9),rgba(238,246,255,.8) 58%,rgba(215,248,255,.84)) !important;
+ color:#10182b; box-shadow:0 30px 80px rgba(25,13,65,.34),inset 0 2px 0 rgba(255,255,255,.92),inset 0 -12px 30px rgba(65,133,190,.12);
+ backdrop-filter:blur(24px) saturate(1.25);
+}
+.radio-player-card .text-muted-foreground { color:#56627a !important; }
+.radio-player-card .player-title { color:#10182b; font-size:1.25rem; letter-spacing:-.025em; }
+.radio-player-card .live-badge { color:#0a7558 !important; background:linear-gradient(180deg,#e7fff5,#c8f4e4) !important; border:1px solid rgba(24,160,117,.25); box-shadow:0 4px 12px rgba(21,135,101,.12),inset 0 1px 0 #fff; text-shadow:none; }
+.player-artwork { isolation:isolate; background:linear-gradient(135deg,#39b9d8 0 34%,#102c69 34% 100%); box-shadow:0 18px 35px rgba(20,38,88,.24),inset 0 1px 0 rgba(255,255,255,.5); }
+.player-artwork::before { content:''; position:absolute; width:62%; aspect-ratio:1; border-radius:50%; right:-17%; top:14%; background:linear-gradient(145deg,#ff8991,#e94d70); box-shadow:inset -10px -12px 20px rgba(104,24,65,.2),0 12px 28px rgba(0,0,0,.16); }
+.player-artwork::after { content:''; position:absolute; width:28%; aspect-ratio:1; border-radius:50%; left:12%; top:38%; background:linear-gradient(145deg,#fff,#e9f7ff); box-shadow:0 8px 22px rgba(0,0,0,.15),inset 0 2px 4px #fff; }
+.artwork-orbit { position:absolute; border:1px solid rgba(255,255,255,.15); border-radius:50%; width:75%; aspect-ratio:1; z-index:0; }
+.artwork-orbit-one { left:-38%; bottom:-44%; }
+.artwork-orbit-two { right:-34%; top:-46%; width:95%; }
+.player-artwork-mark { position:absolute; z-index:2; left:8%; bottom:7%; display:flex; flex-direction:column; color:rgba(255,255,255,.9); text-shadow:0 2px 12px rgba(0,0,0,.3); line-height:.9; }
+.player-artwork-mark span { font-size:clamp(2.5rem,12vw,4rem); font-weight:900; letter-spacing:-.09em; }
+.player-artwork-mark small { font-size:.65rem; font-weight:800; letter-spacing:.28em; margin-top:.45rem; }
+.record-button { background:linear-gradient(145deg,#73d5ff,#378de9 60%,#2363ca) !important; color:white !important; border:1px solid rgba(255,255,255,.75) !important; box-shadow:0 11px 0 #2359ae,0 17px 25px rgba(36,91,174,.35),inset 0 2px 5px rgba(255,255,255,.75) !important; transition:transform .16s ease,box-shadow .16s ease; }
+.record-button:active { transform:translateY(7px) !important; box-shadow:0 4px 0 #2359ae,0 8px 14px rgba(36,91,174,.25),inset 0 2px 5px rgba(255,255,255,.6) !important; }
+.radio-player-card button:not(.record-button) { color:#17233c; background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(217,231,250,.9)); border:1px solid rgba(255,255,255,.85); box-shadow:0 5px 12px rgba(42,67,111,.14),inset 0 1px 0 #fff; }
+.radio-player-card .signal-bars { background:linear-gradient(180deg,#e9f8ff,#c9e8fa); border:1px solid rgba(72,143,205,.22); box-shadow:inset 0 2px 5px rgba(35,89,145,.1),0 5px 12px rgba(35,89,145,.1); }
+.radio-player-card .signal-bars span,.radio-player-card .eq-bar { background:linear-gradient(180deg,#6bd3ff,#328be8); box-shadow:0 0 7px rgba(44,146,235,.3); }
+.radio-player-card .volume-deck { background:linear-gradient(180deg,#f8fcff,#d9e9f8); border:1px solid rgba(94,142,190,.25); box-shadow:inset 0 1px 0 #fff,0 8px 18px rgba(44,79,130,.12); }
+.radio-player-card .volume-deck button { background:transparent; box-shadow:none; }
