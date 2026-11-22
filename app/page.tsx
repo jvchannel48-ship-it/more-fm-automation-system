@@ -1,4 +1,5 @@
 import { RadioPlayer } from '@/components/station/radio-player'
+import { RadioBrowser } from '@/components/station/radio-browser'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationSelector } from '@/components/station/station-selector'
 import { StationShell } from '@/components/station/station-shell'
@@ -19,6 +20,9 @@ export default function Home() {
         <h1 className="sr-only">Live radio player</h1>
         <RadioPlayer />
       </main>
+      <div className="mx-auto w-full max-w-3xl px-4 pb-32">
+        <RadioBrowser />
+      </div>
       <AccountMenu />
       <BottomNavigation />
     </StationShell>
