@@ -208,7 +208,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) continue
       const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist, item.url].filter(Boolean).join(' ')
-      const calabangaAiTrack = station === 'calabanga' && /\\b(?:ai|suno|udio|generated|musicgen)\\b/i.test(`${item.title} ${metadata}`)
+      const calabangaAiTrack = station === 'calabanga' && /\b(?:ai|suno|udio|generated|musicgen)\b/i.test(`${item.title} ${metadata}`)
       if (!isOriginalArtistTrack(item.title, artist) && !calabangaAiTrack) continue
       if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres, allowCalabangaDisco: station === 'calabanga' })) continue
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) continue
