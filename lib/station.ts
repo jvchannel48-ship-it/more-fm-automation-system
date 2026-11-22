@@ -459,6 +459,52 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     }
   }
 }
+async function syncNagaFromManila(state: StationState, now: number) {
+  // Naga airs each Manila song only after the following Manila song begins.
+  // Other stations continue using their own BetaDash-backed AutoDJ queues.
+  const { state: manila } = await loadState(now, STATE_PATH)
+  const manilaMusic = manila.tracks
+    .filter((track) => track.kind === 'music')
+    .sort((a, b) => a.startAt - b.startAt)
+  const activeNaga = state.tracks.filter((track) =>
+    track.kind === 'music' && track.startAt <= now && trackEnd(track) > now,
+  )
+  const retainedNonMusic = state.tracks.filter((track) =>
+    track.kind !== 'music' && trackEnd(track) > now,
+  )
+  const existingIds = new Set(state.tracks.map((track) => track.uid))
+  const upcoming: Track[] = []
+  for (let index = 0; index < manilaMusic.length - 1; index++) {
+    const previous = manilaMusic[index]
+    const following = manilaMusic[index + 1]
+    const uid = `naga-manila-delay-${previous.uid}`
+    if (existingIds.has(uid)) continue
+    let startAt = following.startAt
+    if (startAt <= now) {
+      if (activeNaga.length || upcoming.length) continue
+      startAt = now
+    }
+    if (startAt <= now && activeNaga.length) continue
+    upcoming.push({
+      ...previous,
+      uid,
+      startAt,
+      fadeIn: previous.fadeIn,
+      fadeOut: previous.fadeOut,
+    })
+    if (upcoming.length >= PRELOAD_AHEAD_TRACKS) break
+  }
+  state.tracks = [...activeNaga, ...retainedNonMusic, ...upcoming]
+  for (const track of upcoming) {
+    const sourceUid = track.uid.replace(/^naga-manila-delay-/, '')
+    const source = manilaMusic.find((item) => item.uid === sourceUid)
+    if (!source || state.history.some((entry) => entry.id === source.uid)) continue
+    state.history.push({ id: source.uid, key: songKey(source.title), artist: source.artist, t: track.startAt })
+    state.songCount++
+  }
+  state.fillingUntil = 0
+  await writeJson(NAGA_STATE_PATH, state)
+}
 async function loadState(now: number, path = STATE_PATH) {
   const saved = await readJson<Partial<StationState>>(path, {})
   const state: StationState = {
@@ -548,19 +594,24 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       }
     }
 
-        const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
-    if (needsFill && state.fillingUntil < now && !options.skipFill) {
-      state.fillingUntil = now + FILL_LOCK_MS
-      await writeJson(statePath, state)
-      await withAutoDjFillLock(async () => {
-        try {
-          await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        } finally {
-          state.fillingUntil = 0
-          await writeJson(statePath, state)
-        }
-      })
-    } else if (changed) { await writeJson(statePath, state) }
+    if (station === 'naga') {
+      if (!options.skipFill) await syncNagaFromManila(state, now)
+      else if (changed) await writeJson(statePath, state)
+    } else {
+      const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
+      if (needsFill && state.fillingUntil < now && !options.skipFill) {
+        state.fillingUntil = now + FILL_LOCK_MS
+        await writeJson(statePath, state)
+        await withAutoDjFillLock(async () => {
+          try {
+            await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+          } finally {
+            state.fillingUntil = 0
+            await writeJson(statePath, state)
+          }
+        })
+      } else if (changed) { await writeJson(statePath, state) }
+    }
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
