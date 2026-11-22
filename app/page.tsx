@@ -2,12 +2,14 @@ import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationShell } from '@/components/station/station-shell'
 import { BottomNavigation } from '@/components/station/bottom-navigation'
+import { StationSelector } from '@/components/station/station-selector'
 
 export default function Home() {
   return (
     <StationShell>
       <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-3">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <StationSelector />
           <NotificationCenter />
         </div>
       </header>
