@@ -1,6 +1,6 @@
 const baseUrl = process.env.AUTODJ_BASE_URL?.replace(/\/$/, '')
 const secret = process.env.AUTODJ_CRON_SECRET
-const stations = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+const stations = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate', 'calabanga']
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 if (!baseUrl || !secret) {
