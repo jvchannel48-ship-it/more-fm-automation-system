@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { ArrowLeft, BadgeCheck, Bell, Image as ImageIcon, Inbox, Megaphone, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import type { StationNotification } from '@/lib/notifications'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { getStoredStation } from './station-selector'
@@ -120,7 +120,6 @@ export function NotificationCenter() {
               <><Bell className="size-4 text-primary" />Notifications</>
             )}
           </SheetTitle>
-          <SheetDescription>{station.notificationTagline} · Mga verified announcement at updates mula sa RJ FM OFFICIAL.</SheetDescription>
         </SheetHeader>
         {!selectedNotification && visibleNotifications.length > 0 && (
           <div className="flex items-center justify-between px-5 pt-4">
