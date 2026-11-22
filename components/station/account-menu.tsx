@@ -228,9 +228,9 @@ export function AccountMenu() {
             {open && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
         <section role="dialog" aria-modal="true" aria-labelledby="account-title" className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl">
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Close account" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
-          <h2 id="account-title" className="pr-8 text-xl font-semibold">Phone profile</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Profile, playback, permissions, at app settings.</p>
-          {profile ? <div className="mt-5 flex flex-col gap-4">
+          <h2 id="account-title" className="pr-8 text-xl font-semibold">{view === 'settings' ? 'RJ FM Tools' : 'Phone profile'}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{view === 'settings' ? 'Free tools. Walang profile, device linking, o credits na kailangan.' : 'Profile, playback, permissions, at app settings.'}</p>
+          {profile && view !== 'settings' ? <div className="mt-5 flex flex-col gap-4">
             <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-secondary/60 to-card p-4 shadow-lg shadow-primary/5">
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-16 rounded-2xl object-cover ring-2 ring-primary/25" /> : <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-2 ring-primary/20"><UserRound className="size-7" /></span>}
               <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{profile.displayName || 'Listener'}</p><p className="mt-0.5 text-xs text-muted-foreground">RJ FM Listener</p><p className="mt-1 font-mono text-[11px] tracking-wider text-primary">PROFILE NO. {profile.id.slice(-6).toUpperCase()}</p></div>
@@ -274,7 +274,26 @@ export function AccountMenu() {
               <div className="flex flex-col gap-2"><Label htmlFor="profile-avatar">Profile picture</Label><input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary-foreground" /><Button type="button" variant="outline" onClick={uploadAvatar} disabled={busy || !avatar}><Upload />Upload photo</Button></div>
               <Button type="button" variant="outline" onClick={logout} disabled={busy}><LogOut />Disconnect this phone</Button>
             </>}
-          </div> : profileLoading ? <p className="mt-5 text-sm text-muted-foreground" role="status">Preparing your profile…</p> : <div className="mt-5 flex flex-col gap-4"><p className="text-sm text-muted-foreground">Link this phone to keep your profile and daily credits together.</p><Button type="button" onClick={reconnectDevice} disabled={busy}><Smartphone />{busy ? 'Linking…' : 'Use this phone'}</Button></div>}
+          </div> : view === 'settings' ? <div className="mt-5 flex flex-col gap-3 rounded-2xl border p-4">
+            <div><p className="font-semibold">RJ FM Tools — FREE</p><p className="mt-1 text-xs text-muted-foreground">Available agad kahit walang profile o naka-link na device. Walang credits na ibabawas.</p></div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div className="flex items-center gap-2"><Gauge className="size-4 text-primary" /><p className="font-medium">Internet Speed Test</p></div>
+              <p className="mt-1 text-xs text-muted-foreground">Sukatin ang download speed, upload speed, ping at jitter gamit ang LibreSpeed.</p>
+              <Button type="button" className="mt-3 w-full" onClick={() => window.open('https://librespeed.org/', '_blank', 'noopener,noreferrer')}><Gauge className="size-4" />Start Internet Speed Test</Button>
+            </div>
+            <div className="rounded-xl border border-border bg-secondary/40 p-3">
+              <div className="flex items-center gap-2"><Activity className="size-4 text-primary" /><p className="font-medium">RJ FM Server Ping</p></div>
+              <p className="mt-1 text-xs text-muted-foreground">Five round-trip checks from this device to the RJ FM server.</p>
+              <Button type="button" variant="outline" className="mt-3 w-full" onClick={runPingTest} disabled={pingBusy}>{pingBusy ? <RefreshCw className="size-4 animate-spin" /> : <Activity className="size-4" />}{pingBusy ? 'Testing ping…' : 'Start ping test'}</Button>
+              {pingSamples.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{Math.min(...pingSamples)} ms</p><p className="text-[10px] text-muted-foreground">Best</p></div>
+                <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{(pingSamples.reduce((sum, value) => sum + value, 0) / pingSamples.length).toFixed(1)} ms</p><p className="text-[10px] text-muted-foreground">Average</p></div>
+                <div className="rounded-lg bg-background p-2"><p className="text-lg font-bold tabular-nums">{Math.max(...pingSamples)} ms</p><p className="text-[10px] text-muted-foreground">Worst</p></div>
+              </div>}
+              {pingBusy && <p className="mt-2 text-center text-xs text-muted-foreground">{pingSamples.length}/5 checks complete</p>}
+              {pingError && <p className="mt-2 text-xs text-destructive" role="alert">{pingError}</p>}
+            </div>
+          </div> : profileLoading ? <p className="mt-5 text-sm text-muted-foreground" role="status">Preparing your profile…</p> : <div className="mt-5 flex flex-col gap-4"><p className="text-sm text-muted-foreground">Walang profile na kailangan para gamitin ang Tools. Maaari kang bumalik sa Tools anumang oras.</p><Button type="button" onClick={() => openView('settings')}><Settings />Open free tools</Button></div>}
           {message && <p className="mt-4 rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-200" role="status">{message}</p>}{error && <p className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</p>}
         </section>
       </div>}

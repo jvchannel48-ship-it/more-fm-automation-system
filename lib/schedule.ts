@@ -258,6 +258,7 @@ const ENGLISH_OLDIES_AND_2026 = [
 const TAGALOG_OLDIES_AND_2026 = [...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
 
 
+
 const ENGLISH_LOVE = artists('english', [
   'Dan Hill',
   'Air Supply',
@@ -421,6 +422,7 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'Kiyo',
 ])
 const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
+export const RJFM_TAGALOG_APPROVED_ARTISTS = [...TAGALOG_OLDIES_AND_2026, ...PINOY_OLDIES, ...MASBATE_CURRENT_TAGALOG]
 const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
 
 const APPROVED_ENGLISH_SOFT_POOL = [
@@ -456,7 +458,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   'daytime-love': englishOnlyProgram('daytime-love'),
   disco: englishOnlyProgram('disco'),
   'night-love': englishOnlyProgram('night-love'),
-  'masbate-tagalog': englishOnlyProgram('masbate-tagalog'),
+  'masbate-tagalog': { id: 'masbate-tagalog', pools: { english: [], tagalog: MASBATE_TAGALOG }, variants: { english: [], tagalog: MASBATE_TAGALOG_VARIANTS }, tagalogOnly: true },
   'love-mix': englishOnlyProgram('love-mix'),
   'off-air': { id: 'off-air', pools: { english: [], tagalog: [] }, variants: { english: [], tagalog: [] }, englishOnly: true },
 }
@@ -615,19 +617,31 @@ export function programAt(ms: number, sundayScheduleEnabled = true, station: str
   return PROGRAMS['love-mix']
 }
 
-/** RJ FM Naga follows the Manila love-song format. */
+/** Each regional station gets its own independent soft-music profile and rotation. */
+/** Backward-compatible helpers; each now uses its own independent format. */
 export function nagaProgramAt(ms: number): Program {
-  return programAt(ms)
+  return programAt(ms, true, 'main')
+}
+export function masbateProgramAt(ms: number): Program {
+  return stationProgramAt(ms, true, 'masbate')
 }
 
-/** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
-export function masbateProgramAt(_ms: number): Program {
-  return PROGRAMS['masbate-tagalog']
+export function stationProgramAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
+  if (station === 'main' || station === 'naga') return programAt(ms, sundayScheduleEnabled, 'main')
+  if (station === 'masbate') return PROGRAMS['masbate-tagalog']
+  const tagalogOnly = station === 'cdo' || station === 'iloilo'
+  return {
+    id: 'love-mix',
+    pools: { english: tagalogOnly ? [] : APPROVED_ENGLISH_SOFT_POOL, tagalog: TAGALOG_OLDIES_AND_2026 },
+    variants: { english: tagalogOnly ? [] : ENGLISH_SOFT_VARIANTS, tagalog: OPM_VARIANTS },
+    tagalogOnly,
+  }
 }
 
-/** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */
-export function languageForSlot(program: Program, _songCount: number): Language {
-  // RJ FM's approved station-wide format is English-language soft/easy listening only.
+/** Keep each station's language mix predictable while preserving its own queue/history. */
+export function languageForSlot(program: Program, songCount: number): Language {
+  if (program.tagalogOnly) return 'tagalog'
   if (program.englishOnly) return 'english'
+  if (program.pools.tagalog.length && songCount % 4 === 3) return 'tagalog'
   return 'english'
 }
