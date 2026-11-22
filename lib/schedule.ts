@@ -169,6 +169,7 @@ const SUNDAY_TAGALOG_CLASSICS = artists('tagalog', [
 ])
 
 const PINOY_LOVE = artists('tagalog', [
+  'Claire dela Fuente|claire dela fuente',
   'Rey Valera',
   'Basil Valdez',
   'Martin Nievera',
