@@ -489,6 +489,47 @@ body {
 @media (prefers-reduced-motion:reduce) { .listener-avatar,.avatar-body,.player-artwork.is-playing .artwork-orbit-one,.player-artwork.is-playing .artwork-orbit-two,.player-artwork.is-playing .avatar-note,.player-artwork.is-playing .avatar-arm { animation:none!important; } }
 
 
+
+/* Touch interaction hardening: decorative artwork must never sit above controls. */
+.radio-header {
+  position: relative;
+  z-index: 30;
+}
+.radio-player-card {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+.player-artwork::before,
+.player-artwork::after,
+.player-artwork > .listener-avatar,
+.player-artwork > .artwork-orbit,
+.player-artwork > .player-artwork-mark {
+  pointer-events: none !important;
+}
+.radio-player-card button,
+.radio-player-card [role="button"],
+.radio-player-card [data-slot="button"] {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.radio-player-card .record-button {
+  z-index: 20;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+.radio-player-card select,
+.radio-player-card input,
+.radio-player-card [role="slider"] {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
 /* Vivid, dimensional listening scene refinement. */
 .radio-player-card {
   background:
