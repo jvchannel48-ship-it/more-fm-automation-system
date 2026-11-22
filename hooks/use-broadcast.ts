@@ -277,7 +277,7 @@ export function useBroadcast(
         }
         const isActive = activeIds.has(track.uid)
         const el = slot.el
-        el.dataset.rjfmAutoDelete = String(data?.autoDeletePlayedCache !== false)
+        // Keep cached tracks available for offline listening; cache is size-limited by the service worker.\n        el.dataset.rjfmAutoDelete = 'false'
 
         if (!playing) {
           if (!el.paused) el.pause()
