@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 600_000
+const PRELOAD_AHEAD_MS = 30 * 60_000
 const PRELOAD_DJ_VOICE_AHEAD_MS = 10 * 60_000
 const DRIFT_TOLERANCE_S = 15
 const MAX_MEDIA_RETRIES = 10
@@ -115,7 +115,7 @@ export function useBroadcast(
     if (context?.state === 'suspended') void context.resume().catch(() => undefined)
     slots.current = Array.from({ length: 6 }, () => {
       const el = new Audio()
-      el.preload = 'auto'
+      // Ask the browser to fetch and decode upcoming MP3s well before their scheduled start.\n      el.preload = 'auto'
       // Remove only this device's temporary offline copy after the track finishes.
       // The original MP3 and the server playlist are never modified.
       el.addEventListener('ended', () => {
