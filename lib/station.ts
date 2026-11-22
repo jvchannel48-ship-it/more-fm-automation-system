@@ -1,6 +1,6 @@
 import 'server-only'
 import { after } from 'next/server'
-import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
+import { getActiveListenerCount, getAverageListenerCount, getSettings, isBlobStorageAvailable, readJson, STATE_PATH, NAGA_STATE_PATH, CEBU_STATE_PATH, GENSAN_STATE_PATH, CDO_STATE_PATH, DAVAO_STATE_PATH, ILOILO_STATE_PATH, MASBATE_STATE_PATH, CALABANGA_STATE_PATH, LIVE_DJ_PATH, MESSAGES_PATH, writeJson } from './storage'
 import { STATIONS, type StationId } from './stations'
 import {
   dailyAnnouncementScheduleAt,
@@ -8,6 +8,7 @@ import {
   manilaDateKey,
   nextSignOn,
   masbateProgramAt,
+  calabangaProgramAt,
   nagaProgramAt,
   programAt,
   PROGRAMS,
@@ -205,9 +206,10 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       triedIds.add(item.id)
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) continue
-      if (!isOriginalArtistTrack(item.title, artist)) continue
       const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist, item.url].filter(Boolean).join(' ')
-      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) continue
+      const calabangaAiTrack = station === 'calabanga' && /\\b(?:ai|suno|udio|generated|musicgen)\\b/i.test(`${item.title} ${metadata}`)
+      if (!isOriginalArtistTrack(item.title, artist) && !calabangaAiTrack) continue
+      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres, allowCalabangaDisco: station === 'calabanga' })) continue
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) continue
       if (playedIds.has(item.id) || playedKeys.has(songKey(item.title))) continue
 
@@ -355,6 +357,7 @@ function statePathFor(station: StationId) {
     case 'davao': return DAVAO_STATE_PATH
     case 'iloilo': return ILOILO_STATE_PATH
     case 'masbate': return MASBATE_STATE_PATH
+    case 'calabanga': return CALABANGA_STATE_PATH
     default: return STATE_PATH
   }
 }
@@ -371,7 +374,9 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
       ? nagaProgramAt(startAt)
       : station === 'masbate'
         ? masbateProgramAt(startAt)
-        : programAt(startAt, sundayScheduleEnabled, station)
+        : station === 'calabanga'
+          ? calabangaProgramAt(startAt)
+          : programAt(startAt, sundayScheduleEnabled, station)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
     const stationIdent = NATIONWIDE_IDENT_BY_STATION[station]
     const identAfterSong = nationwideEnabled && Boolean(stationIdent) && (state.songCount + 1) % 8 === 0
@@ -453,6 +458,7 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
         davao: 'RJ FM Davao 104.6',
         iloilo: 'RJ FM Iloilo 92.3',
         masbate: 'RJ FM Masbate 103.9',
+        calabanga: 'RJ FM Calabanga 95.5',
       }[station]
       const timeCheckText = buildTimeCheckScript(`Time check is ${philippinesTime}`, safeListenerMessage, stationName)
       // Add only one Christopher time-check clip for this point in the queue.
@@ -560,7 +566,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   const station: StationId = options.station ?? 'main'
   const now = Date.now()
   const liveDj = await getLiveDj()
-  if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
+  if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate' || station === 'calabanga') {
     const statePath = statePathFor(station)
     const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
     if (!settings.djChristopherEnabled) {
@@ -668,7 +674,7 @@ export async function refreshQueue(preserveCurrent = false) {
   const now = Date.now()
   if (preserveCurrent) {
     // Apply new filters to every station's upcoming rotation without interrupting audio already on air.
-    const stations: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+    const stations: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate', 'calabanga']
     await Promise.all(stations.map(async (station) => {
       const path = statePathFor(station)
       const { state } = await loadState(now, path)
