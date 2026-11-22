@@ -428,10 +428,9 @@ const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'],
 const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
 const CALABANGA_AI_DISCO = artists('tagalog', ['AI Filipino Disco Originals|ai filipino disco originals', 'AI Tagalog Disco Creator|ai tagalog disco creator'])
 const CALABANGA_DISCO_VARIANTS = ['classic disco dance hit official audio', 'Tagalog Filipino disco dance song', 'AI-generated Tagalog disco song', 'AI Filipino disco original song', 'Nothing Gonna Stop Us Now AI Tagalog disco Tutupad ang Pangarap']
-const CALABANGA_DISCO_POOL = [...TAGALOG_DISCO, ...CALABANGA_AI_DISCO, ...ENGLISH_DISCO]
 const CALABANGA_DISCO_PROGRAM: Program = {
   id: 'calabanga-disco',
-  pools: { english: ENGLISH_DISCO, tagalog: [...TAGALOG_DISCO, ...CALABANGA_AI_DISCO] },
+  pools: { english: ENGLISH_DISCO, tagalog: [...CALABANGA_AI_DISCO, ...TAGALOG_DISCO] },
   variants: { english: CALABANGA_DISCO_VARIANTS, tagalog: CALABANGA_DISCO_VARIANTS },
 }
 const CALABANGA_LOVE_PROGRAM: Program = {
@@ -619,7 +618,9 @@ export function masbateProgramAt(_ms: number): Program {
 export function calabangaProgramAt(ms: number): Program {
   const { hour, minute } = manilaTime(ms)
   const minuteOfDay = hour * 60 + minute
-  return minuteOfDay >= 20 * 60 + 3 ? PROGRAMS['calabanga-love'] : PROGRAMS['calabanga-disco']
+  return minuteOfDay >= 15 * 60 && minuteOfDay < 20 * 60 + 3
+    ? PROGRAMS['calabanga-disco']
+    : PROGRAMS['calabanga-love']
 }
 
 /** Weekday rotation: three English love songs followed by one Tagalog OPM song. */
