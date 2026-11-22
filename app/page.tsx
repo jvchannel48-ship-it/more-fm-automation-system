@@ -1,5 +1,6 @@
 import { RadioPlayer } from '@/components/station/radio-player'
 import { RadioBrowser } from '@/components/station/radio-browser'
+import { PhRadioMedia } from '@/components/station/ph-radio-media'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationSelector } from '@/components/station/station-selector'
 import { StationShell } from '@/components/station/station-shell'
@@ -23,6 +24,7 @@ export default function Home() {
       <div className="mx-auto w-full max-w-3xl px-4 pb-32">
         <RadioBrowser />
       </div>
+      <PhRadioMedia />
       <AccountMenu />
       <BottomNavigation />
     </StationShell>
