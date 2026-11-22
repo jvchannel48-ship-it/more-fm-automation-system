@@ -537,7 +537,7 @@ async function withSongRequestLock<T>(operation: () => Promise<T>): Promise<T> {
 export async function enqueueSongRequest(title: string, artist: string, beforeEnqueue?: () => Promise<void>, station: StationId = 'main', location = '') {
   return withSongRequestLock(async () => {
     const now = Date.now()
-    const statePath = statePathFor(station === 'naga' ? 'main' : station)
+    const statePath = statePathFor(station)
     const [{ state }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
     if (state.requestQueue.length >= 10) throw new Error('The request queue is full. Please try again later.')
     const resolved = await findRequestedSong(title, artist, state.history, state.requestQueue, genresForSettings(settings))
@@ -651,10 +651,14 @@ export async function refreshQueue(preserveCurrent = false) {
       await writeJson(path, state)
     }))
   } else {
-    const { state } = await loadState(now)
-    state.tracks = []
-    state.fillingUntil = 0
-    await writeJson(STATE_PATH, state)
+    const stations: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+    await Promise.all(stations.map(async (station) => {
+      const path = statePathFor(station)
+      const { state } = await loadState(now, path)
+      state.tracks = []
+      state.fillingUntil = 0
+      await writeJson(path, state)
+    }))
   }
   return getNowPlaying()
 }
