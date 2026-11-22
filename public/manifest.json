@@ -20,16 +20,10 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/rjfm-app-icon.svg",
+      "src": "/rjfm-app-icon.svg?v=2",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/rjfm-app-icon.svg",
-      "sizes": "any",
-      "type": "image/jpeg",
-      "purpose": "any"
     }
   ]
 }
