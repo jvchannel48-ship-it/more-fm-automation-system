@@ -64,11 +64,11 @@ export function RadioBrowser() {
         <Radio className="size-5 text-primary" />
         <div>
           <h2 className="font-semibold">Radio Browser</h2>
-          <p className="text-xs text-muted-foreground">Maghanap ng online radio stations sa buong mundo.</p>
+          <p className="text-xs text-muted-foreground">Philippine stations lang · kabilang ang mga public Zeno.FM streams.</p>
         </div>
       </div>
       <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void search(query.trim()) }}>
-        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search station, country, genre…" aria-label="Search radio stations" />
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Philippine station or genre…" aria-label="Search radio stations" />
         <Button type="submit" size="icon" aria-label="Search stations" disabled={loading}><Search className="size-4" /></Button>
       </form>
       {active && (
