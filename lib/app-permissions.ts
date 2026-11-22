@@ -59,3 +59,17 @@ export async function requestBatteryOptimizationExemption() {
   }
   return BatteryOptimization.requestExemption()
 }
+
+
+interface BackgroundAudioPlugin {
+  start(options: { station: string }): Promise<void>
+  stop(): Promise<void>
+}
+
+const BackgroundAudio = registerPlugin<BackgroundAudioPlugin>('BackgroundAudio')
+
+export async function syncBackgroundAudioNotification(playing: boolean, station: string) {
+  if (!Capacitor.isNativePlatform()) return
+  if (playing) await BackgroundAudio.start({ station })
+  else await BackgroundAudio.stop()
+}
