@@ -83,6 +83,10 @@ export function PublicVpnPanel() {
 
   return (
     <section className="w-full rounded-2xl border border-primary/25 bg-card/70 p-4 text-left shadow-lg">
+      <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
+        <p className="text-sm font-bold text-foreground">MAKINIG SA RJ FM — LIBRE SA MSIC</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Hindi kailangan ng VPN para makinig. Buksan ang RJ FM player, piliin ang station, at pindutin ang Play. Walang MSIC listening subscription fee; maaaring may regular mobile-data charges ang network provider mo.</p>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary"><ShieldCheck className="size-5" /></span>
