@@ -130,13 +130,13 @@ export function RadioPlayer() {
     document.title = `${meta.name} ${meta.frequency} — Live Radio`
     if ('mediaSession' in navigator && typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: `${meta.name} ${meta.frequency}`,
-        artist: meta.notificationTagline,
+        title: currentTrack?.title || `${meta.name} ${meta.frequency}`,
+        artist: currentTrack?.artist || meta.notificationTagline,
         album: 'RJ FM Live Radio',
         artwork: [{ src: '/rjfm-app-icon.svg', sizes: 'any', type: 'image/svg+xml' }],
       })
     }
-  }, [meta])
+  }, [meta, currentTrack?.title, currentTrack?.artist])
 
   return (
     <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
@@ -168,6 +168,11 @@ export function RadioPlayer() {
           {meta.shortName} <span className="text-primary">{meta.frequency}</span>
         </p>
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
+        <div className="mt-3 w-full max-w-sm rounded-xl border border-primary/20 bg-background/50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Now Playing</p>
+          <p className="mt-1 truncate text-sm font-semibold">{currentTrack?.title || 'RJ FM Live Broadcast'}</p>
+          <p className="truncate text-xs text-muted-foreground">{currentTrack?.artist || (data?.liveDj?.active ? data.liveDj.name : meta.notificationTagline)}</p>
+        </div>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
         {(playbackIssue || recoveryIssue) && <p className="text-xs text-amber-200/90">{recoveryIssue || playbackIssue}</p>}
