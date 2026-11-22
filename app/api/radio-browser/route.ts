@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
       let normalizedStream = ''
       try {
         const parsed = new URL(stream)
-        normalizedStream = `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\\/+$/, '')}`.toLowerCase()
+        let cleanPath = parsed.pathname
+        while (cleanPath.endsWith('/')) cleanPath = cleanPath.slice(0, -1)
+        normalizedStream = `${parsed.hostname.toLowerCase()}${cleanPath}`.toLowerCase()
       } catch { return [] }
       if (seenStreams.has(normalizedStream) || seenNames.has(normalizedName)) return []
       seenStreams.add(normalizedStream)
