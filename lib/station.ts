@@ -472,13 +472,11 @@ async function syncNagaFromManila(state: StationState, now: number) {
   const retainedNonMusic = state.tracks.filter((track) =>
     track.kind !== 'music' && trackEnd(track) > now,
   )
-  const existingIds = new Set(state.tracks.map((track) => track.uid))
   const upcoming: Track[] = []
   for (let index = 0; index < manilaMusic.length - 1; index++) {
     const previous = manilaMusic[index]
     const following = manilaMusic[index + 1]
     const uid = `naga-manila-delay-${previous.uid}`
-    if (existingIds.has(uid)) continue
     let startAt = following.startAt
     if (startAt <= now) {
       if (activeNaga.length || upcoming.length) continue
