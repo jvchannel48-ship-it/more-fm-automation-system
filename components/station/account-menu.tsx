@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Bell, BatteryCharging, ExternalLink, Gauge, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { VpnGatePanel } from '@/components/station/vpn-gate-panel'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ensureDeviceSession } from '@/lib/device-id'
@@ -262,6 +263,7 @@ export function AccountMenu() {
                 {pingBusy && <p className="mt-2 text-center text-xs text-muted-foreground">{pingSamples.length}/5 checks complete</p>}
                 {pingError && <p className="mt-2 text-xs text-destructive" role="alert">{pingError}</p>}
               </div>
+              <VpnGatePanel />
               <Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button>
             </div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
                 <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
