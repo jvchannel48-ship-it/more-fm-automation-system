@@ -303,24 +303,67 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, musicNextAt, latestVoiceEnd)
 }
 
-/** RJ FM Naga is a one-song relay: it starts each Manila track only after that Manila track has finished. */
+/** RJ FM Naga relays Manila one song late and carries Christopher's time check + station jingle after each matching delayed song. */
 function buildNagaFollowTracks(mainState: StationState, now: number): Track[] {
-  return mainState.tracks
+  const music = mainState.tracks
     .filter((track) => track.kind === 'music' && track.src)
     .sort((a, b) => a.startAt - b.startAt)
-    .map((track) => ({
+  const result: Track[] = []
+  let previousEnd = now
+
+  music.forEach((track, index) => {
+    const nextMusic = music[index + 1]
+    const startAt = Math.max(trackEnd(track), previousEnd)
+    const delayedMusic: Track = {
       uid: `naga-follow-${track.uid}`,
       src: track.src,
       // Manila may already be playing its next song when Naga starts this one.
-      startAt: trackEnd(track),
+      startAt,
       duration: track.duration,
       fadeIn: Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS),
       fadeOut: CROSSFADE_SECONDS,
-      kind: 'music' as const,
+      kind: 'music',
       title: track.title,
       artist: track.artist,
-    }))
-    .filter((track) => track.startAt + track.duration * 1000 >= now - 2_000)
+    }
+    result.push(delayedMusic)
+    let sequenceEnd = trackEnd(delayedMusic)
+
+    const timeCheck = mainState.tracks.find((voice) =>
+      voice.kind === 'dj-mic'
+      && voice.uid.startsWith('dj-christopher-timecheck-main-')
+      && voice.startAt >= trackEnd(track) - 1_000
+      && (!nextMusic || voice.startAt < nextMusic.startAt),
+    )
+    if (timeCheck) {
+      const delayedTimeCheck: Track = {
+        ...timeCheck,
+        uid: `naga-follow-${timeCheck.uid}`,
+        startAt: sequenceEnd,
+      }
+      result.push(delayedTimeCheck)
+      sequenceEnd = trackEnd(delayedTimeCheck)
+
+      const jingle = mainState.tracks.find((voice) =>
+        voice.kind === 'dj-mic'
+        && voice.uid.startsWith('dj-christopher-timecheck-jingle-main-')
+        && voice.startAt >= trackEnd(timeCheck) - 1_000
+        && (!nextMusic || voice.startAt < nextMusic.startAt),
+      )
+      if (jingle) {
+        const delayedJingle: Track = {
+          ...jingle,
+          uid: `naga-follow-${jingle.uid}`,
+          startAt: sequenceEnd,
+        }
+        result.push(delayedJingle)
+        sequenceEnd = trackEnd(delayedJingle)
+      }
+    }
+    previousEnd = sequenceEnd
+  })
+
+  return result.filter((track) => trackEnd(track) >= now - 2_000)
 }
 function statePathFor(station: StationId) {
   switch (station) {
