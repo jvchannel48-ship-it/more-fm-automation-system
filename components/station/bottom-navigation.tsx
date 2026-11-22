@@ -1,7 +1,7 @@
 'use client'
 
 import { AdminMenu } from '@/components/station/admin-menu'
-import { Home as HomeIcon, Wrench, RadioTower } from 'lucide-react'
+import { Home as HomeIcon, Wrench, Compass } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function BottomNavigation() {
@@ -10,7 +10,7 @@ export function BottomNavigation() {
       <div className="mx-auto grid w-full max-w-3xl grid-cols-4 gap-1">
         <Button type="button" variant="ghost" className="h-14 flex-col gap-1 rounded-xl px-1 text-[11px] focus-visible:border-transparent focus-visible:ring-0" onClick={() => document.getElementById('home-player')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><HomeIcon className="size-5" />Home</Button>
         <Button type="button" variant="ghost" className="h-14 flex-col gap-1 rounded-xl px-1 text-[11px] focus-visible:border-transparent focus-visible:ring-0" onClick={() => window.dispatchEvent(new Event('morefm:open-settings'))}><Wrench className="size-5" />Tools</Button>
-        <Button type="button" variant="ghost" className="h-14 flex-col gap-1 rounded-xl px-1 text-[11px] focus-visible:border-transparent focus-visible:ring-0" onClick={() => window.dispatchEvent(new Event('morefm:open-all-stations'))}><RadioTower className="size-5" />All Status</Button>
+        <Button type="button" variant="ghost" className="h-14 flex-col gap-1 rounded-xl px-1 text-[11px] focus-visible:border-transparent focus-visible:ring-0" onClick={() => window.dispatchEvent(new Event('morefm:open-all-stations'))}><Compass className="size-5" />Discover</Button>
         <AdminMenu />
       </div>
     </nav>
