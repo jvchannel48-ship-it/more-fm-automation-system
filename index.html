@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="RJ FM 93.5 — listen live online.">
+  <title>RJ FM 93.5 — Live Radio</title>
+  <style>
+    :root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;background:#080b12;color:#f8fafc}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#17263b 0%,#080b12 62%);display:grid;place-items:center;padding:24px}
+    main{width:min(100%,520px);text-align:center}
+    .mark{width:76px;height:76px;margin:0 auto 20px;border-radius:24px;display:grid;place-items:center;background:#fbbf24;color:#111827;font-size:25px;font-weight:900;box-shadow:0 12px 40px #fbbf2430}
+    h1{font-size:clamp(2rem,8vw,3.2rem);margin:0;letter-spacing:-.06em}
+    .frequency{margin:8px 0 28px;color:#fbbf24;font-size:1rem;font-weight:700;letter-spacing:.22em}
+    .player{border:1px solid #ffffff20;border-radius:20px;background:#111827;padding:12px;box-shadow:0 24px 70px #0008}
+    iframe{display:block;width:100%;height:88px;border:0;border-radius:12px}
+    .hint{margin:18px auto 0;color:#aab6c7;font-size:.9rem;line-height:1.6;max-width:390px}
+    footer{margin-top:34px;color:#718096;font-size:.78rem}
+    a{color:#fbbf24}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">RJ</div>
+    <h1>RJ FM 93.5</h1>
+    <p class="frequency">YOUR MUSIC. YOUR RADIO.</p>
+    <section class="player" aria-label="RJ FM 93.5 live player">
+      <iframe
+        src="https://more-fm-automation-system-bgah.onrender.com/embed/rjfm935"
+        title="RJ FM 93.5 live radio player"
+        loading="eager"
+        allow="autoplay"
+        referrerpolicy="strict-origin-when-cross-origin">
+      </iframe>
+    </section>
+    <p class="hint">Tap the Play button to listen live. If the player does not load, open the main radio website below.</p>
+    <p><a href="https://more-fm-automation-system-bgah.onrender.com/" target="_blank" rel="noopener noreferrer">Open RJ FM main website</a></p>
+    <footer>© <span id="year"></span> RJ FM 93.5</footer>
+  </main>
+  <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
