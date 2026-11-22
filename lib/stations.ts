@@ -62,7 +62,6 @@ export const STATIONS: Record<StationId, StationMeta> = {
     signOffHour: 4,
     signOnHour: 4,
     statePath: 'station/state-naga-v2.json',
-    delayMs: 12_000,
     vinylMark: 'NAGA',
   },
   cebu: {
