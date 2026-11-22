@@ -487,3 +487,62 @@ body {
 .record-button:hover { filter:brightness(1.12) saturate(1.2); }
 .record-button:active { transform:translateY(7px) scale(.98)!important; box-shadow:0 0 0 5px rgba(79,207,246,.14),0 3px 0 #123e85,0 8px 14px rgba(7,24,73,.32),inset 0 2px 5px rgba(255,255,255,.55)!important; }
 @media (prefers-reduced-motion:reduce) { .listener-avatar,.avatar-body,.player-artwork.is-playing .artwork-orbit-one,.player-artwork.is-playing .artwork-orbit-two,.player-artwork.is-playing .avatar-note,.player-artwork.is-playing .avatar-arm { animation:none!important; } }
+
+
+/* Vivid, dimensional listening scene refinement. */
+.radio-player-card {
+  background:
+    radial-gradient(ellipse at 16% 0%, rgba(255,255,255,.94), transparent 34%),
+    linear-gradient(145deg, rgba(249,252,255,.96), rgba(218,239,255,.9) 48%, rgba(234,222,255,.92)) !important;
+  box-shadow: 0 28px 70px rgba(24,32,95,.28), inset 0 2px 0 rgba(255,255,255,.96), inset 0 -14px 28px rgba(47,112,178,.13);
+}
+.player-artwork {
+  background:
+    radial-gradient(circle at 72% 18%, rgba(255,255,255,.48), transparent 22%),
+    radial-gradient(circle at 20% 80%, rgba(49,230,255,.45), transparent 35%),
+    linear-gradient(140deg,#17c7e8 0%,#246bdc 42%,#6b36c8 100%);
+  box-shadow: 0 24px 48px rgba(20,44,120,.34), inset 0 2px 0 rgba(255,255,255,.6), inset 0 -14px 28px rgba(17,24,88,.25);
+}
+.player-artwork::before {
+  background: linear-gradient(145deg,rgba(255,255,255,.7),rgba(91,219,255,.16) 35%,rgba(45,67,190,.35));
+  border: 1px solid rgba(255,255,255,.48);
+  box-shadow: inset -12px -16px 24px rgba(28,35,112,.22), 0 18px 40px rgba(10,28,88,.25);
+}
+.listener-avatar { filter: drop-shadow(0 15px 13px rgba(8,18,61,.38)); }
+.avatar-head {
+  background:
+    radial-gradient(ellipse at 34% 23%,rgba(255,255,255,.62),transparent 22%),
+    linear-gradient(125deg,#ffe0c2 0%,#e8a27e 53%,#9d554d 100%);
+  box-shadow: inset -8px -7px 12px rgba(91,39,38,.24), inset 5px 4px 9px rgba(255,255,255,.7), 0 3px 8px rgba(29,30,60,.18);
+}
+.avatar-hair {
+  background: linear-gradient(145deg,#53617f 0%,#182541 42%,#080f25 100%);
+  box-shadow: inset 0 4px 5px rgba(255,255,255,.25), 0 4px 8px rgba(0,0,0,.24);
+}
+.avatar-body {
+  background:
+    linear-gradient(105deg,rgba(255,255,255,.36),transparent 28% 62%,rgba(4,18,64,.24)),
+    linear-gradient(145deg,#a4f4ff 0%,#29a7e4 35%,#1741a2 100%);
+  border: 1px solid rgba(221,250,255,.7);
+  box-shadow: inset 7px 2px 12px rgba(255,255,255,.35), inset -9px -8px 15px rgba(8,22,78,.38), 0 8px 16px rgba(7,20,75,.24);
+}
+.avatar-arm, .avatar-leg {
+  box-shadow: inset 3px 1px 5px rgba(255,255,255,.52), inset -4px -4px 7px rgba(90,40,37,.24), 0 3px 6px rgba(8,18,52,.18);
+}
+.avatar-headband {
+  border-color: #101c3c;
+  border-top-width: 6px;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.35));
+}
+.avatar-earcup {
+  background: linear-gradient(90deg,#071a3a,#54eaff 42%,#1461b7 75%,#071a3a);
+  border: 2px solid #e4fcff;
+  box-shadow: 0 0 12px rgba(75,231,255,.65), inset 0 2px 4px rgba(255,255,255,.65), 0 4px 7px rgba(0,0,0,.35);
+}
+.record-button {
+  box-shadow: 0 0 0 8px rgba(65,171,255,.13), 0 12px 0 #174eac, 0 22px 35px rgba(21,76,166,.35), inset 0 2px 6px rgba(255,255,255,.8) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .player-artwork.is-playing .listener-avatar { animation-duration: 2.1s; }
+  .player-artwork.is-playing .avatar-body { animation-duration: 1.8s; }
+}
