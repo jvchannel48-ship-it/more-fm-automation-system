@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, RadioTower, Search, Play, Radio, MapPin, ExternalLink } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, RadioTower, Search, Play, Radio, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { STATIONS, STATION_ORDER, type StationId, parseStationId } from '@/lib/stations'
@@ -50,12 +50,6 @@ export function AllStationsStatus() {
     window.addEventListener('morefm:open-all-stations', show)
     return () => window.removeEventListener('morefm:open-all-stations', show)
   }, [loadStations])
-
-  const filteredLocal = useMemo(() => STATION_ORDER.filter((id) => {
-    const station = STATIONS[id]
-    const term = query.trim().toLowerCase()
-    return !term || [station.name, station.city, station.frequency].some((v) => v.toLowerCase().includes(term))
-  }), [query])
 
   const playExternal = (station: DirectoryStation) => {
     window.dispatchEvent(new CustomEvent('morefm:play-external-station', { detail: station }))
