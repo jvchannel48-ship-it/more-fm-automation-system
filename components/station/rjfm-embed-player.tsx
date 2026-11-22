@@ -29,19 +29,25 @@ export function RjFmEmbedPlayer() {
   return (
     <section
       aria-label="RJ FM 93.5 player"
-      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-[#111827] p-3 text-white shadow-lg"
+      className="rjfm-embed-shell relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-amber-200/20 p-4 text-white shadow-2xl"
     >
-      <button
-        type="button"
-        onClick={togglePlayback}
-        aria-label={playing ? 'Pause RJ FM 93.5' : 'Play RJ FM 93.5'}
-        className="flex size-14 shrink-0 items-center justify-center rounded-full bg-amber-400 text-slate-950 transition hover:bg-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
-      >
-        {playing ? <Pause className="size-6" fill="currentColor" /> : <Play className="ml-1 size-6" fill="currentColor" />}
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold tracking-wide">RJ FM 93.5</p>
-        <p className="mt-1 text-xs text-slate-300" aria-live="polite">
+      <div className="rjfm-embed-glow" aria-hidden="true" />
+      <div className={`rjfm-embed-vinyl relative z-10 flex size-[76px] shrink-0 items-center justify-center rounded-full ${playing && !data?.offAir ? 'is-playing' : ''}`}>
+        <span className="rjfm-embed-vinyl-grooves absolute inset-[5px] rounded-full" aria-hidden="true" />
+        <span className="rjfm-embed-label absolute inset-[25%] rounded-full" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={togglePlayback}
+          aria-label={playing ? 'Pause RJ FM 93.5' : 'Play RJ FM 93.5'}
+          className="rjfm-embed-play relative z-10 flex size-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-200"
+        >
+          {playing ? <Pause className="size-5" fill="currentColor" /> : <Play className="ml-0.5 size-5" fill="currentColor" />}
+        </button>
+      </div>
+      <div className="relative z-10 min-w-0 flex-1">
+        <p className="truncate text-base font-black tracking-[0.12em]">RJ FM <span className="text-amber-300">93.5</span></p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/70">All Day Long · Live Radio</p>
+        <p className="mt-2 text-xs text-slate-300" aria-live="polite">
           {error && !data
             ? 'Unable to connect. Retrying…'
             : data?.offAir
@@ -52,10 +58,10 @@ export function RjFmEmbedPlayer() {
                   ? 'Tap Play to resume audio'
                   : playing
                     ? 'Now playing'
-                    : 'Tap Play to listen'}
+                    : 'Tap the button to listen'}
         </p>
       </div>
-      {buffering && playing && <Loader2 className="size-4 shrink-0 animate-spin text-amber-300" aria-hidden="true" />}
+      {buffering && playing && <Loader2 className="relative z-10 size-4 shrink-0 animate-spin text-amber-300" aria-hidden="true" />}
     </section>
   )
 }
