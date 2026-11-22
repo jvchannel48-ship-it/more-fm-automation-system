@@ -151,6 +151,8 @@ const SUNDAY_TAGALOG_CLASSICS = artists('tagalog', [
   'Renz Verano',
   'Lea Salonga|lea salonga',
   'Rey Valera',
+  'Rodel Naval',
+  'April Boy Regino|april boy',
   'Basil Valdez',
   'Ariel Rivera',
   'Martin Nievera',
@@ -567,7 +569,7 @@ export function iloiloDzmmWindowAt(_ms: number): DzmmWindow | null {
 }
 
 /** RJ FM weekly AutoDJ format, using Philippine local time. */
-export function programAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
+export function programAt(ms: number, _sundayScheduleEnabled = true, _station: string = 'main'): Program {
   const { hour, minute, day } = manilaTime(ms)
   const minuteOfDay = hour * 60 + minute
 
