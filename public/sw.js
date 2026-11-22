@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rjfm-offline-v3'
+const CACHE_NAME = 'rjfm-offline-v4'
 const APP_SHELL = ['/', '/offline.html', '/manifest.json', '/rjfm-app-icon.svg']
 const MAX_CACHED_AUDIO_BYTES = 20 * 1024 * 1024
 
@@ -20,9 +20,8 @@ self.addEventListener('activate', (event) => {
 
 async function cacheAudioResponse(request, response) {
   if (!response || response.status !== 200 || !response.ok) return
-  if (request.headers.has('range') || response.status === 206) return
   const type = response.headers.get('content-type') || ''
-  if (!type.includes('audio') && !/\\.mp3(?:$|\\?)/i.test(new URL(request.url).pathname)) return
+  if (!type.includes('audio') && !/\.mp3(?:$|\?)/i.test(new URL(request.url).pathname)) return
   const length = Number(response.headers.get('content-length') || 0)
   if (length > MAX_CACHED_AUDIO_BYTES) return
   const cache = await caches.open(CACHE_NAME)
@@ -39,16 +38,30 @@ self.addEventListener('fetch', (event) => {
   if (isAudio) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME)
-      const cached = await cache.match(request)
+      const cached = await cache.match(request, { ignoreVary: true })
       try {
-        const response = await fetch(request)
-        if (response.status === 200) {
-          event.waitUntil(cacheAudioResponse(request, response.clone()))
+        // Media elements often send Range headers. Fetch the complete same-origin
+        // track once so a small track can be kept for later offline listening.
+        const headers = new Headers(request.headers)
+        headers.delete('range')
+        const fullRequest = new Request(request.url, {
+          method: 'GET',
+          headers,
+          credentials: request.credentials,
+          mode: request.mode,
+          redirect: request.redirect,
+          referrer: request.referrer,
+          referrerPolicy: request.referrerPolicy,
+          cache: 'no-store',
+        })
+        const response = await fetch(fullRequest)
+        if (response.status === 200 && response.ok) {
+          event.waitUntil(cacheAudioResponse(fullRequest, response.clone()))
         }
         return response
       } catch {
         if (cached) return cached
-        return new Response('Audio is not available offline. Play a track while connected to cache it first.', {
+        return new Response('Walang naka-save na audio. Ikonekta muna sa internet para ma-cache ang track.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         })
