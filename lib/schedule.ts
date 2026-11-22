@@ -447,19 +447,33 @@ function englishOnlyProgram(id: ProgramId): Program {
   }
 }
 
+const PINoy_OLDIES_SAFE = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
+function tagalogProgram(id: ProgramId, pool: Artist[] = TAGALOG_OLDIES_AND_2026, variants: string[] = OPM_VARIANTS): Program {
+  return { id, pools: { english: [], tagalog: pool }, variants: { english: [], tagalog: variants }, tagalogOnly: true }
+}
+
+function mixedProgram(id: ProgramId): Program {
+  return {
+    id,
+    pools: { english: APPROVED_ENGLISH_SOFT_POOL, tagalog: [...TAGALOG_OLDIES_AND_2026, ...PINOY_LOVE] },
+    variants: { english: ENGLISH_SOFT_VARIANTS, tagalog: OPM_VARIANTS },
+  }
+}
+
 export const PROGRAMS: Record<ProgramId, Program> = {
-  'sunday-oldies': englishOnlyProgram('sunday-oldies'),
-  'sunday-english-oldies': englishOnlyProgram('sunday-english-oldies'),
-  'sunday-tagalog-classic': englishOnlyProgram('sunday-tagalog-classic'),
-  'sunday-english-love': englishOnlyProgram('sunday-english-love'),
-  'english-love': englishOnlyProgram('english-love'),
-  'daytime-love': englishOnlyProgram('daytime-love'),
-  disco: englishOnlyProgram('disco'),
-  'night-love': englishOnlyProgram('night-love'),
-  'masbate-tagalog': englishOnlyProgram('masbate-tagalog'),
-  'love-mix': englishOnlyProgram('love-mix'),
+  'sunday-oldies': tagalogProgram('sunday-oldies', [...PINoy_OLDIES_SAFE]),
+  'sunday-english-oldies': tagalogProgram('sunday-english-oldies'),
+  'sunday-tagalog-classic': tagalogProgram('sunday-tagalog-classic', [...PINoy_OLDIES_SAFE, ...SUNDAY_TAGALOG_CLASSICS]),
+  'sunday-english-love': tagalogProgram('sunday-english-love', PINOY_LOVE, OPM_VARIANTS),
+  'english-love': mixedProgram('english-love'),
+  'daytime-love': mixedProgram('daytime-love'),
+  disco: mixedProgram('disco'),
+  'night-love': mixedProgram('night-love'),
+  'masbate-tagalog': tagalogProgram('masbate-tagalog', MASBATE_TAGALOG, MASBATE_TAGALOG_VARIANTS),
+  'love-mix': mixedProgram('love-mix'),
   'off-air': { id: 'off-air', pools: { english: [], tagalog: [] }, variants: { english: [], tagalog: [] }, englishOnly: true },
 }
+
 
 export interface ManilaTime {
   hour: number
@@ -513,46 +527,8 @@ export function dailyAnnouncementScheduleAt(ms: number): DailyAnnouncementSchedu
   }
 }
 
-/** Returns a scheduled DZMM window, or null when the station should play its own music. */
-export function dzmmWindowAt(ms: number): DzmmWindow | null {
-  const { hour, minute, day } = manilaTime(ms)
-  if (day === 0) return null
-
-  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(0, 0, 0, 0)
-  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
-  const minuteOfDay = hour * 60 + minute
-
-  if (minuteOfDay >= 420 && minuteOfDay < 480) {
-    const startAt = dayStart + 420 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 480 * 60_000 }
-  }
-
-  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
-    const startAt = dayStart + 1110 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
-  }
-
-  if (minuteOfDay >= 1320) {
-    const endAt = day === 6 ? dayStart + 24 * 60 * 60_000 : dayStart + 27 * 60 * 60_000
-    const startAt = dayStart + 1320 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt,
-    }
-  }
-
-  if (minuteOfDay < 180) {
-    if (day === 1) return null
-    const startAt = dayStart - 120 * 60_000
-    return {
-      startAt,
-      liveStartAt: startAt + LOVE_CONNECT_IDENT_DURATION_SECONDS * 1000,
-      endAt: dayStart + 180 * 60_000,
-    }
-  }
-
+/** Legacy compatibility: RJ FM now runs its own automated music continuously. */
+export function dzmmWindowAt(_ms: number): DzmmWindow | null {
   return null
 }
 
@@ -585,34 +561,29 @@ export function nextSignOnAtHour(ms: number, signOnHour: number): number {
   return target
 }
 
-/** Iloilo DZMM block only: 6:30 PM – 8:00 PM Manila (Mon–Sat). */
-export function iloiloDzmmWindowAt(ms: number): DzmmWindow | null {
-  const { hour, minute, day } = manilaTime(ms)
-  if (day === 0) return null
-  const localDayStart = new Date(ms + MANILA_OFFSET_MS)
-  localDayStart.setUTCHours(0, 0, 0, 0)
-  const dayStart = localDayStart.getTime() - MANILA_OFFSET_MS
-  const minuteOfDay = hour * 60 + minute
-  if (day >= 1 && day <= 6 && minuteOfDay >= 1110 && minuteOfDay < 1200) {
-    const startAt = dayStart + 1110 * 60_000
-    return { startAt, liveStartAt: startAt, endAt: dayStart + 1200 * 60_000 }
-  }
+/** Legacy compatibility: no external DZMM handoff is scheduled. */
+export function iloiloDzmmWindowAt(_ms: number): DzmmWindow | null {
   return null
 }
 
-/** RJ FM uses an all-day love-song format; DZMM windows are handled separately. */
+/** RJ FM weekly AutoDJ format, using Philippine local time. */
 export function programAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
-  const { hour, day } = manilaTime(ms)
-  if (sundayScheduleEnabled && day === 0) {
-    // Manila 93.5 keeps its own all-day English classic-oldies format on Sundays.
-    if (station === 'main') return PROGRAMS['sunday-english-oldies']
-    if (hour >= 4 && hour < 10) return PROGRAMS['sunday-english-oldies']
-    if (hour >= 10 && hour < 15) return PROGRAMS['sunday-oldies']
-    if (hour >= 15 && hour < 20) return PROGRAMS['sunday-tagalog-classic']
-    if (hour >= 20) return PROGRAMS['sunday-english-love']
+  const { hour, minute, day } = manilaTime(ms)
+  const minuteOfDay = hour * 60 + minute
+
+  // Sunday is Tagalog OPM only, all day and all night. No English tracks.
+  if (day === 0) return PROGRAMS['sunday-tagalog-classic']
+
+  // Saturday follows the Filipino oldies format; late evening leans into
+  // classic OPM love songs featuring Rodel Naval, April Boy and peers.
+  if (day === 6) {
+    if (minuteOfDay >= 22 * 60) return PROGRAMS['sunday-english-love']
+    return PROGRAMS['sunday-tagalog-classic']
   }
-  if (hour >= 4 && hour < 20) return PROGRAMS['daytime-love']
-  return PROGRAMS['love-mix']
+
+  // Monday-Friday: English soft love songs with regular Tagalog OPM inserts.
+  if (minuteOfDay >= 22 * 60) return PROGRAMS['night-love']
+  return PROGRAMS['daytime-love']
 }
 
 /** RJ FM Naga follows the Manila love-song format. */
@@ -625,9 +596,9 @@ export function masbateProgramAt(_ms: number): Program {
   return PROGRAMS['masbate-tagalog']
 }
 
-/** Daytime love is English-first: 3 English songs, then 1 Tagalog love song. */
-export function languageForSlot(program: Program, _songCount: number): Language {
-  // RJ FM's approved station-wide format is English-language soft/easy listening only.
+/** Weekday rotation: three English love songs followed by one Tagalog OPM song. */
+export function languageForSlot(program: Program, songCount: number): Language {
+  if (program.tagalogOnly) return 'tagalog'
   if (program.englishOnly) return 'english'
-  return 'english'
+  return songCount % 4 === 3 ? 'tagalog' : 'english'
 }
