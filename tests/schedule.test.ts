@@ -10,6 +10,7 @@ import {
   PROGRAMS,
   RJFM_ARTIST_LIBRARY,
   programAt,
+  stationProgramAt,
   nagaProgramAt,
   masbateProgramAt,
   SIGN_OFF_HOUR,
@@ -50,13 +51,25 @@ assert.equal(programAt(manilaTime(16, 12, 59)).id, 'daytime-love', 'weekday pre-
 assert.equal(programAt(manilaTime(16, 13)).id, 'daytime-love', 'weekday 1 PM starts daytime love songs')
 assert.equal(programAt(manilaTime(16, 19, 59)).id, 'daytime-love', 'daytime love runs through the afternoon')
 assert.equal(programAt(manilaTime(16, 20)).id, 'love-mix', 'evening returns to the normal mellow mix')
-assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'daytime-love', 'RJ FM Naga follows the mellow Manila rotation at 4:00 AM')
-assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'daytime-love', 'RJ FM Naga keeps the mellow love rotation before 1 PM')
-assert.equal(nagaProgramAt(manilaTime(16, 13)).id, 'daytime-love', 'RJ FM Naga switches to love songs at 1:00 PM')
-assert.equal(masbateProgramAt(manilaTime(16, 10)).id, 'masbate-tagalog', 'RJ FM Masbate uses the station-wide English soft-music format')
-assert.equal(languageForSlot(masbateProgramAt(manilaTime(16, 10)), 0), 'english', 'RJ FM Masbate selects English songs only')
-assert.equal(masbateProgramAt(manilaTime(16, 10)).pools.tagalog.length, 0, 'RJ FM Masbate has no Tagalog artist pool')
-assert.ok(masbateProgramAt(manilaTime(16, 10)).pools.english.length > 0, 'RJ FM Masbate has the approved English artist pool')
+assert.equal(nagaProgramAt(manilaTime(16, 4)).id, 'love-mix', 'RJ FM Naga has its own independent soft-music format')
+assert.equal(nagaProgramAt(manilaTime(16, 12, 59)).id, 'love-mix', 'RJ FM Naga keeps its independent AutoDJ rotation throughout the day')
+assert.equal(nagaProgramAt(manilaTime(16, 13)).id, 'love-mix', 'RJ FM Naga does not mirror Manila schedule changes')
+assert.equal(languageForSlot(nagaProgramAt(manilaTime(16, 10)), 0), 'english', 'Naga starts with English soft music')
+assert.equal(languageForSlot(nagaProgramAt(manilaTime(16, 10)), 3), 'tagalog', 'Naga rotates in OPM after three English songs')
+assert.equal(masbateProgramAt(manilaTime(16, 10)).id, 'masbate-tagalog', 'RJ FM Masbate has its own Tagalog OPM format')
+assert.equal(languageForSlot(masbateProgramAt(manilaTime(16, 10)), 0), 'tagalog', 'RJ FM Masbate selects Tagalog songs only')
+assert.ok(masbateProgramAt(manilaTime(16, 10)).pools.tagalog.length > 0, 'RJ FM Masbate has its approved OPM artist pool')
+assert.equal(masbateProgramAt(manilaTime(16, 10)).pools.english.length, 0, 'RJ FM Masbate has no English rotation')
+for (const station of ['naga', 'cebu', 'gensan', 'davao']) {
+  const regional = stationProgramAt(manilaTime(16, 10), true, station)
+  assert.ok(regional.pools.english.length > 0, `${station} has an independent English soft-music pool`)
+  assert.ok(regional.pools.tagalog.length > 0, `${station} has an independent OPM pool`)
+  assert.equal(languageForSlot(regional, 3), 'tagalog', `${station} rotates in OPM`)
+}
+for (const station of ['cdo', 'iloilo']) {
+  const regional = stationProgramAt(manilaTime(16, 10), true, station)
+  assert.equal(languageForSlot(regional, 0), 'tagalog', `${station} uses its Tagalog OPM format`)
+}
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 0), 'english', '1 PM starts with English love songs')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 1), 'english', '1 PM keeps English as the main language')
 assert.equal(languageForSlot(PROGRAMS['daytime-love'], 2), 'english', '1 PM keeps English as the main language')
@@ -66,7 +79,7 @@ assert.ok(RJFM_ARTIST_LIBRARY['60s-70s'].some((artist) => artist.name === 'Nat K
 assert.ok(RJFM_ARTIST_LIBRARY['80s-90s'].some((artist) => artist.name === 'Anita Baker'), 'approved artist library includes classic soft soul')
 assert.ok(RJFM_ARTIST_LIBRARY['2023-2026'].some((artist) => artist.name === 'Benson Boone'), 'approved artist library includes current soft-pop artists')
 for (const [id, program] of Object.entries(PROGRAMS)) {
-  if (id === 'off-air') continue
+  if (id === 'off-air' || id === 'masbate-tagalog') continue
   assert.equal(program.englishOnly, true, `${id} is English-only`)
   assert.equal(program.pools.tagalog.length, 0, `${id} has no Tagalog artists`)
   assert.equal(languageForSlot(program, 0), 'english', `${id} selects English`)
@@ -74,6 +87,8 @@ for (const [id, program] of Object.entries(PROGRAMS)) {
   assert.ok(program.pools.english.length > 0, `${id} has approved English artists`)
   assert.ok(program.variants.english.some((variant) => /easy listening|soft|mellow/i.test(variant)), `${id} searches for smooth easy-listening tracks`)
 }
+assert.equal(PROGRAMS['masbate-tagalog'].tagalogOnly, true, 'Masbate is configured for Tagalog-only music')
+assert.ok(PROGRAMS['masbate-tagalog'].variants.tagalog.some((variant) => /OPM|Tagalog/i.test(variant)), 'Masbate searches for OPM tracks')
 assert.ok(PROGRAMS['love-mix'].pools.english.some((artist) => artist.name === 'Benson Boone'), 'current soft-pop artists remain in the approved rotation')
 assert.ok(PROGRAMS['love-mix'].pools.english.some((artist) => artist.name === 'Nat King Cole'), 'classic English oldies remain in the approved rotation')
 
