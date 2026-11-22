@@ -257,7 +257,6 @@ const ENGLISH_OLDIES_AND_2026 = [
 ]
 const TAGALOG_OLDIES_AND_2026 = [...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
 
-export const RJFM_TAGALOG_APPROVED_ARTISTS = TAGALOG_OLDIES_AND_2026
 
 
 const ENGLISH_LOVE = artists('english', [
@@ -423,6 +422,7 @@ const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'Kiyo',
 ])
 const MASBATE_TAGALOG = [...PINOY_OLDIES, ...RJFM_ARTIST_LIBRARY['OPM 60s-90s'], ...NEW_TAGALOG_OPM_ARTISTS]
+export const RJFM_TAGALOG_APPROVED_ARTISTS = [...TAGALOG_OLDIES_AND_2026, ...PINOY_OLDIES, ...MASBATE_CURRENT_TAGALOG]
 const MASBATE_TAGALOG_VARIANTS = ['classic OPM oldies love song ballad', '2026 latest Tagalog love song ballad official audio', '2026 new Filipino romantic ballad original artist']
 
 const APPROVED_ENGLISH_SOFT_POOL = [
@@ -618,6 +618,14 @@ export function programAt(ms: number, sundayScheduleEnabled = true, station: str
 }
 
 /** Each regional station gets its own independent soft-music profile and rotation. */
+/** Backward-compatible helpers; each now uses its own independent format. */
+export function nagaProgramAt(ms: number): Program {
+  return stationProgramAt(ms, true, 'naga')
+}
+export function masbateProgramAt(ms: number): Program {
+  return stationProgramAt(ms, true, 'masbate')
+}
+
 export function stationProgramAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
   if (station === 'main') return programAt(ms, sundayScheduleEnabled, station)
   if (station === 'masbate') return PROGRAMS['masbate-tagalog']
