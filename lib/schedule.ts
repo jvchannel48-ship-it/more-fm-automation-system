@@ -620,14 +620,14 @@ export function programAt(ms: number, sundayScheduleEnabled = true, station: str
 /** Each regional station gets its own independent soft-music profile and rotation. */
 /** Backward-compatible helpers; each now uses its own independent format. */
 export function nagaProgramAt(ms: number): Program {
-  return stationProgramAt(ms, true, 'naga')
+  return programAt(ms, true, 'main')
 }
 export function masbateProgramAt(ms: number): Program {
   return stationProgramAt(ms, true, 'masbate')
 }
 
 export function stationProgramAt(ms: number, sundayScheduleEnabled = true, station: string = 'main'): Program {
-  if (station === 'main') return programAt(ms, sundayScheduleEnabled, station)
+  if (station === 'main' || station === 'naga') return programAt(ms, sundayScheduleEnabled, 'main')
   if (station === 'masbate') return PROGRAMS['masbate-tagalog']
   const tagalogOnly = station === 'cdo' || station === 'iloilo'
   return {
