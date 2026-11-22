@@ -230,7 +230,7 @@ export function AccountMenu() {
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Close account" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
           <h2 id="account-title" className="pr-8 text-xl font-semibold">{view === 'settings' ? 'RJ FM Tools' : 'Phone profile'}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{view === 'settings' ? 'Free tools. Walang profile, device linking, o credits na kailangan.' : 'Profile, playback, permissions, at app settings.'}</p>
-          {profile ? <div className="mt-5 flex flex-col gap-4">
+          {profile && view !== 'settings' ? <div className="mt-5 flex flex-col gap-4">
             <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-secondary/60 to-card p-4 shadow-lg shadow-primary/5">
               {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-16 rounded-2xl object-cover ring-2 ring-primary/25" /> : <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-2 ring-primary/20"><UserRound className="size-7" /></span>}
               <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{profile.displayName || 'Listener'}</p><p className="mt-0.5 text-xs text-muted-foreground">RJ FM Listener</p><p className="mt-1 font-mono text-[11px] tracking-wider text-primary">PROFILE NO. {profile.id.slice(-6).toUpperCase()}</p></div>
