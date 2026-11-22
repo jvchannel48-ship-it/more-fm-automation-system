@@ -263,9 +263,6 @@ export function RadioPlayer() {
           <img src={`/station-logos/${station}.svg`} alt={`RJ FM ${meta.city} ${meta.frequency}`} className="player-station-logo" />
           <small>{meta.city} · {meta.frequency}</small>
         </div>
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-9">
-          {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
-        </Button>
       </div>
 
       <div className="flex flex-col items-center gap-1">
