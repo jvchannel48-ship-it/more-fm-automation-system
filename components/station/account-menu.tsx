@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Bell, BatteryCharging, ExternalLink, Gauge, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
+import { Activity, Bell, BatteryCharging, ExternalLink, Gauge, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check, Copy, Globe, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,6 +57,10 @@ export function AccountMenu() {
   const [pingBusy, setPingBusy] = useState(false)
   const [pingSamples, setPingSamples] = useState<number[]>([])
   const [pingError, setPingError] = useState('')
+  const [publicIp, setPublicIp] = useState('')
+  const [ipBusy, setIpBusy] = useState(false)
+  const [ipError, setIpError] = useState('')
+  const [ipCopied, setIpCopied] = useState(false)
 
   const refreshProfile = useCallback(async (showError = false) => {
     try {
@@ -221,6 +225,24 @@ export function AccountMenu() {
     }
   }
 
+  const checkPublicIp = async () => {
+    setIpBusy(true); setIpError(''); setIpCopied(false)
+    try {
+      const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' })
+      if (!response.ok) throw new Error('Hindi makuha ang public IP address.')
+      const result = await response.json() as { ip?: string }
+      if (!result.ip) throw new Error('Walang IP address na ibinalik ang provider.')
+      setPublicIp(result.ip)
+    } catch (reason) { setIpError(reason instanceof Error ? reason.message : 'IP check failed.') }
+    finally { setIpBusy(false) }
+  }
+
+  const copyPublicIp = async () => {
+    if (!publicIp) return
+    try { await navigator.clipboard.writeText(publicIp); setIpCopied(true) }
+    catch { setIpError('Hindi ma-access ang clipboard sa device na ito.') }
+  }
+
   const openView = (next: View) => { setView(next); setError(''); setMessage('') }
 
   return (
@@ -245,7 +267,17 @@ export function AccountMenu() {
                 <div className="flex items-center gap-2"><Gauge className="size-4 text-primary" /><p className="font-medium">Internet Speed Test</p></div>
                 <p className="mt-1 text-xs text-muted-foreground">Sukatin ang aktuwal na download speed, upload speed, ping at jitter gamit ang LibreSpeed test network.</p>
                 <Button type="button" className="mt-3 w-full" onClick={() => window.open('https://librespeed.org/', '_blank', 'noopener,noreferrer')}><Gauge className="size-4" />Start Internet Speed Test</Button>
-                <p className="mt-2 text-[10px] text-muted-foreground">Bubukas ang totoong browser-based test. Piliin ang Start para simulan ang pagsukat; maaaring mag-iba ang resulta depende sa napiling test server.</p>
+                <p className="mt-2 text-[10px] text-muted-foreground">Bubukas ang totoong LibreSpeed test para sa download, upload, ping at jitter.</p>
+              </div>
+              <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 p-3">
+                <div className="flex items-center gap-2"><Globe className="size-4 text-cyan-500" /><p className="font-medium">Public IP Address</p></div>
+                <p className="mt-1 text-xs text-muted-foreground">Kunin ang public IP na nakikita sa internet. Hindi ito ang local Wi-Fi address.</p>
+                <div className="mt-3 flex gap-2">
+                  <Button type="button" className="flex-1" onClick={checkPublicIp} disabled={ipBusy}>{ipBusy ? <RefreshCw className="size-4 animate-spin" /> : <Globe className="size-4" />}{ipBusy ? 'Checking…' : 'Check IP Address'}</Button>
+                  <Button type="button" variant="outline" size="icon" aria-label="Copy IP address" onClick={copyPublicIp} disabled={!publicIp}><Copy className="size-4" /></Button>
+                </div>
+                {publicIp && <p className="mt-2 break-all rounded-lg bg-background/80 p-2 font-mono text-sm">{publicIp} <span className="text-xs text-emerald-500">{ipCopied ? 'Copied' : ''}</span></p>}
+                {ipError && <p className="mt-2 text-xs text-destructive" role="alert">{ipError}</p>}
               </div>
               <div className="rounded-xl border border-border bg-secondary/40 p-3">
                 <div className="flex items-center gap-2"><Activity className="size-4 text-primary" /><p className="font-medium">RJ FM Server Ping</p></div>
@@ -258,6 +290,12 @@ export function AccountMenu() {
                 </div>}
                 {pingBusy && <p className="mt-2 text-center text-xs text-muted-foreground">{pingSamples.length}/5 checks complete</p>}
                 {pingError && <p className="mt-2 text-xs text-destructive" role="alert">{pingError}</p>}
+              </div>
+              <div className="rounded-xl border border-violet-400/20 bg-gradient-to-br from-violet-500/10 via-blue-500/5 to-cyan-400/10 p-3">
+                <div className="flex items-center gap-2"><Info className="size-4 text-violet-500" /><p className="font-semibold">About RJ FM</p></div>
+                <p className="mt-2 text-sm font-medium">RJ FM — Live Radio</p>
+                <p className="mt-1 text-xs text-muted-foreground">Developer: Carl Smith</p>
+                <p className="mt-1 text-xs text-muted-foreground">Official RJ FM radio player and listening tools.</p>
               </div>
               <Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button>
             </div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
