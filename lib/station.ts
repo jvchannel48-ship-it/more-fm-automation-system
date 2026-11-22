@@ -22,7 +22,6 @@ import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, ge
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const PRELOAD_AHEAD_TRACKS = 2
-const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
 const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
@@ -208,9 +207,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) continue
       const metadata = [item.genre, item.channel, item.channelTitle, item.uploader, item.description, item.artist, item.url].filter(Boolean).join(' ')
-      const calabangaAiTrack = station === 'calabanga' && /\b(?:ai|suno|udio|generated|musicgen)\b/i.test(`${item.title} ${metadata}`)
-      if (!isOriginalArtistTrack(item.title, artist) && !calabangaAiTrack) continue
-      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres, allowCalabangaDisco: station === 'calabanga' })) continue
+      if (!isOriginalArtistTrack(item.title, artist)) continue
+      if (!isAllowedStationTrack({ title: item.title, genre: metadata, blockedGenres })) continue
       if (matchesBlockedGenre(`${item.genre ?? ''} ${item.title}`, blockedGenres)) continue
       if (playedIds.has(item.id) || playedKeys.has(songKey(item.title))) continue
 
@@ -305,49 +303,6 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, musicNextAt, latestVoiceEnd)
 }
 
-/** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
-async function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean, christopherEnabled = true, existingTracks: Track[] = []): Promise<Track[]> {
-  const manilaMusic = mainState.tracks.filter((track) => track.kind === 'music' && track.src).sort((a, b) => a.startAt - b.startAt)
-  const out: Track[] = []
-  const ident = NATIONWIDE_IDENT_BY_STATION.naga
-  const offset = Math.max(0, mainState.songCount - manilaMusic.length)
-  let shiftMs = 0
-  let nextFadeIn: number | null = null
-  for (let index = 0; index < manilaMusic.length; index++) {
-    const track = manilaMusic[index]
-    const startAt = track.startAt + NAGA_FOLLOW_DELAY_MS + shiftMs
-    const addIdent = nationwideEnabled && Boolean(ident) && (offset + index + 1) % 2 === 0
-    if (startAt + track.duration * 1000 >= now - 2_000) out.push({ uid: `naga-follow-${track.uid}`, src: track.src, startAt, duration: track.duration, fadeIn: nextFadeIn ?? Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS), fadeOut: addIdent ? 0 : Math.min(CROSSFADE_SECONDS, track.fadeOut || CROSSFADE_SECONDS), kind: 'music', title: track.title, artist: track.artist })
-    if (addIdent && ident) {
-      const identStartAt = startAt + track.duration * 1000
-      if (identStartAt + ident.duration * 1000 >= now - 2_000) out.push({ uid: `rjfm-nationwide-naga-${track.uid}`, src: ident.src, startAt: identStartAt, duration: ident.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: ident.title, artist: 'RJ FM Nationwide' })
-      shiftMs += (CROSSFADE_SECONDS + ident.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
-      nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
-    } else nextFadeIn = null
-  }
-  for (const voice of mainState.tracks.filter((track) => christopherEnabled && track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
-    const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
-    const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
-    const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
-    const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS + identDelay
-    const followUid = `naga-follow-${voice.uid}`
-    let nagaVoice = existingTracks.find((track) => track.uid === followUid)
-    const currentScriptId = nagaVoice?.src.split('id=')[1]
-    const currentScript = currentScriptId ? await getChristopherScript(currentScriptId) : null
-    const sourceScriptId = voice.src.split('id=')[1]
-    const sourceScript = sourceScriptId ? await getChristopherScript(sourceScriptId) : null
-    const scriptToLocalize = currentScript ?? sourceScript
-    const nagaScript = scriptToLocalize?.replace(/^RJ FM 93\\.5(?= Manila time check)/, 'RJ FM Naga 92.3')
-    if (nagaScript && nagaScript !== scriptToLocalize) {
-      const scriptId = await saveChristopherScript(nagaScript)
-      nagaVoice = { ...voice, uid: followUid, src: `/api/dj-christopher?id=${scriptId}`, duration: estimateChristopherDuration(nagaScript) }
-    } else if (!nagaVoice) {
-      nagaVoice = voice
-    }
-    if (startAt + nagaVoice.duration * 1000 >= now - 2_000) out.push({ ...nagaVoice, uid: followUid, startAt })
-  }
-  return out.sort((a, b) => a.startAt - b.startAt)
-}
 
 function statePathFor(station: StationId) {
   switch (station) {
@@ -569,7 +524,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   const liveDj = await getLiveDj()
   if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate' || station === 'calabanga') {
     const statePath = statePathFor(station)
-    const [{ state, changed }, settings, mainSnap] = await Promise.all([loadState(now, statePath), getSettings(), loadState(now, STATE_PATH)])
+    const [{ state, changed }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
     if (!settings.djChristopherEnabled) {
       const kept = state.tracks.filter((track) => track.uid.includes('timecheck') || (!track.uid.startsWith('dj-christopher-') && !track.uid.includes('dj-christopher-')))
       if (kept.length !== state.tracks.length || state.christopherNextAt !== 0) {
@@ -593,35 +548,7 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       }
     }
 
-    if (station === 'naga') {
-      const mainHasUpcoming = mainSnap.state.tracks.some((track) => track.startAt > now)
-      const mainHasCurrent = mainSnap.state.tracks.some((track) => track.startAt <= now && trackEnd(track) > now)
-      if (!mainHasUpcoming && !mainHasCurrent && !options.skipFill) {
-        await fill(mainSnap.state, now, settings.sundayScheduleEnabled, genresForSettings(settings), 'main', settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        mainSnap.state.fillingUntil = 0
-        await writeJson(STATE_PATH, mainSnap.state)
-      }
-      const followed = await buildNagaFollowTracks(mainSnap.state, now, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, state.tracks)
-      const prevKey = state.tracks.map((track) => `${track.uid}:${track.startAt}`).join('|')
-      const nextKey = followed.map((track) => `${track.uid}:${track.startAt}`).join('|')
-      if (prevKey !== nextKey) {
-        state.tracks = followed
-        state.history = [...state.history, ...followed.filter((track) => track.title).map((track) => ({
-          id: track.uid, key: songKey(track.title!), artist: track.artist || 'RJ FM Manila', t: track.startAt,
-        }))].slice(-80)
-        await writeJson(statePath, state)
-      } else if (changed) {
-        await writeJson(statePath, state)
-      }
-      // Naga is a delayed simulcast of Manila, never an independently filled playlist.
-      return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
-    }
-
-    const mainLiveKeys = new Set(mainSnap.state.tracks.filter((track) => track.kind === 'music' && track.startAt <= now && trackEnd(track) > now).map((track) => songKey(track.title ?? '')))
-    if (mainLiveKeys.size) {
-      state.history = [...state.history, ...[...mainLiveKeys].map((key) => ({ id: `block-main-${key}`, key, artist: 'main-live', t: now }))].slice(-80)
-    }
-    const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
+        const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
     if (needsFill && state.fillingUntil < now && !options.skipFill) {
       state.fillingUntil = now + FILL_LOCK_MS
       await writeJson(statePath, state)
