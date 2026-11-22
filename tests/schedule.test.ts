@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {
-  isOffAir, languageForSlot, manilaTime, programAt, nagaProgramAt, masbateProgramAt,
+  isOffAir, languageForSlot, manilaTime, programAt, nagaProgramAt, masbateProgramAt, calabangaProgramAt,
   dzmmWindowAt, iloiloDzmmWindowAt, PROGRAMS, RJFM_ARTIST_LIBRARY, SIGN_OFF_HOUR, SIGN_ON_HOUR,
 } from '../lib/schedule.ts'
 import { STATIONS } from '../lib/stations.ts'
@@ -44,4 +44,10 @@ assert.equal(isOffAir(at(sunday, 3)), false)
 for (const station of Object.values(STATIONS)) assert.equal(station.signOffHour, station.signOnHour)
 assert.equal(nagaProgramAt(at(sunday, 15)).id, 'sunday-tagalog-classic')
 assert.equal(masbateProgramAt(at(monday, 10)).tagalogOnly, true)
+assert.equal(calabangaProgramAt(at(monday, 14, 59)).id, 'calabanga-disco')
+assert.equal(calabangaProgramAt(at(monday, 15, 0)).id, 'calabanga-disco')
+assert.equal(calabangaProgramAt(at(monday, 20, 2)).id, 'calabanga-disco')
+assert.equal(calabangaProgramAt(at(monday, 20, 3)).id, 'calabanga-love')
+assert.equal(STATIONS.calabanga.frequency, '95.5')
+assert.equal(STATIONS.calabanga.signOffHour, STATIONS.calabanga.signOnHour)
 console.log('schedule: weekend Tagalog-only, weekday English/Tagalog mix, no DZMM handoff')
