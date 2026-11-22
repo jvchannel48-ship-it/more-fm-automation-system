@@ -219,6 +219,36 @@ export function RadioPlayer() {
         </span>
       )}
 
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-black shadow-[0_22px_55px_rgba(0,0,0,.62)]">
+        <div className="relative aspect-video w-full overflow-hidden bg-black">
+          <video
+            className="absolute inset-0 block h-full w-full object-cover"
+            src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label={`${meta.name} silent looping background video`}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
+          {!(playing || externalPlaying) && (
+            <Button
+              type="button"
+              size="icon"
+              onClick={togglePlay}
+              aria-label={`Play ${meta.name} live radio`}
+              className="absolute left-1/2 top-1/2 z-10 size-[4.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 bg-black/55 text-white shadow-[0_0_0_8px_rgba(255,255,255,.12),0_10px_28px_rgba(0,0,0,.55)] backdrop-blur-md hover:bg-black/75 [&_svg]:size-8"
+            >
+              <Play className="translate-x-0.5" />
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
+          <span className="size-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_12px_rgba(248,113,113,.9)]" aria-hidden="true" /> LIVE
+        </div>
+      </div>
+
       <div className={`player-artwork relative flex aspect-square w-full max-w-[19rem] items-center justify-center overflow-hidden rounded-[2rem] ${live ? 'is-playing' : ''}`}>
         <div className="listener-avatar" aria-label="3D character wearing headphones and listening to music" role="img">
           <span className="avatar-note avatar-note-one">♪</span><span className="avatar-note avatar-note-two">♫</span><span className="avatar-note avatar-note-three">♪</span>
