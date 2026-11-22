@@ -13,7 +13,7 @@ Example iframe:
   src="https://more-fm-automation-system-bgah.onrender.com/embed/rjfm935"
   title="RJ FM 93.5"
   width="320"
-  height="88"
+  height="104"
   loading="lazy"
   allow="autoplay"
   referrerpolicy="strict-origin-when-cross-origin"
