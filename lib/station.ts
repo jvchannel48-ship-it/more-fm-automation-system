@@ -20,7 +20,6 @@ import { buildChristopherScript, buildTimeCheckScript, saveChristopherScript, ge
 const BETADASH_API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const PRELOAD_AHEAD_TRACKS = 2
-const NAGA_FOLLOW_DELAY_MS = 12_000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
 const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
@@ -304,50 +303,25 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, musicNextAt, latestVoiceEnd)
 }
 
-/** RJ FM Naga follows Manila music: same songs, starting shortly after Manila finishes each track. */
-async function buildNagaFollowTracks(mainState: StationState, now: number, nationwideEnabled: boolean, christopherEnabled = true, existingTracks: Track[] = []): Promise<Track[]> {
-  const manilaMusic = mainState.tracks.filter((track) => track.kind === 'music' && track.src).sort((a, b) => a.startAt - b.startAt)
-  const out: Track[] = []
-  const ident = NATIONWIDE_IDENT_BY_STATION.naga
-  const offset = Math.max(0, mainState.songCount - manilaMusic.length)
-  let shiftMs = 0
-  let nextFadeIn: number | null = null
-  for (let index = 0; index < manilaMusic.length; index++) {
-    const track = manilaMusic[index]
-    const startAt = track.startAt + NAGA_FOLLOW_DELAY_MS + shiftMs
-    const addIdent = nationwideEnabled && Boolean(ident) && (offset + index + 1) % 2 === 0
-    if (startAt + track.duration * 1000 >= now - 2_000) out.push({ uid: `naga-follow-${track.uid}`, src: track.src, startAt, duration: track.duration, fadeIn: nextFadeIn ?? Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS), fadeOut: addIdent ? 0 : Math.min(CROSSFADE_SECONDS, track.fadeOut || CROSSFADE_SECONDS), kind: 'music', title: track.title, artist: track.artist })
-    if (addIdent && ident) {
-      const identStartAt = startAt + track.duration * 1000
-      if (identStartAt + ident.duration * 1000 >= now - 2_000) out.push({ uid: `rjfm-nationwide-naga-${track.uid}`, src: ident.src, startAt: identStartAt, duration: ident.duration, fadeIn: 0.25, fadeOut: NATIONWIDE_IDENT_FADE_SECONDS, kind: 'dj-mic', title: ident.title, artist: 'RJ FM Nationwide' })
-      shiftMs += (CROSSFADE_SECONDS + ident.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
-      nextFadeIn = NATIONWIDE_IDENT_FADE_SECONDS
-    } else nextFadeIn = null
-  }
-  for (const voice of mainState.tracks.filter((track) => christopherEnabled && track.kind === 'dj-mic' && track.uid.startsWith('dj-christopher-'))) {
-    const songsBeforeVoice = manilaMusic.filter((track) => track.startAt < voice.startAt).length
-    const identsBeforeVoice = nationwideEnabled && ident ? Math.floor((offset + songsBeforeVoice) / 2) : 0
-    const identDelay = identsBeforeVoice * (CROSSFADE_SECONDS + ident!.duration - NATIONWIDE_IDENT_FADE_SECONDS) * 1000
-    const startAt = voice.startAt + NAGA_FOLLOW_DELAY_MS + identDelay
-    const followUid = `naga-follow-${voice.uid}`
-    let nagaVoice = existingTracks.find((track) => track.uid === followUid)
-    const currentScriptId = nagaVoice?.src.split('id=')[1]
-    const currentScript = currentScriptId ? await getChristopherScript(currentScriptId) : null
-    const sourceScriptId = voice.src.split('id=')[1]
-    const sourceScript = sourceScriptId ? await getChristopherScript(sourceScriptId) : null
-    const scriptToLocalize = currentScript ?? sourceScript
-    const nagaScript = scriptToLocalize?.replace(/^RJ FM 93\\.5(?= Manila time check)/, 'RJ FM Naga 92.3')
-    if (nagaScript && nagaScript !== scriptToLocalize) {
-      const scriptId = await saveChristopherScript(nagaScript)
-      nagaVoice = { ...voice, uid: followUid, src: `/api/dj-christopher?id=${scriptId}`, duration: estimateChristopherDuration(nagaScript) }
-    } else if (!nagaVoice) {
-      nagaVoice = voice
-    }
-    if (startAt + nagaVoice.duration * 1000 >= now - 2_000) out.push({ ...nagaVoice, uid: followUid, startAt })
-  }
-  return out.sort((a, b) => a.startAt - b.startAt)
+/** RJ FM Naga is a one-song relay: it starts each Manila track only after that Manila track has finished. */
+function buildNagaFollowTracks(mainState: StationState, now: number): Track[] {
+  return mainState.tracks
+    .filter((track) => track.kind === 'music' && track.src)
+    .sort((a, b) => a.startAt - b.startAt)
+    .map((track) => ({
+      uid: `naga-follow-${track.uid}`,
+      src: track.src,
+      // Manila may already be playing its next song when Naga starts this one.
+      startAt: trackEnd(track),
+      duration: track.duration,
+      fadeIn: Math.min(CROSSFADE_SECONDS, track.fadeIn || CROSSFADE_SECONDS),
+      fadeOut: CROSSFADE_SECONDS,
+      kind: 'music' as const,
+      title: track.title,
+      artist: track.artist,
+    }))
+    .filter((track) => track.startAt + track.duration * 1000 >= now - 2_000)
 }
-
 function statePathFor(station: StationId) {
   switch (station) {
     case 'naga': return NAGA_STATE_PATH
@@ -558,7 +532,26 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
   const station: StationId = options.station ?? 'main'
   const now = Date.now()
   const liveDj = await getLiveDj()
-  if (station === 'cebu' || station === 'naga' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
+  if (station === 'naga') {
+    // Fill/read Manila first, then mirror its music in sequence one complete song behind.
+    const manila = await getNowPlaying({ station: 'main', skipFill: options.skipFill })
+    const [{ state: mainState }, settings] = await Promise.all([
+      loadState(Date.now()),
+      getSettings(),
+    ])
+    const tracks = buildNagaFollowTracks(mainState, Date.now())
+    return {
+      serverTime: manila.serverTime,
+      offAir: false,
+      nextOnAir: null,
+      tracks: tracks.map(toClientTrack),
+      bassBoostDb: settings.bassBoostDb,
+      autoDeletePlayedCache: settings.autoDeletePlayedCache,
+      transmitterWatts: settings.transmitterWatts,
+      liveDj,
+    }
+  }
+  if (station === 'cebu' || station === 'gensan' || station === 'cdo' || station === 'davao' || station === 'iloilo' || station === 'masbate') {
     const statePath = statePathFor(station)
     const [{ state, changed }, settings] = await Promise.all([loadState(now, statePath), getSettings()])
     if (!settings.djChristopherEnabled) {
