@@ -1,4 +1,4 @@
-export type StationId = 'main' | 'naga' | 'cebu' | 'gensan' | 'cdo' | 'davao' | 'iloilo' | 'masbate'
+export type StationId = 'main' | 'naga' | 'cebu' | 'gensan' | 'cdo' | 'davao' | 'iloilo' | 'masbate' | 'calabanga'
 
 /** How this station builds its playlist / live windows. */
 export type StationMode =
@@ -145,6 +145,22 @@ export const STATIONS: Record<StationId, StationMeta> = {
     statePath: 'station/state-iloilo-v2.json',
     vinylMark: 'ILO',
   },
+  calabanga: {
+    id: 'calabanga',
+    name: 'RJ FM Calabanga',
+    shortName: 'RJ FM Calabanga',
+    city: 'Calabanga · Santa Cruz, Camarines Sur',
+    frequency: '95.5',
+    description: 'Independent 24/7 AutoDJ · disco afternoons and English/Tagalog love songs at night',
+    notificationTagline: 'RJ FM Calabanga 95.5',
+    mode: 'music',
+    shellClass: 'station-calabanga',
+    modeLabel: 'Calabanga AutoDJ',
+    signOffHour: 4,
+    signOnHour: 4,
+    statePath: 'station/state-calabanga-v2.json',
+    vinylMark: 'CAL',
+  },
   masbate: {
     id: 'masbate',
     name: 'RJ FM Masbate',
@@ -163,7 +179,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
   },
 }
 
-export const STATION_ORDER: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate']
+export const STATION_ORDER: StationId[] = ['main', 'naga', 'cebu', 'gensan', 'cdo', 'davao', 'iloilo', 'masbate', 'calabanga']
 
 export function isStationId(value: unknown): value is StationId {
   return typeof value === 'string' && value in STATIONS
