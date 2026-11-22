@@ -173,7 +173,6 @@ export function RadioPlayer() {
       )}
 
       <div className="player-artwork relative flex aspect-square w-full max-w-[17rem] items-center justify-center overflow-hidden rounded-[2rem]">
-        <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
         <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
         <div className="player-artwork-mark"><span>RJ</span><small>FM · 93.5</small></div>
         <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[4.5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
