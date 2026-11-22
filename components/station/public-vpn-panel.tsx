@@ -117,6 +117,15 @@ export function PublicVpnPanel() {
         </div>
       )}
 
+      <a
+        href="https://play.google.com/store/apps/details?id=net.openvpn.openvpn"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15"
+      >
+        <ShieldCheck className="size-4" /> INSTALL OPENVPN CONNECT (ANDROID)
+      </a>
+
       <Button type="button" className="mt-4 w-full gap-2" onClick={() => void downloadProfile()} disabled={!selected || loading || downloading}>
         {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
         DOWNLOAD OPENVPN PROFILE
