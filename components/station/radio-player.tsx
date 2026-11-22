@@ -175,10 +175,18 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="player-artwork relative flex aspect-square w-full max-w-[17rem] items-center justify-center overflow-hidden rounded-[2rem]">
+      <div className={`player-artwork relative flex aspect-square w-full max-w-[19rem] items-center justify-center overflow-hidden rounded-[2rem] ${live ? 'is-playing' : ''}`}>
+        <div className="listener-avatar" aria-label="3D character wearing headphones and listening to music" role="img">
+          <span className="avatar-note avatar-note-one">♪</span><span className="avatar-note avatar-note-two">♫</span><span className="avatar-note avatar-note-three">♪</span>
+          <span className="avatar-shadow" />
+          <span className="avatar-leg avatar-leg-left" /><span className="avatar-leg avatar-leg-right" />
+          <span className="avatar-shoe avatar-shoe-left" /><span className="avatar-shoe avatar-shoe-right" />
+          <span className="avatar-body"><i className="avatar-arm avatar-arm-left" /><i className="avatar-arm avatar-arm-right" /></span>
+          <span className="avatar-neck" /><span className="avatar-head"><i className="avatar-hair" /><i className="avatar-earcup avatar-earcup-left" /><i className="avatar-earcup avatar-earcup-right" /><i className="avatar-headband" /><i className="avatar-eye avatar-eye-left" /><i className="avatar-eye avatar-eye-right" /><i className="avatar-smile" /></span>
+        </div>
         <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
         <div className="player-artwork-mark"><span>RJ</span><small>FM · 93.5</small></div>
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[4.5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
+        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-9">
           {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
