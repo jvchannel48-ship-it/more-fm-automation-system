@@ -229,7 +229,10 @@ export function RadioPlayer() {
           <span className="avatar-neck" /><span className="avatar-head"><i className="avatar-hair" /><i className="avatar-earcup avatar-earcup-left" /><i className="avatar-earcup avatar-earcup-right" /><i className="avatar-headband" /><i className="avatar-eye avatar-eye-left" /><i className="avatar-eye avatar-eye-right" /><i className="avatar-smile" /></span>
         </div>
         <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
-        <div className="player-artwork-mark"><span>RJ</span><small>FM · {meta.frequency}</small></div>
+        <div className="player-artwork-mark">
+          <img src={`/station-logos/${station}.svg`} alt={`RJ FM ${meta.city} ${meta.frequency}`} className="player-station-logo" />
+          <small>{meta.city} · {meta.frequency}</small>
+        </div>
         <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-9">
           {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
