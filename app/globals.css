@@ -450,3 +450,40 @@ body {
 .radio-player-card .signal-bars span,.radio-player-card .eq-bar { background:linear-gradient(180deg,#6bd3ff,#328be8); box-shadow:0 0 7px rgba(44,146,235,.3); }
 .radio-player-card .volume-deck { background:linear-gradient(180deg,#f8fcff,#d9e9f8); border:1px solid rgba(94,142,190,.25); box-shadow:inset 0 1px 0 #fff,0 8px 18px rgba(44,79,130,.12); }
 .radio-player-card .volume-deck button { background:transparent; box-shadow:none; }
+
+/* Original RJ FM 3D listening scene and custom rotating player deck. */
+@keyframes avatar-bob { 0%,100% { transform:translateY(0) rotate(-1deg); } 50% { transform:translateY(-8px) rotate(1.5deg); } }
+@keyframes avatar-dance { 0%,100% { transform:rotate(-2deg); } 50% { transform:rotate(3deg); } }
+@keyframes avatar-arm-left { 0%,100% { transform:rotate(20deg); } 50% { transform:rotate(-12deg); } }
+@keyframes avatar-arm-right { 0%,100% { transform:rotate(-20deg); } 50% { transform:rotate(12deg); } }
+@keyframes avatar-note-float { 0% { opacity:0; transform:translateY(12px) scale(.65) rotate(-12deg); } 25% { opacity:1; } 100% { opacity:0; transform:translateY(-38px) scale(1.18) rotate(14deg); } }
+@keyframes avatar-record-spin { to { transform:rotate(360deg); } }
+@keyframes avatar-ring-pulse { 0%,100% { transform:scale(.96); opacity:.45; } 50% { transform:scale(1.08); opacity:.9; } }
+.player-artwork.is-playing .artwork-orbit-one { animation:avatar-record-spin 12s linear infinite; border-style:dashed; border-color:rgba(255,255,255,.35); }
+.player-artwork.is-playing .artwork-orbit-two { animation:avatar-ring-pulse 2.4s ease-in-out infinite; border-color:rgba(255,255,255,.34); }
+.listener-avatar { position:absolute; z-index:3; width:54%; height:88%; left:42%; bottom:0; filter:drop-shadow(0 12px 10px rgba(13,25,62,.28)); animation:avatar-bob 2.8s ease-in-out infinite; transform-style:preserve-3d; }
+.avatar-shadow { position:absolute; bottom:2%; left:22%; width:58%; height:8%; border-radius:50%; background:rgba(10,26,65,.25); filter:blur(7px); }
+.avatar-head { position:absolute; z-index:5; top:9%; left:31%; width:39%; height:25%; border-radius:44% 44% 47% 47%; background:linear-gradient(135deg,#ffd9b4 0%,#e9a77d 58%,#a85e52 100%); box-shadow:inset -7px -5px 10px rgba(93,42,39,.18),inset 4px 3px 8px rgba(255,255,255,.6); transform:rotate(-5deg); }
+.avatar-hair { position:absolute; left:0; top:-9%; width:100%; height:43%; border-radius:60% 55% 25% 20%; background:linear-gradient(145deg,#29314c,#101a36 70%); box-shadow:inset 0 3px 4px rgba(255,255,255,.18); }
+.avatar-earcup { position:absolute; top:26%; width:19%; height:38%; border-radius:9px; background:linear-gradient(90deg,#122849,#52d5f1 48%,#17355b); border:2px solid rgba(220,250,255,.85); box-shadow:0 2px 6px rgba(0,0,0,.28); }
+.avatar-earcup-left { left:-12%; }.avatar-earcup-right { right:-12%; }
+.avatar-headband { position:absolute; left:7%; top:-24%; width:86%; height:48%; border:5px solid #14294d; border-bottom:0; border-radius:60% 60% 0 0; filter:drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+.avatar-eye { position:absolute; top:52%; width:5px; height:5px; border-radius:50%; background:#27314b; }.avatar-eye-left{left:32%}.avatar-eye-right{right:30%}
+.avatar-smile { position:absolute; left:43%; top:68%; width:16%; height:7%; border-bottom:2px solid #9a4d4b; border-radius:0 0 50% 50%; }
+.avatar-neck { position:absolute; z-index:3; top:30%; left:45%; width:17%; height:10%; background:linear-gradient(90deg,#b96f5d,#ffd0a6); border-radius:0 0 8px 8px; }
+.avatar-body { position:absolute; z-index:4; top:36%; left:23%; width:55%; height:36%; border-radius:27% 27% 17% 17%; background:linear-gradient(115deg,#73e2ef 0%,#287fc5 43%,#153c83 100%); box-shadow:inset 7px 0 10px rgba(255,255,255,.25),inset -8px -5px 12px rgba(8,24,68,.3),0 5px 12px rgba(13,34,83,.22); transform-origin:50% 10%; animation:avatar-dance 2.8s ease-in-out infinite; }
+.avatar-body:after { content:'RJ'; position:absolute; top:24%; left:0; width:100%; text-align:center; font-size:clamp(11px,2.8vw,17px); font-weight:1000; letter-spacing:-.08em; color:#effcff; text-shadow:0 2px 3px rgba(0,0,0,.22); }
+.avatar-arm { position:absolute; top:8%; width:22%; height:76%; border-radius:99px; background:linear-gradient(90deg,#f0b18c,#ffd9b8 48%,#bc755e); transform-origin:50% 8%; box-shadow:inset 2px 0 4px rgba(255,255,255,.38); }
+.avatar-arm-left { left:-12%; transform:rotate(20deg); }.avatar-arm-right { right:-12%; transform:rotate(-20deg); }
+.player-artwork.is-playing .avatar-arm-left { animation:avatar-arm-left 1.7s ease-in-out infinite; }.player-artwork.is-playing .avatar-arm-right { animation:avatar-arm-right 1.9s ease-in-out infinite; }
+.avatar-leg { position:absolute; z-index:2; top:68%; height:25%; width:16%; border-radius:0 0 12px 12px; background:linear-gradient(90deg,#172a54,#314e83 55%,#101d3e); }
+.avatar-leg-left { left:33%; transform:rotate(5deg); }.avatar-leg-right { left:53%; transform:rotate(-5deg); }
+.avatar-shoe { position:absolute; z-index:3; bottom:2%; width:25%; height:8%; border-radius:60% 35% 35% 35%; background:linear-gradient(145deg,#f7ffff,#8eb7d7 60%,#345b91); box-shadow:0 3px 5px rgba(0,0,0,.22); }
+.avatar-shoe-left { left:22%; }.avatar-shoe-right { left:52%; }
+.avatar-note { position:absolute; z-index:8; color:#fff; font-size:clamp(20px,5vw,31px); font-weight:900; text-shadow:0 2px 12px rgba(24,55,130,.5),0 0 14px rgba(255,255,255,.6); opacity:0; }
+.avatar-note-one { top:20%; left:8%; }.avatar-note-two { top:38%; right:2%; }.avatar-note-three { top:4%; right:8%; }
+.player-artwork.is-playing .avatar-note-one { animation:avatar-note-float 2.5s 0s infinite; }.player-artwork.is-playing .avatar-note-two { animation:avatar-note-float 2.8s .8s infinite; }.player-artwork.is-playing .avatar-note-three { animation:avatar-note-float 2.2s 1.4s infinite; }
+.record-button { width:5rem!important;height:5rem!important; background:radial-gradient(circle at 32% 22%,#fff 0%,#b9f5ff 14%,#48bfe9 42%,#1761c5 76%,#09285f 100%)!important; color:#fff!important; border:2px solid rgba(255,255,255,.92)!important; box-shadow:0 0 0 7px rgba(79,207,246,.18),0 10px 0 #123e85,0 18px 28px rgba(7,24,73,.42),inset 0 3px 7px rgba(255,255,255,.8),inset 0 -8px 12px rgba(4,31,88,.45)!important; }
+.record-button:hover { filter:brightness(1.12) saturate(1.2); }
+.record-button:active { transform:translateY(7px) scale(.98)!important; box-shadow:0 0 0 5px rgba(79,207,246,.14),0 3px 0 #123e85,0 8px 14px rgba(7,24,73,.32),inset 0 2px 5px rgba(255,255,255,.55)!important; }
+@media (prefers-reduced-motion:reduce) { .listener-avatar,.avatar-body,.player-artwork.is-playing .artwork-orbit-one,.player-artwork.is-playing .artwork-orbit-two,.player-artwork.is-playing .avatar-note,.player-artwork.is-playing .avatar-arm { animation:none!important; } }
