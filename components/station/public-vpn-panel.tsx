@@ -18,6 +18,7 @@ type PublicServer = {
 type DirectoryResponse = {
   servers?: PublicServer[]
   updatedAt?: string
+  source?: string
   error?: string
 }
 
@@ -33,6 +34,7 @@ export function PublicVpnPanel() {
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
   const [updatedAt, setUpdatedAt] = useState('')
+  const [source, setSource] = useState('')
 
   const loadServers = useCallback(async () => {
     setLoading(true)
@@ -44,6 +46,7 @@ export function PublicVpnPanel() {
       setServers(result.servers)
       setSelectedIp((current) => result.servers?.some((server) => server.ip === current) ? current : result.servers?.[0]?.ip || '')
       setUpdatedAt(result.updatedAt || '')
+      setSource(result.source || 'Public VPN directory')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load public servers.')
     } finally {
@@ -63,7 +66,7 @@ export function PublicVpnPanel() {
       const response = await fetch(`/api/public-vpn?ip=${encodeURIComponent(selected.ip)}`, { cache: 'no-store' })
       if (!response.ok) {
         const result = await response.json().catch(() => ({})) as { error?: string }
-        throw new Error(result.error || 'Could not download the VPN profile.')
+        throw new Error(result.error || 'Walang downloadable OpenVPN profile para sa server na ito.')
       }
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -92,7 +95,7 @@ export function PublicVpnPanel() {
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary"><ShieldCheck className="size-5" /></span>
           <div>
             <h2 className="text-sm font-bold tracking-wide">PUBLIC VPN SERVERS</h2>
-            <p className="text-[11px] text-muted-foreground">VPN Gate · OpenVPN profiles</p>
+            <p className="text-[11px] text-muted-foreground">ProxyFreeOnly · public server list</p>
           </div>
         </div>
         <Button type="button" variant="ghost" size="icon-sm" onClick={() => void loadServers()} disabled={loading} aria-label="Refresh public VPN servers">
@@ -109,15 +112,15 @@ export function PublicVpnPanel() {
         className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
       >
         {servers.map((server) => (
-          <option key={server.ip} value={server.ip}>{server.country} · {server.ip} · {formatSpeed(server.speed)}</option>
+          <option key={server.ip} value={server.ip}>{server.country} · {server.host} · {server.ip}</option>
         ))}
       </select>
 
       {selected && (
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-background/70 p-2"><p className="text-[9px] uppercase text-muted-foreground">Ping</p><p className="mt-1 font-mono text-sm font-semibold">{selected.ping ? `${selected.ping} ms` : '—'}</p></div>
-          <div className="rounded-xl bg-background/70 p-2"><p className="text-[9px] uppercase text-muted-foreground">Reported speed</p><p className="mt-1 font-mono text-sm font-semibold">{formatSpeed(selected.speed)}</p></div>
-          <div className="rounded-xl bg-background/70 p-2"><p className="text-[9px] uppercase text-muted-foreground">Sessions</p><p className="mt-1 font-mono text-sm font-semibold">{selected.sessions.toLocaleString()}</p></div>
+        <div className="mt-3 rounded-xl bg-background/70 p-3">
+          <p className="text-[9px] uppercase text-muted-foreground">Server address</p>
+          <p className="mt-1 font-mono text-sm font-semibold">{selected.ip}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Country: {selected.countryCode || 'Unknown'} · Profile availability is checked when you request a download.</p>
         </div>
       )}
 
@@ -132,15 +135,15 @@ export function PublicVpnPanel() {
 
       <Button type="button" className="mt-4 w-full gap-2" onClick={() => void downloadProfile()} disabled={!selected || loading || downloading}>
         {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-        DOWNLOAD OPENVPN PROFILE
+        CHECK & DOWNLOAD OPENVPN PROFILE
       </Button>
 
-      {loading && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3 animate-spin" /> Loading live server directory…</p>}
+      {loading && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3 animate-spin" /> Loading public VPN server directory…</p>}
       {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
-      {updatedAt && <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground"><Globe2 className="size-3" /> Directory checked {new Date(updatedAt).toLocaleTimeString()}</p>}
+      {updatedAt && <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground"><Globe2 className="size-3" /> {source} · Checked {new Date(updatedAt).toLocaleTimeString()}</p>}
 
       <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
-        Public volunteer servers can be unstable and may log activity. Their operators control the bandwidth, so MSIC cannot enforce the 900 Kbps per-user limit on these profiles. The 900 Kbps cap applies only after an MSIC-managed OpenVPN server has been configured with the GCP traffic-shaping hook. Downloading a profile does not connect the VPN automatically; import the .ovpn file into OpenVPN Connect. This uses regular mobile data and is not a carrier no-load service. Avoid public relays for banking or sensitive accounts.
+        ProxyFreeOnly supplies a server list, not verified OpenVPN configuration files. Profile downloads are served only when the same IP has a real OpenVPN profile in VPN Gate; otherwise the app reports that no profile is available. Public volunteer servers may be unstable and may log activity. MSIC cannot enforce a 900 Kbps cap on third-party servers. The cap applies only to an MSIC-managed OpenVPN server configured with the GCP traffic-shaping hook. VPN use consumes regular mobile data and is not a carrier no-load service. Avoid public relays for banking or sensitive accounts.
       </p>
     </section>
   )
