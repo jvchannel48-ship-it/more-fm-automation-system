@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.rjfm.app',
+  appId: 'com.rjfm.app.player',
   appName: 'RJ FM',
   webDir: 'public',
   server: {
