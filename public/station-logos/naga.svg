@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#050b22"/><stop offset=".52" stop-color="#102d63"/><stop offset="1" stop-color="#321052"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2a8"/><stop offset=".42" stop-color="#ffbd32"/><stop offset="1" stop-color="#e87908"/></linearGradient>
+ <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c9ffff"/><stop offset=".5" stop-color="#21d9ff"/><stop offset="1" stop-color="#2877ff"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect x="5" y="5" width="246" height="246" rx="48" fill="url(#bg)" stroke="#39dfff" stroke-width="3"/>
+<rect x="13" y="13" width="230" height="230" rx="42" fill="none" stroke="#a5edff" stroke-opacity=".24"/>
+<g fill="none" stroke="#20dfff" stroke-linecap="round" opacity=".72"><path d="M28 65Q128 -5 228 65" stroke-width="3"/><path d="M42 77Q128 20 214 77" stroke-width="2"/><path d="M28 190Q128 260 228 190" stroke-width="3"/></g>
+<g filter="url(#glow)" text-anchor="middle" font-family="Arial,sans-serif" font-style="italic" font-weight="900"><text x="128" y="111" font-size="65" fill="url(#cyan)" stroke="#e8ffff" stroke-width="1.2" paint-order="stroke">RJ FM</text></g>
+<path d="M42 126H214" stroke="#50e8ff" stroke-opacity=".65" stroke-width="2"/>
+<text x="128" y="166" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="21" letter-spacing="1.2" fill="#f7fbff">NAGA</text>
+<text x="128" y="211" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="39" fill="url(#gold)" stroke="#5a3100" stroke-width="1.5" paint-order="stroke">92.3</text>
+<text x="128" y="230" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="9" letter-spacing="3" fill="#a9f8ff">YOUR VOICE • YOUR MUSIC • LIVE</text>
+</svg>
