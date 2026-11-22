@@ -105,6 +105,7 @@ function matchesBlockedGenre(value: string, blockedGenres: string[]) {
   })
 }
 function isBlockedProgram(program: Program, blockedGenres: string[]) {
+  if (program.id.startsWith('calabanga-')) return false
   return isBlockedProgramGenre(program.id, blockedGenres)
 }
 function songKey(title: string) {
