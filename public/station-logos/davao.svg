@@ -1,16 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RJ FM DAVAO 104.6">
 <defs>
- <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#050b22"/><stop offset=".52" stop-color="#102d63"/><stop offset="1" stop-color="#321052"/></linearGradient>
- <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2a8"/><stop offset=".42" stop-color="#ffbd32"/><stop offset="1" stop-color="#e87908"/></linearGradient>
- <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c9ffff"/><stop offset=".5" stop-color="#21d9ff"/><stop offset="1" stop-color="#2877ff"/></linearGradient>
- <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#030817"/><stop offset=".48" stop-color="#102e62"/><stop offset="1" stop-color="#35104d"/></linearGradient>
+ <linearGradient id="cyan" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f4ffff"/><stop offset=".28" stop-color="#8df5ff"/><stop offset=".62" stop-color="#1ac8ff"/><stop offset="1" stop-color="#2767e8"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff8c8"/><stop offset=".35" stop-color="#ffd45c"/><stop offset=".72" stop-color="#ff9c24"/><stop offset="1" stop-color="#c85a08"/></linearGradient>
+ <radialGradient id="shine" cx="50%" cy="0%" r="95%"><stop stop-color="#fff" stop-opacity=".23"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dy="9"/><feComponentTransfer><feFuncA type="linear" slope=".55"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 </defs>
-<rect x="5" y="5" width="246" height="246" rx="48" fill="url(#bg)" stroke="#39dfff" stroke-width="3"/>
-<rect x="13" y="13" width="230" height="230" rx="42" fill="none" stroke="#a5edff" stroke-opacity=".24"/>
-<g fill="none" stroke="#20dfff" stroke-linecap="round" opacity=".72"><path d="M28 65Q128 -5 228 65" stroke-width="3"/><path d="M42 77Q128 20 214 77" stroke-width="2"/><path d="M28 190Q128 260 228 190" stroke-width="3"/></g>
-<g filter="url(#glow)" text-anchor="middle" font-family="Arial,sans-serif" font-style="italic" font-weight="900"><text x="128" y="111" font-size="65" fill="url(#cyan)" stroke="#e8ffff" stroke-width="1.2" paint-order="stroke">RJ FM</text></g>
-<path d="M42 126H214" stroke="#50e8ff" stroke-opacity=".65" stroke-width="2"/>
-<text x="128" y="166" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="21" letter-spacing="1.2" fill="#f7fbff">DAVAO</text>
-<text x="128" y="211" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="39" fill="url(#gold)" stroke="#5a3100" stroke-width="1.5" paint-order="stroke">104.6</text>
-<text x="128" y="230" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="9" letter-spacing="3" fill="#a9f8ff">YOUR VOICE • YOUR MUSIC • LIVE</text>
+<rect x="10" y="10" width="492" height="492" rx="104" fill="url(#bg)" stroke="#42e7ff" stroke-width="8"/>
+<rect x="24" y="24" width="464" height="464" rx="91" fill="url(#shine)" stroke="#d4fbff" stroke-opacity=".28" stroke-width="3"/>
+<g fill="none" stroke="#3ee4ff" stroke-linecap="round" opacity=".52"><path d="M70 118Q256 -30 442 118" stroke-width="8"/><path d="M102 145Q256 25 410 145" stroke-width="5"/><path d="M70 394Q256 530 442 394" stroke-width="7"/></g>
+<g transform="translate(256 118)" fill="none" stroke="#7cf3ff" stroke-width="10" stroke-linecap="round" filter="url(#glow)"><path d="M-35 0q35 -35 70 0"/><path d="M-65 -24q65 -65 130 0"/><path d="M-92 -49q92 -92 184 0"/></g>
+<g text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-style="italic" filter="url(#shadow)"><text x="256" y="268" font-size="132" letter-spacing="-8" fill="url(#cyan)" stroke="#f1ffff" stroke-width="3" paint-order="stroke">RJ FM</text></g>
+<path d="M82 302H430" stroke="#66edff" stroke-width="4" opacity=".7"/>
+<text x="256" y="354" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="900" letter-spacing="4" fill="#f3fbff">DAVAO</text>
+<text x="256" y="438" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="37" font-weight="900" letter-spacing="1" fill="url(#gold)" stroke="#75400c" stroke-width="2" paint-order="stroke" filter="url(#shadow)">104.6</text>
+<text x="256" y="475" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="700" letter-spacing="4" fill="#bafaff">YOUR VOICE • YOUR MUSIC • LIVE</text>
 </svg>
