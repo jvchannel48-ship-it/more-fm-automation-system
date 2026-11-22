@@ -114,11 +114,6 @@ export function RadioPlayer() {
 
   const offAir = data?.offAir ?? false
   const live = externalPlaying || (playing && !buffering && !offAir)
-  const playerNow = data?.serverTime ?? Date.now()
-  const currentTrack = data?.tracks
-    .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
-    .sort((a, b) => b.startAt - a.startAt)[0]
-
   const togglePlay = () => {
     if (externalStation && externalAudioRef.current) {
       if (externalPlaying) { externalAudioRef.current.pause(); setExternalPlaying(false) }
@@ -156,13 +151,13 @@ export function RadioPlayer() {
     document.title = `${meta.name} ${meta.frequency} — Live Radio`
     if ('mediaSession' in navigator && typeof MediaMetadata !== 'undefined') {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack?.title || `${meta.name} ${meta.frequency}`,
-        artist: currentTrack?.artist || meta.notificationTagline,
+        title: `${meta.name} ${meta.frequency}`,
+        artist: meta.notificationTagline,
         album: 'RJ FM Live Radio',
         artwork: [{ src: '/rjfm-app-icon.svg', sizes: 'any', type: 'image/svg+xml' }],
       })
     }
-  }, [meta, currentTrack?.title, currentTrack?.artist])
+  }, [meta])
 
   return (
     <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
@@ -177,14 +172,11 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="vinyl relative flex size-44 items-center justify-center rounded-full sm:size-48">
+      <div className="player-artwork relative flex aspect-square w-full max-w-[17rem] items-center justify-center overflow-hidden rounded-[2rem]">
         <div className="vinyl-ring absolute inset-0 rounded-full" style={{ borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
-        <div className={`vinyl-record absolute inset-3 rounded-full border ${playing && !offAir ? 'animate-spin' : ''}`} style={{ animationDuration: '8s', borderColor: vinylColors[playerPreferences.vinylColor] ?? vinylColors.gold }} aria-hidden="true" />
-        <div className="vinyl-label absolute inset-[28%] flex items-center justify-center rounded-full">
-          <span className="vinyl-label-mark">{meta.vinylMark}</span>
-        </div>
-        <div className="vinyl-hole absolute size-3 rounded-full" aria-hidden="true" />
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
+        <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
+        <div className="player-artwork-mark"><span>RJ</span><small>FM · 93.5</small></div>
+        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[4.5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
           {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
@@ -194,11 +186,7 @@ export function RadioPlayer() {
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
         </p>
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
-        <div className="mt-3 w-full max-w-sm rounded-xl border border-primary/20 bg-background/50 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Now Playing</p>
-          <p className="mt-1 truncate text-sm font-semibold">{externalStation ? externalStation.name : (currentTrack?.title || 'RJ FM Live Broadcast')}</p>
-          <p className="truncate text-xs text-muted-foreground">{externalStation ? 'Philippine Radio Browser stream' : (currentTrack?.artist || (data?.liveDj?.active ? data.liveDj.name : meta.notificationTagline))}</p>
-        </div>
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">{externalStation ? 'Philippine Radio Browser stream' : (data?.liveDj?.active ? 'Live DJ on air' : meta.notificationTagline)}</p>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
         {(playbackIssue || recoveryIssue) && <p className="text-xs text-amber-200/90">{recoveryIssue || playbackIssue}</p>}
@@ -216,13 +204,7 @@ export function RadioPlayer() {
         <Slider value={[muted ? 0 : volume * 100]} onValueChange={(v) => { const next = typeof v === 'number' ? v : v[0]; setMuted(false); setVolume((next ?? 70) / 100) }} max={100} step={1} aria-label="Volume" />
       </div>}
 
-      <div className="flex flex-col items-center gap-1">
-        <p className="text-sm font-medium">
-          {externalStation ? externalStation.name : <>{meta.name} <span className="text-primary">{meta.frequency}</span></>}
-        </p>
-      </div>
-
-      {!externalStation && data?.songRequestsEnabled !== false && <SongRequest station={station} />}
+            {!externalStation && data?.songRequestsEnabled !== false && <SongRequest station={station} />}
       <audio ref={externalAudioRef} className="hidden" preload="none" onPlay={() => setExternalPlaying(true)} onPause={() => setExternalPlaying(false)} onError={() => setExternalPlaying(false)} />
       {externalStation && <Button type="button" variant="outline" size="sm" onClick={() => { externalAudioRef.current?.pause(); setExternalStation(null); setExternalPlaying(false) }}>Return to RJ FM</Button>}
     </section>
