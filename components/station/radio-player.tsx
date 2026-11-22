@@ -23,6 +23,9 @@ const vinylColors: Record<string, string> = { silver: '#cbd5e1', gold: '#f4b942'
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
+  const [externalStation, setExternalStation] = useState<{ name: string; url_resolved: string } | null>(null)
+  const [externalPlaying, setExternalPlaying] = useState(false)
+  const externalAudioRef = useRef<HTMLAudioElement>(null)
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
@@ -36,6 +39,21 @@ export function RadioPlayer() {
     const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
     window.addEventListener('morefm-player-preferences', update)
     return () => window.removeEventListener('morefm-player-preferences', update)
+  }, [])
+
+  useEffect(() => {
+    const playExternal = (event: Event) => {
+      const picked = (event as CustomEvent<{ name: string; url_resolved: string }>).detail
+      if (!picked?.url_resolved) return
+      setPlaying(false)
+      setExternalStation(picked)
+      const audio = externalAudioRef.current
+      if (!audio) return
+      audio.src = picked.url_resolved
+      audio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
+    }
+    window.addEventListener('morefm:play-external-station', playExternal)
+    return () => window.removeEventListener('morefm:play-external-station', playExternal)
   }, [])
 
   const nowUrl = `/api/now?station=${station}`
@@ -95,13 +113,21 @@ export function RadioPlayer() {
   }, [playing, data?.offAir])
 
   const offAir = data?.offAir ?? false
-  const live = playing && !buffering && !offAir
+  const live = externalPlaying || (playing && !buffering && !offAir)
   const playerNow = data?.serverTime ?? Date.now()
   const currentTrack = data?.tracks
     .filter((track) => track.kind === 'music' && track.startAt <= playerNow && track.startAt + track.duration * 1000 > playerNow)
     .sort((a, b) => b.startAt - a.startAt)[0]
 
-  const togglePlay = () => { unlock(); setPlaying((p) => !p) }
+  const togglePlay = () => {
+    if (externalStation && externalAudioRef.current) {
+      if (externalPlaying) { externalAudioRef.current.pause(); setExternalPlaying(false) }
+      else { externalAudioRef.current.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false)) }
+      return
+    }
+    unlock()
+    setPlaying((p) => !p)
+  }
   const onAirAgain = data?.nextOnAir
     ? new Date(data.nextOnAir).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
     : null
@@ -142,7 +168,7 @@ export function RadioPlayer() {
     <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
       <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>
         <span className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`} aria-hidden="true" />
-        {offAir ? 'Off air' : 'Live'}
+        {externalStation ? (externalPlaying ? 'Live · External station' : 'External station paused') : (offAir ? 'Off air' : 'Live')}
       </span>
       {data?.liveDj?.active && (
         <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-200">
@@ -159,19 +185,19 @@ export function RadioPlayer() {
         </div>
         <div className="vinyl-hole absolute size-3 rounded-full" aria-hidden="true" />
         <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8">
-          {playing ? <Pause /> : <Play className="translate-x-0.5" />}
+          {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
         </Button>
       </div>
 
       <div className="flex flex-col items-center gap-1">
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
-          {meta.shortName} <span className="text-primary">{meta.frequency}</span>
+          {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
         </p>
         <div className="mt-2"><div className="signal-bars"><Equalizer active={live} /></div></div>
         <div className="mt-3 w-full max-w-sm rounded-xl border border-primary/20 bg-background/50 px-4 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Now Playing</p>
-          <p className="mt-1 truncate text-sm font-semibold">{currentTrack?.title || 'RJ FM Live Broadcast'}</p>
-          <p className="truncate text-xs text-muted-foreground">{currentTrack?.artist || (data?.liveDj?.active ? data.liveDj.name : meta.notificationTagline)}</p>
+          <p className="mt-1 truncate text-sm font-semibold">{externalStation ? externalStation.name : (currentTrack?.title || 'RJ FM Live Broadcast')}</p>
+          <p className="truncate text-xs text-muted-foreground">{externalStation ? 'Philippine Radio Browser stream' : (currentTrack?.artist || (data?.liveDj?.active ? data.liveDj.name : meta.notificationTagline))}</p>
         </div>
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
@@ -196,7 +222,9 @@ export function RadioPlayer() {
         </p>
       </div>
 
-      {data?.songRequestsEnabled !== false && <SongRequest station={station} />}
+      {!externalStation && data?.songRequestsEnabled !== false && <SongRequest station={station} />}
+      <audio ref={externalAudioRef} className="hidden" preload="none" onPlay={() => setExternalPlaying(true)} onPause={() => setExternalPlaying(false)} onError={() => setExternalPlaying(false)} />
+      {externalStation && <Button type="button" variant="outline" size="sm" onClick={() => { externalAudioRef.current?.pause(); setExternalStation(null); setExternalPlaying(false) }}>Return to RJ FM</Button>}
     </section>
   )
 }
