@@ -9,6 +9,7 @@ type RadioBrowserStation = {
   url?: string
   favicon?: string
   country?: string
+  countrycode?: string
   tags?: string
   bitrate?: number
   codec?: string
@@ -17,7 +18,8 @@ type RadioBrowserStation = {
 export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 100)
   const params = new URLSearchParams({
-    limit: '30',
+    limit: '100',
+    countrycode: 'PH',
     order: 'clickcount',
     reverse: 'true',
     hidebroken: 'true',
@@ -34,13 +36,13 @@ export async function GET(request: NextRequest) {
     const raw = await response.json() as RadioBrowserStation[]
     const stations = (Array.isArray(raw) ? raw : []).flatMap((item) => {
       const stream = item.url_resolved || item.url || ''
-      if (!item.stationuuid || !item.name || !/^https?:\/\//i.test(stream)) return []
+      if (!item.stationuuid || !item.name || item.countrycode?.toUpperCase() !== 'PH' || !/^https?:\/\//i.test(stream)) return []
       return [{
         stationuuid: item.stationuuid,
         name: item.name.slice(0, 160),
         url_resolved: stream,
         favicon: item.favicon || '',
-        country: item.country || '',
+        country: 'Philippines',
         tags: item.tags || '',
         bitrate: Number.isFinite(item.bitrate) ? item.bitrate : 0,
         codec: item.codec || '',
