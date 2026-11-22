@@ -21,8 +21,9 @@ require_root() {
 
 client_ip() {
   local value="${ifconfig_pool_remote_ip:-}"
-  [[ "$value" =~ ^${POOL_PREFIX//./\\.}\\.([0-9]{1,3})$ ]] || fail "Missing or out-of-pool ifconfig_pool_remote_ip."
-  local octet="${BASH_REMATCH[1]}"
+  [[ "$value" == "$POOL_PREFIX".* ]] || fail "Missing or out-of-pool ifconfig_pool_remote_ip."
+  local octet="${value##*.}"
+  [[ "$octet" =~ ^[0-9]{1,3}$ ]] || fail "Invalid client IP address."
   (( octet >= 2 && octet <= 254 )) || fail "Client IP is outside the supported pool range."
   printf '%s' "$value"
 }
@@ -41,7 +42,7 @@ init() {
   # Client downloads: packets leaving tun0 are classified by destination client IP.
   tc qdisc replace dev "$TUN_DEV" root handle 1: htb default 999
   tc class replace dev "$TUN_DEV" parent 1: classid 1:1 htb rate 1gbit ceil 1gbit
-  tc class replace dev "$TUN_DEV" parent 1:1 classid 1:999 htb rate 1gbit ceil 1gbit
+  tc class replace dev "$TUN_DEV" parent 1:1 classid 1:999 htb rate 900kbit ceil 900kbit
   tc qdisc replace dev "$TUN_DEV" handle ffff: ingress
 
   # Client uploads: redirect tun0 ingress to IFB, then classify by source client IP.
