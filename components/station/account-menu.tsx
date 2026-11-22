@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Bell, BatteryCharging, ExternalLink, Gauge, LogOut, Mic, Share2, ShieldCheck, Smartphone, Upload, UserRound, X, Settings, RefreshCw, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { VpnGatePanel } from '@/components/station/vpn-gate-panel'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ensureDeviceSession } from '@/lib/device-id'
@@ -44,7 +43,7 @@ function UsageChart({ usage }: { usage: UsagePoint[] }) {
 
 export function AccountMenu() {
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<View>('profile')
+  const [view, setView] = useState<View>('settings')
   const [profile, setProfile] = useState<Profile | null>(null)
   const profileRef = useRef<Profile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
@@ -91,7 +90,7 @@ export function AccountMenu() {
 
 
   useEffect(() => {
-    const openAccount = () => { setOpen(true); setView('profile'); setError(''); setMessage('') }
+    const openAccount = () => { setOpen(true); setView('settings'); setError(''); setMessage('') }
     const openSettings = () => { setOpen(true); setView('settings'); setError(''); setMessage('') }
     window.addEventListener('morefm:open-account', openAccount)
     window.addEventListener('morefm:open-settings', openSettings)
@@ -232,17 +231,14 @@ export function AccountMenu() {
           <h2 id="account-title" className="pr-8 text-xl font-semibold">Phone profile</h2>
           <p className="mt-1 text-sm text-muted-foreground">Profile, playback, permissions, at app settings.</p>
           {profile ? <div className="mt-5 flex flex-col gap-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-secondary/60 to-card p-4 shadow-lg shadow-primary/5">
-              {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Profile" className="size-16 rounded-2xl object-cover ring-2 ring-primary/25" /> : <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-2 ring-primary/20"><UserRound className="size-7" /></span>}
-              <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{profile.displayName || 'Listener'}</p><p className="mt-0.5 text-xs text-muted-foreground">RJ FM Listener</p><p className="mt-1 font-mono text-[11px] tracking-wider text-primary">PROFILE NO. {profile.id.slice(-6).toUpperCase()}</p></div>
-            </div>
+            
             <Button type="button" variant="outline" className="w-full" onClick={shareAppLink}><Share2 className="size-4" />Share RJ FM APK link</Button>
             <p className="text-xs text-muted-foreground">Ipadala ang opisyal na link para ma-download o ma-update ng iba ang RJ FM app.</p>
             {profile.creditsEnabled && <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/[0.03] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Available balance</p><p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">{profile.creditsRemaining ?? 0}</p><p className="mt-1 text-[11px] text-muted-foreground">RJ FM credits</p></div>
               <div className="rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/15 to-emerald-400/[0.03] p-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Daily allowance</p><p className="mt-2 text-3xl font-extrabold tabular-nums tracking-tight">{profile.dailyCredits ?? 0}<span className="ml-1 text-sm font-semibold text-muted-foreground">/ {profile.dailyAllowance ?? 0}</span></p><p className="mt-1 text-[11px] text-muted-foreground">Resets every day</p></div>
             </div>}
-            <div className="flex gap-2"><Button type="button" variant={view === 'profile' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('profile')}>Profile</Button><Button type="button" variant={view === 'settings' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('settings')}><Settings className="size-4" />Tools</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
+            <div className="flex gap-2"><Button type="button" variant={view === 'settings' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('settings')}><Settings className="size-4" />Tools</Button>{profile.creditsEnabled && <Button type="button" variant={view === 'usage' ? 'secondary' : 'outline'} className="flex-1" onClick={() => openView('usage')}>Credits usage</Button>}<Button type="button" variant={view === 'permissions' ? 'secondary' : 'outline'} size="icon" aria-label="App permissions" onClick={() => openView('permissions')}><Bell /></Button><Button type="button" variant={view === 'privacy' ? 'secondary' : 'outline'} size="icon" aria-label="Privacy policy" onClick={() => openView('privacy')}><ShieldCheck /></Button></div>
             {view === 'usage' && !profile.creditsEnabled ? <div className="rounded-2xl border border-border p-4 text-sm text-muted-foreground">Credit features are currently unavailable.</div> : view === 'usage' ? <div className="rounded-2xl border p-4"><p className="font-medium">Weekly activity</p><p className="mt-1 text-xs text-muted-foreground">Credits used this week, Monday to Sunday.</p><UsageChart usage={profile.usage ?? []} /><div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="text-xs font-medium">This month</p><div className="mt-2 grid grid-cols-2 gap-2"><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.credits_used ?? 0}</p><p className="text-[11px] text-muted-foreground">credits used</p></div><div><p className="text-xl font-bold tabular-nums">{profile.monthlyUsage?.requests_count ?? 0}</p><p className="text-[11px] text-muted-foreground">song requests</p></div></div></div><p className="mt-3 text-xs text-muted-foreground">Daily credits reset at midnight Philippine time. Extra credits remain available separately.</p></div> : view === 'settings' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
               <div><p className="font-semibold">RJ FM Tools</p><p className="mt-1 text-xs text-muted-foreground">Internet speed test and connection ping diagnostics.</p></div>
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
@@ -263,7 +259,6 @@ export function AccountMenu() {
                 {pingBusy && <p className="mt-2 text-center text-xs text-muted-foreground">{pingSamples.length}/5 checks complete</p>}
                 {pingError && <p className="mt-2 text-xs text-destructive" role="alert">{pingError}</p>}
               </div>
-              <VpnGatePanel />
               <Button type="button" variant="outline" className="w-full" onClick={() => openView('permissions')}><ShieldCheck className="size-4" />App permissions</Button>
             </div> : view === 'permissions' ? <div className="flex flex-col gap-3 rounded-2xl border p-4">
                 <div><p className="font-medium">App permissions</p><p className="mt-1 text-xs text-muted-foreground">Piliin kung aling access ang ibibigay sa RJ FM. Hihingi lang ng pahintulot kapag pinindot mo ang button.</p></div>
