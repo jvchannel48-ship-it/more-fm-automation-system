@@ -114,6 +114,15 @@ export function RadioPlayer() {
 
   const offAir = data?.offAir ?? false
   const live = externalPlaying || (playing && !buffering && !offAir)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    let cancelled = false
+    void import('@/lib/app-permissions').then(({ syncBackgroundAudioNotification }) => {
+      if (!cancelled) return syncBackgroundAudioNotification(live, externalStation?.name ?? `${meta.name} ${meta.frequency}`)
+    }).catch((error) => console.warn('[RJ FM] Background audio notification could not sync', error))
+    return () => { cancelled = true }
+  }, [live, externalStation, meta])
+
   const togglePlay = () => {
     if (externalStation && externalAudioRef.current) {
       if (externalPlaying) { externalAudioRef.current.pause(); setExternalPlaying(false) }
@@ -130,9 +139,18 @@ export function RadioPlayer() {
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
-    navigator.mediaSession.playbackState = playing && !offAir ? 'playing' : 'paused'
-    const playFromMedia = () => { unlock(); setPlaying(true) }
-    const pauseFromMedia = () => setPlaying(false)
+    navigator.mediaSession.playbackState = live ? 'playing' : 'paused'
+    const playFromMedia = () => {
+      if (externalStation && externalAudioRef.current) {
+        void externalAudioRef.current.play().then(() => setExternalPlaying(true)).catch(() => undefined)
+      } else { unlock(); setPlaying(true) }
+    }
+    const pauseFromMedia = () => {
+      if (externalStation && externalAudioRef.current) {
+        externalAudioRef.current.pause()
+        setExternalPlaying(false)
+      } else setPlaying(false)
+    }
     try {
       navigator.mediaSession.setActionHandler('play', playFromMedia)
       navigator.mediaSession.setActionHandler('pause', pauseFromMedia)
@@ -145,7 +163,7 @@ export function RadioPlayer() {
         navigator.mediaSession.setActionHandler('stop', null)
       } catch { /* unsupported action */ }
     }
-  }, [playing, offAir, unlock])
+  }, [playing, offAir, unlock, live, externalStation])
 
   useEffect(() => {
     document.title = `${meta.name} ${meta.frequency} — Live Radio`
