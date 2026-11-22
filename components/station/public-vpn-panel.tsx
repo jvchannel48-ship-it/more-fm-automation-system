@@ -136,7 +136,7 @@ export function PublicVpnPanel() {
       {updatedAt && <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground"><Globe2 className="size-3" /> Directory checked {new Date(updatedAt).toLocaleTimeString()}</p>}
 
       <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
-        Public volunteer servers can be unstable and may log activity. Downloading a profile does not connect the VPN automatically; import the .ovpn file into OpenVPN Connect and connect there. This uses regular mobile data and is not a no-load service. Do not use public relays for banking or sensitive accounts.
+        Public volunteer servers can be unstable and may log activity. Their operators control the bandwidth, so MSIC cannot enforce the 900 Kbps per-user limit on these profiles. The 900 Kbps cap applies only after an MSIC-managed OpenVPN server has been configured with the GCP traffic-shaping hook. Downloading a profile does not connect the VPN automatically; import the .ovpn file into OpenVPN Connect. This uses regular mobile data and is not a carrier no-load service. Avoid public relays for banking or sensitive accounts.
       </p>
     </section>
   )
