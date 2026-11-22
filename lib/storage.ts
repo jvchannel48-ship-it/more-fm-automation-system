@@ -14,6 +14,8 @@ const DEFAULT_SUPABASE_KEY = 'sb_publishable_-px7dTEhuIAEx2VakAjWNg_sM3YrjDH'
 let retryBlobAfter = 0
 let warnedAboutFallback = false
 let blobOperational: boolean | null = null
+let supabaseBucketUnavailable = false
+let warnedAboutMissingSupabaseBucket = false
 
 function supabaseUrl() {
   return (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim().replace(/\/$/, '')
@@ -31,7 +33,24 @@ function supabaseKey() {
 }
 
 function hasSupabaseCredentials() {
-  return Boolean(supabaseUrl() && supabaseKey())
+  return !supabaseBucketUnavailable && Boolean(supabaseUrl() && supabaseKey())
+}
+
+function isMissingSupabaseBucket(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return /NoSuchBucket|Bucket not found/i.test(message)
+}
+
+function logStorageFailure(action: 'read' | 'write', pathname: string, error: unknown) {
+  if (isMissingSupabaseBucket(error)) {
+    supabaseBucketUnavailable = true
+    if (!warnedAboutMissingSupabaseBucket) {
+      warnedAboutMissingSupabaseBucket = true
+      console.warn('[morefm] Supabase Storage bucket is missing; switching to configured Vercel Blob or process-memory fallback')
+    }
+    return
+  }
+  console.error(`[morefm] blob ${action} failed`, pathname, error instanceof Error ? error.message : error)
 }
 
 function hasVercelBlobCredentials() {
@@ -143,7 +162,7 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
     blobOperational = true
     return data
   } catch (error) {
-    console.error('[morefm] blob read failed', pathname, error instanceof Error ? error.message : error)
+    logStorageFailure('read', pathname, error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
     blobOperational = false
     warnMemoryFallback()
@@ -180,7 +199,7 @@ export async function writeJson(pathname: string, data: unknown) {
     blobOperational = true
     return true
   } catch (error) {
-    console.error('[morefm] blob write failed', pathname, error instanceof Error ? error.message : error)
+    logStorageFailure('write', pathname, error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
     blobOperational = false
     warnMemoryFallback()
