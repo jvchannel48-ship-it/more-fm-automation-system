@@ -202,7 +202,7 @@ export function RadioPlayer() {
         {buffering && playing && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Buffering…</p>}
         {error && !data && <p className="text-sm text-destructive" role="alert">Could not connect to the station. Retrying…</p>}
         {(playbackIssue || recoveryIssue) && <p className="text-xs text-amber-200/90">{recoveryIssue || playbackIssue}</p>}
-        {offAir && (
+        {offAir && !externalStation && (
           <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <Moon className="size-4" /> Off air{onAirAgain ? ` · back at ${onAirAgain}` : ''}
           </p>
@@ -218,7 +218,7 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-1">
         <p className="text-sm font-medium">
-          {meta.name} <span className="text-primary">{meta.frequency}</span>
+          {externalStation ? externalStation.name : <>{meta.name} <span className="text-primary">{meta.frequency}</span></>}
         </p>
       </div>
 
