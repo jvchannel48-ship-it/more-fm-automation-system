@@ -87,9 +87,18 @@ jobs:
           additions = '''    <uses-permission android:name="android.permission.RECORD_AUDIO" />
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
               <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
               <uses-feature android:name="android.hardware.microphone" android:required="false" />
           '''
           s = s.replace('<application', additions + '\n    <application', 1)
+          service = '''        <service
+                  android:name=".BackgroundAudioService"
+                  android:exported="false"
+                  android:foregroundServiceType="mediaPlayback" />
+          '''
+          s = s.replace('</application>', service + '\n    </application>', 1)
           p.write_text(s)
           PY
           python3 - <<'PY'
@@ -134,6 +143,125 @@ jobs:
             }
           }
           JAVA
+          cat > android/app/src/main/java/com/rjfm/app/BackgroundAudioPlugin.java <<'JAVA'
+          package com.rjfm.app;
+
+          import android.content.Intent;
+          import android.os.Build;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "BackgroundAudio")
+          public class BackgroundAudioPlugin extends Plugin {
+            @PluginMethod
+            public void start(PluginCall call) {
+              String station = call.getString("station", "RJ FM Live Radio");
+              Intent intent = new Intent(getContext(), BackgroundAudioService.class);
+              intent.setAction(BackgroundAudioService.ACTION_START);
+              intent.putExtra(BackgroundAudioService.EXTRA_STATION, station);
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) getContext().startForegroundService(intent);
+              else getContext().startService(intent);
+              call.resolve();
+            }
+
+            @PluginMethod
+            public void stop(PluginCall call) {
+              Intent intent = new Intent(getContext(), BackgroundAudioService.class);
+              intent.setAction(BackgroundAudioService.ACTION_STOP);
+              getContext().startService(intent);
+              call.resolve();
+            }
+          }
+          JAVA
+          cat > android/app/src/main/java/com/rjfm/app/BackgroundAudioService.java <<'JAVA'
+          package com.rjfm.app;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.Service;
+          import android.content.Intent;
+          import android.content.pm.ServiceInfo;
+          import android.os.Build;
+          import android.os.IBinder;
+          import android.os.PowerManager;
+
+          public class BackgroundAudioService extends Service {
+            public static final String ACTION_START = "com.rjfm.app.action.START_BACKGROUND_AUDIO";
+            public static final String ACTION_STOP = "com.rjfm.app.action.STOP_BACKGROUND_AUDIO";
+            public static final String EXTRA_STATION = "station";
+            private static final String CHANNEL_ID = "rjfm_background_audio";
+            private static final int NOTIFICATION_ID = 935;
+            private PowerManager.WakeLock wakeLock;
+            private String station = "RJ FM Live Radio";
+
+            @Override public void onCreate() {
+              super.onCreate();
+              NotificationManager manager = getSystemService(NotificationManager.class);
+              if (manager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "RJ FM playback", NotificationManager.IMPORTANCE_LOW);
+                channel.setDescription("Shows when RJ FM is playing in the background.");
+                manager.createNotificationChannel(channel);
+              }
+            }
+
+            @Override public int onStartCommand(Intent intent, int flags, int startId) {
+              if (intent != null && ACTION_STOP.equals(intent.getAction())) {
+                stopForeground(true);
+                releaseWakeLock();
+                stopSelf();
+                return START_NOT_STICKY;
+              }
+              if (intent != null) station = intent.getStringExtra(EXTRA_STATION) == null ? station : intent.getStringExtra(EXTRA_STATION);
+              PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
+              if (power != null && (wakeLock == null || !wakeLock.isHeld())) {
+                wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RJFM:BackgroundAudio");
+                wakeLock.acquire(12 * 60 * 60 * 1000L);
+              }
+              Notification notification = buildNotification();
+              if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+              else startForeground(NOTIFICATION_ID, notification);
+              return START_STICKY;
+            }
+
+            private Notification buildNotification() {
+              Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
+              PendingIntent content = launch == null ? null : PendingIntent.getActivity(this, 1, launch,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+              Intent stop = new Intent(this, BackgroundAudioService.class);
+              stop.setAction(ACTION_STOP);
+              PendingIntent stopAction = PendingIntent.getService(this, 2, stop,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+              Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
+              builder.setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle(station)
+                .setContentText("RJ FM is playing · Tap to return to the radio")
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .addAction(new Notification.Action.Builder(android.R.drawable.ic_media_pause, "Stop", stopAction).build());
+              if (content != null) builder.setContentIntent(content);
+              if (Build.VERSION.SDK_INT >= 21) builder.setCategory(Notification.CATEGORY_TRANSPORT);
+              return builder.build();
+            }
+
+            private void releaseWakeLock() {
+              if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+              wakeLock = null;
+            }
+
+            @Override public void onDestroy() {
+              releaseWakeLock();
+              super.onDestroy();
+            }
+
+            @Override public IBinder onBind(Intent intent) { return null; }
+          }
+          JAVA
           cat > android/app/src/main/java/com/rjfm/app/MainActivity.java <<'JAVA'
           package com.rjfm.app;
 
@@ -144,6 +272,7 @@ jobs:
             @Override
             public void onCreate(Bundle savedInstanceState) {
               registerPlugin(BatteryOptimizationPlugin.class);
+              registerPlugin(BackgroundAudioPlugin.class);
               super.onCreate(savedInstanceState);
               // Permission prompts are shown from the RJ FM profile permissions page, not at launch.
             }
