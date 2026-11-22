@@ -102,7 +102,6 @@ export function useBroadcast(
   }, [data?.offAir, playing, stationId, volume])
 
   const unlock = useCallback(() => {
-    if (slots.current.length > 0) return
     let context = audioContext.current
     if (!context) {
       try {
@@ -112,71 +111,104 @@ export function useBroadcast(
         context = null
       }
     }
+    // Resume on every explicit Play tap. Mobile browsers can suspend Web Audio
+    // after backgrounding; returning early when slots already existed left it silent.
     if (context?.state === 'suspended') void context.resume().catch(() => undefined)
-    slots.current = Array.from({ length: 6 }, () => {
-      const el = new Audio()
-      el.preload = 'auto'
-      // Remove only this device's temporary offline copy after the track finishes.
-      // The original MP3 and the server playlist are never modified.
-      el.addEventListener('ended', () => {
-        const playedUrl = el.currentSrc || el.src
-        if (el.dataset.rjfmAutoDelete === 'true' && playedUrl && 'serviceWorker' in navigator) {
-          const message = { type: 'RJFM_PURGE_PLAYED_AUDIO', url: playedUrl }
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage(message)
-          } else {
-            void navigator.serviceWorker.ready.then((registration) => registration.active?.postMessage(message)).catch(() => undefined)
+
+    if (slots.current.length === 0) {
+      slots.current = Array.from({ length: 6 }, () => {
+        const el = new Audio()
+        el.preload = 'auto'
+        // Remove only this device's temporary offline copy after the track finishes.
+        // The original MP3 and the server playlist are never modified.
+        el.addEventListener('ended', () => {
+          const playedUrl = el.currentSrc || el.src
+          if (el.dataset.rjfmAutoDelete === 'true' && playedUrl && 'serviceWorker' in navigator) {
+            const message = { type: 'RJFM_PURGE_PLAYED_AUDIO', url: playedUrl }
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage(message)
+            } else {
+              void navigator.serviceWorker.ready.then((registration) => registration.active?.postMessage(message)).catch(() => undefined)
+            }
+          }
+        })
+        el.setAttribute('playsinline', '')
+        el.setAttribute('webkit-playsinline', '')
+        let bassHighPass: BiquadFilterNode | null = null
+        let bassFilter: BiquadFilterNode | null = null
+        let bassHeadroom: GainNode | null = null
+        if (context) {
+          let source: MediaElementAudioSourceNode | null = null
+          try {
+            source = context.createMediaElementSource(el)
+            bassHeadroom = context.createGain()
+            bassHeadroom.gain.value = bassHeadroomFor(bassDb.current)
+            bassHighPass = context.createBiquadFilter()
+            bassHighPass.type = 'highpass'
+            bassHighPass.frequency.value = 35
+            bassHighPass.Q.value = 0.7
+            bassFilter = context.createBiquadFilter()
+            bassFilter.type = 'lowshelf'
+            bassFilter.frequency.value = 90
+            bassFilter.gain.value = bassDb.current
+            const limiter = context.createDynamicsCompressor()
+            limiter.threshold.value = -10
+            limiter.knee.value = 24
+            limiter.ratio.value = 3
+            limiter.attack.value = 0.01
+            limiter.release.value = 0.25
+            source.connect(bassHighPass).connect(bassHeadroom).connect(bassFilter).connect(limiter).connect(context.destination)
+          } catch {
+            // If a device rejects part of the effects chain, keep the media audible.
+            try { source?.connect(context.destination) } catch { /* already connected or unavailable */ }
+            bassHighPass = null
+            bassFilter = null
+            bassHeadroom = null
           }
         }
-      })
-      el.setAttribute('playsinline', '')
-      el.setAttribute('webkit-playsinline', '')
-      let bassHighPass: BiquadFilterNode | null = null
-      let bassFilter: BiquadFilterNode | null = null
-      let bassHeadroom: GainNode | null = null
-      if (context) {
-        try {
-          const source = context.createMediaElementSource(el)
-          bassHeadroom = context.createGain()
-          bassHeadroom.gain.value = bassHeadroomFor(bassDb.current)
-          bassHighPass = context.createBiquadFilter()
-          bassHighPass.type = 'highpass'
-          bassHighPass.frequency.value = 35
-          bassHighPass.Q.value = 0.7
-          bassFilter = context.createBiquadFilter()
-          bassFilter.type = 'lowshelf'
-          bassFilter.frequency.value = 90
-          bassFilter.gain.value = bassDb.current
-          const limiter = context.createDynamicsCompressor()
-          limiter.threshold.value = -10
-          limiter.knee.value = 24
-          limiter.ratio.value = 3
-          limiter.attack.value = 0.01
-          limiter.release.value = 0.25
-          source.connect(bassHighPass).connect(bassHeadroom).connect(bassFilter).connect(limiter).connect(context.destination)
-        } catch {
-          bassHighPass = null
-          bassFilter = null
-          bassHeadroom = null
+        el.src = SILENT_WAV
+        void el.play().catch(() => undefined)
+        return {
+          el,
+          uid: null,
+          src: null,
+          synced: false,
+          bassHighPass,
+          bassFilter,
+          bassHeadroom,
+          activeWaitSince: null,
+          lastRetryAt: 0,
+          lastPlayAttemptAt: 0,
+          retryAttempts: 0,
         }
+      })
+    }
+
+    // Start the currently scheduled track inside the user's tap gesture rather
+    // than waiting for the 250 ms scheduler tick (which mobile autoplay policies
+    // may reject after the gesture has ended). The scheduler takes over afterward.
+    const now = data?.serverTime ?? Date.now()
+    const activeTracks = (data?.tracks ?? []).filter(
+      (track) => now >= track.startAt && now < track.startAt + track.duration * 1000,
+    )
+    for (const track of activeTracks) {
+      let slot = slots.current.find((candidate) => candidate.uid === track.uid)
+      if (!slot) slot = slots.current.find((candidate) => candidate.uid === null)
+      if (!slot) continue
+      if (slot.uid !== track.uid || slot.src !== track.src) {
+        slot.uid = track.uid
+        slot.src = track.src
+        slot.synced = false
+        slot.activeWaitSince = now
+        slot.lastRetryAt = 0
+        slot.lastPlayAttemptAt = 0
+        slot.retryAttempts = 0
+        slot.el.src = track.src
+        slot.el.load()
       }
-      el.src = SILENT_WAV
-      el.play().catch(() => undefined)
-      return {
-        el,
-        uid: null,
-        src: null,
-        synced: false,
-        bassHighPass,
-        bassFilter,
-        bassHeadroom,
-        activeWaitSince: null,
-        lastRetryAt: 0,
-        lastPlayAttemptAt: 0,
-        retryAttempts: 0,
-      }
-    })
-  }, [])
+      void slot.el.play().catch(() => undefined)
+    }
+  }, [data])
 
   useEffect(() => {
     const tick = () => {
