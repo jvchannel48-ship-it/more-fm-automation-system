@@ -4,7 +4,6 @@ import { StationSelector } from '@/components/station/station-selector'
 import { StationShell } from '@/components/station/station-shell'
 import { AccountMenu } from '@/components/station/account-menu'
 import { BottomNavigation } from '@/components/station/bottom-navigation'
-import { VpnPanel } from '@/components/station/vpn-panel'
 
 export default function Home() {
   return (
@@ -21,7 +20,6 @@ export default function Home() {
         <RadioPlayer />
       </main>
       <AccountMenu />
-      <VpnPanel />
       <BottomNavigation />
     </StationShell>
   )
