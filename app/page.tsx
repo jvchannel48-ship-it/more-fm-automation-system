@@ -17,10 +17,6 @@ export default function Home() {
         <h1 className="sr-only">Live radio player</h1>
         <RadioPlayer />
       </main>
-      <div className="mx-auto w-full max-w-3xl px-4 pb-32">
-        <RadioBrowser />
-      </div>
-      <PhRadioMedia />
       <AccountMenu />
       <BottomNavigation />
     </StationShell>
