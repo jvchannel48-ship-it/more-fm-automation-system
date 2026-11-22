@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { getStoredStation } from './station-selector'
 import { AppUpdateGate } from './app-update-gate'
+import { NativeWelcomeSplash } from './native-welcome-splash'
 
 /** Applies station name + background theme (main vs Cebu). */
 export function StationShell({ children }: { children: ReactNode }) {
@@ -29,6 +30,7 @@ export function StationShell({ children }: { children: ReactNode }) {
       />
       {children}
       <AppUpdateGate />
+      <NativeWelcomeSplash />
     </div>
   )
 }
