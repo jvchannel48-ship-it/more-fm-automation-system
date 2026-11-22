@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { Download, Loader2, Moon, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Download, Loader2, Moon, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { Capacitor } from '@capacitor/core'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -246,22 +246,6 @@ export function RadioPlayer() {
         </div>
         <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
           <span className="size-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_12px_rgba(248,113,113,.9)]" aria-hidden="true" /> LIVE
-        </div>
-      </div>
-
-      <div className={`player-artwork relative flex aspect-square w-full max-w-[19rem] items-center justify-center overflow-hidden rounded-[2rem] ${live ? 'is-playing' : ''}`}>
-        <div className="listener-avatar" aria-label="3D character wearing headphones and listening to music" role="img">
-          <span className="avatar-note avatar-note-one">♪</span><span className="avatar-note avatar-note-two">♫</span><span className="avatar-note avatar-note-three">♪</span>
-          <span className="avatar-shadow" />
-          <span className="avatar-leg avatar-leg-left" /><span className="avatar-leg avatar-leg-right" />
-          <span className="avatar-shoe avatar-shoe-left" /><span className="avatar-shoe avatar-shoe-right" />
-          <span className="avatar-body"><i className="avatar-arm avatar-arm-left" /><i className="avatar-arm avatar-arm-right" /></span>
-          <span className="avatar-neck" /><span className="avatar-head"><i className="avatar-hair" /><i className="avatar-earcup avatar-earcup-left" /><i className="avatar-earcup avatar-earcup-right" /><i className="avatar-headband" /><i className="avatar-eye avatar-eye-left" /><i className="avatar-eye avatar-eye-right" /><i className="avatar-smile" /></span>
-        </div>
-        <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
-        <div className="player-artwork-mark">
-          <img src={`/station-logos/${station}.svg`} alt={`RJ FM ${meta.city} ${meta.frequency}`} className="player-station-logo" />
-          <small>{meta.city} · {meta.frequency}</small>
         </div>
       </div>
 
