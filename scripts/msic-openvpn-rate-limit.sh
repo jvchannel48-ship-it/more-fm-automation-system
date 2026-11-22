@@ -49,7 +49,7 @@ init() {
   tc filter replace dev "$TUN_DEV" parent ffff: protocol ip pref 1 u32 match u32 0 0 action mirred egress redirect dev "$IFB_DEV"
   tc qdisc replace dev "$IFB_DEV" root handle 1: htb default 999
   tc class replace dev "$IFB_DEV" parent 1: classid 1:1 htb rate 1gbit ceil 1gbit
-  tc class replace dev "$IFB_DEV" parent 1:1 classid 1:999 htb rate 1gbit ceil 1gbit
+  tc class replace dev "$IFB_DEV" parent 1:1 classid 1:999 htb rate 900kbit ceil 900kbit
   log "Shaping initialized on $TUN_DEV/$IFB_DEV; per-client rate is $RATE each way."
 }
 
