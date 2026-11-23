@@ -43,11 +43,22 @@ export function RadioPlayer() {
       if (next) setStation(next)
     }
     window.addEventListener('morefm:station-change', onStationChange)
+    const onDiscoverSelect = (event: Event) => {
+      const next = (event as CustomEvent<StationId>).detail
+      if (!next) return
+      setStation(next)
+      setExternalStation(null)
+      setExternalPlaying(false)
+      unlock()
+      setPlaying(true)
+    }
+    window.addEventListener('morefm:select-station', onDiscoverSelect)
     const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
     window.addEventListener('morefm-player-preferences', update)
     return () => {
       window.removeEventListener('morefm-player-preferences', update)
       window.removeEventListener('morefm:station-change', onStationChange)
+      window.removeEventListener('morefm:select-station', onDiscoverSelect)
     }
   }, [])
 
@@ -228,7 +239,7 @@ export function RadioPlayer() {
             onPlay={() => setStationVideoPlaying(true)}
             onPause={() => setStationVideoPlaying(false)}
           />
-          {!stationVideoPlaying && (
+          {!playing && !stationVideoPlaying && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
           {!stationVideoPlaying && (
@@ -237,7 +248,7 @@ export function RadioPlayer() {
               size="icon"
               onClick={toggleStationVideo}
               aria-label={`Play ${meta.name}`}
-              className="absolute left-1/2 top-1/2 z-10 size-[4.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 [&_svg]:size-8"
+              className="radio-play-overlay size-[4.5rem] rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 [&_svg]:size-8"
             >
               <Play className="translate-x-0.5" />
             </Button>
