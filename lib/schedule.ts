@@ -291,7 +291,7 @@ const PINOY_LOVE = artists('tagalog', [
   'mrld|mrld',
   'Sunkissed Lola|sunkissed lola',
   'Syd Hartha|syd hartha',
-  ' jikamarie|jikamarie',
+  'Jikamarie|jikamarie',
   'Paolo Sandejas|paolo sandejas',
   ' jikamarie|jikamarie',
   'The Juans|the juans',
