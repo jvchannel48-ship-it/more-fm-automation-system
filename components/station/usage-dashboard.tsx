@@ -177,7 +177,7 @@ export function UsageDashboard() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-32 pt-4">
-      <section className="relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[linear-gradient(145deg,#102c45_0%,#101c32_52%,#211632_100%)] p-5 shadow-[0_24px_70px_rgba(0,0,0,.38)] sm:p-6">
+      <section className="relative overflow-hidden rounded-[2rem] border border-cyan-200/25 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,.16),transparent_32%),radial-gradient(circle_at_100%_100%,rgba(139,92,246,.14),transparent_34%),linear-gradient(145deg,#102c45_0%,#101c32_52%,#211632_100%)] p-5 shadow-[0_28px_80px_rgba(0,0,0,.42)] sm:p-6">
         <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -191,12 +191,12 @@ export function UsageDashboard() {
           <span className="flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200"><span className="size-1.5 rounded-full bg-emerald-300" /> On this phone</span>
         </div>
 
-        <div className="relative mt-6 rounded-3xl border border-cyan-200/15 bg-[#061321]/65 p-5 shadow-inner">
+        <div className="relative mt-6 overflow-hidden rounded-3xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(8,25,42,.96),rgba(12,18,36,.9))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.05),0_12px_30px_rgba(0,0,0,.18)]">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-slate-300">TOTAL DATA USED</p>
             <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">LISTENING ESTIMATE</span>
           </div>
-          <p className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">{fmt(usage.totalBytes)}</p>
+          <p className="mt-2 text-4xl font-black tracking-[-.04em] text-white drop-shadow-[0_4px_18px_rgba(34,211,238,.16)] sm:text-5xl">{fmt(usage.totalBytes)}</p>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-400"><Headphones className="size-4 text-cyan-300" /> RJ FM listening estimate</div>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400" style={{ width: usage.totalBytes ? '100%' : '0%' }} /></div>
         </div>
@@ -212,7 +212,7 @@ export function UsageDashboard() {
           </div>
         </div>
 
-        <div className="relative mt-5 rounded-2xl border border-white/10 bg-[#071321]/65 p-4">
+        <div className="relative mt-5 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0a1c2d]/90 to-[#11172b]/90 p-4 shadow-inner">
           <div className="mb-4 flex items-center justify-between">
             <div><h2 className="text-sm font-bold text-white">Last 7 days</h2><p className="mt-0.5 text-[11px] text-slate-400">Daily listening data</p></div>
             <span className="text-[10px] font-semibold text-cyan-200">MB / KB</span>
@@ -232,7 +232,7 @@ export function UsageDashboard() {
         </div>
       </section>
 
-      <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-cyan-300/25 bg-[radial-gradient(circle_at_90%_0%,rgba(34,211,238,.16),transparent_38%),linear-gradient(145deg,#0b253b_0%,#101b30_58%,#171b35_100%)] p-5 shadow-[0_24px_65px_rgba(0,0,0,.36)] sm:p-6">
+      <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-cyan-200/25 bg-[radial-gradient(circle_at_100%_0%,rgba(34,211,238,.19),transparent_35%),radial-gradient(circle_at_0%_100%,rgba(129,140,248,.12),transparent_35%),linear-gradient(145deg,#0b253b_0%,#101b30_58%,#171b35_100%)] p-5 shadow-[0_28px_75px_rgba(0,0,0,.4)] sm:p-6">
         <div className="pointer-events-none absolute -right-14 -top-16 size-56 rounded-full bg-blue-400/10 blur-3xl" />
         <div className="relative flex items-center gap-3">
           <span className="flex size-11 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-200"><Gauge className="size-5" /></span>
@@ -245,11 +245,11 @@ export function UsageDashboard() {
         </div>
 
         <div className="relative mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-cyan-200/15 bg-[#061321]/75 p-4">
+          <div className="rounded-2xl border border-cyan-200/20 bg-gradient-to-br from-[#061321]/90 to-[#0c1d31]/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
             <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300"><Download className="size-4 text-cyan-300" /> Download</div>
             <p className="mt-2 text-3xl font-black text-white">{mbps(speedResult?.download ?? null)} <span className="text-xs font-bold text-slate-400">Mbps</span></p>
           </div>
-          <div className="rounded-2xl border border-violet-200/15 bg-[#061321]/75 p-4">
+          <div className="rounded-2xl border border-violet-200/20 bg-gradient-to-br from-[#061321]/90 to-[#15152e]/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
             <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300"><Upload className="size-4 text-violet-300" /> Upload</div>
             <p className="mt-2 text-3xl font-black text-white">{mbps(speedResult?.upload ?? null)} <span className="text-xs font-bold text-slate-400">Mbps</span></p>
           </div>
@@ -279,7 +279,7 @@ export function UsageDashboard() {
             {speedStatus === 'running' ? <><X className="size-4" /> Stop test</> : speedResult ? <><RefreshCw className="size-4" /> Test again</> : <><Play className="size-4" /> Start speed test</>}
           </button>
         </div>
-        <p className="relative mt-3 text-[10px] leading-relaxed text-slate-400"></p>
+        
       </section>
 
       {resetOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
