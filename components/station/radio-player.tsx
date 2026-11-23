@@ -93,6 +93,18 @@ export function RadioPlayer() {
         setExternalStation({ name: 'DZMM', url_resolved: 'https://us1.amfmph.com:8852/live' })
         audio.src = 'https://us1.amfmph.com:8852/live'
         void audio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
+        void fetch('/api/dzmm-stream', { cache: 'no-store' }).then(async (response) => {
+          if (!response.ok) return null
+          return response.json() as Promise<{ name?: string; url?: string }>
+        }).then((result) => {
+          if (!result?.url || !externalAudioRef.current || !result.url.startsWith('http')) return
+          const currentAudio = externalAudioRef.current
+          if (currentAudio.src !== result.url) {
+            currentAudio.src = result.url
+            void currentAudio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
+          }
+          if (result.name) setExternalStation({ name: result.name, url_resolved: result.url })
+        }).catch(() => undefined)
       } else if (externalStation?.name === 'DZMM') {
         audio.pause()
         setExternalStation(null)
