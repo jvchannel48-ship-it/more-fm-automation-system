@@ -35,7 +35,7 @@ export function RadioPlayer() {
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const [philippineTime, setPhilippineTime] = useState(() => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
   const [philippineWeekday, setPhilippineWeekday] = useState(() => new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(new Date()))
-  const isDearMorStation = station === 'main' || station === 'cebu' || station === 'naga'
+  const isDearMorStation = station === 'cebu'
   const isDearMorDay = philippineWeekday !== 'Sun'
   const dearMorBlocktime = isDearMorStation && isDearMorDay && ((philippineTime >= '13:00' && philippineTime < '15:00') || (philippineTime >= '20:00' && philippineTime < '22:00'))
   const listenerId = useRef<string | null>(null)
