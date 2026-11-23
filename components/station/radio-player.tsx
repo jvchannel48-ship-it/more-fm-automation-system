@@ -33,8 +33,18 @@ export function RadioPlayer() {
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
+  const [philippineTime, setPhilippineTime] = useState(() => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
+  const isDearMorStation = station === 'main' || station === 'cebu' || station === 'naga'
+  const dearMorBlocktime = isDearMorStation && ((philippineTime >= '13:00' && philippineTime < '15:00') || (philippineTime >= '20:00' && philippineTime < '22:00'))
   const listenerId = useRef<string | null>(null)
   const unlockAction = useRef<() => void>(() => undefined)
+
+  useEffect(() => {
+    const updatePhilippineTime = () => setPhilippineTime(new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
+    updatePhilippineTime()
+    const timer = window.setInterval(updatePhilippineTime, 15_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     setStation(getStoredStation())
@@ -106,6 +116,14 @@ export function RadioPlayer() {
       })
   }, [mutate, station])
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
+  useEffect(() => {
+    if (!dearMorBlocktime) return
+    setPlaying(false)
+    setExternalPlaying(false)
+    externalAudioRef.current?.pause()
+    stationVideoRef.current?.pause()
+    setStationVideoPlaying(false)
+  }, [dearMorBlocktime])
   unlockAction.current = unlock
 
   useEffect(() => {
@@ -229,22 +247,33 @@ export function RadioPlayer() {
 
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
         <div className="relative aspect-video w-full overflow-hidden bg-[#17191f]">
-          <video
-            ref={stationVideoRef}
-            className="absolute inset-0 block h-full w-full object-cover"
-            src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-label={`${meta.name} video player`}
-            onPlay={() => setStationVideoPlaying(true)}
-            onPause={() => setStationVideoPlaying(false)}
-          />
+          {dearMorBlocktime ? (
+            <iframe
+              className="absolute inset-0 h-full w-full"
+              src="https://www.youtube-nocookie.com/embed/Fv0aKay72ss?autoplay=1&playsinline=1&rel=0"
+              title="Dear MOR Marathon: Stories of Love — MOR Entertainment"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          ) : (
+            <video
+              ref={stationVideoRef}
+              className="absolute inset-0 block h-full w-full object-cover"
+              src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label={`${meta.name} video player`}
+              onPlay={() => setStationVideoPlaying(true)}
+              onPause={() => setStationVideoPlaying(false)}
+            />
+          )}
           {!playing && !stationVideoPlaying && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
-          {!stationVideoPlaying && (
+          {!dearMorBlocktime && !stationVideoPlaying && (
             <button
               type="button"
               onClick={toggleStationVideo}
@@ -261,6 +290,7 @@ export function RadioPlayer() {
       </div>
 
       <div className="flex flex-col items-center gap-1">
+        {dearMorBlocktime && <p className="rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-200">Dear MOR Blocktime · Daily</p>}
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
         </p>
