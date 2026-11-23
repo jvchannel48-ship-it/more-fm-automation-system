@@ -34,6 +34,7 @@ export function RadioPlayer() {
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const listenerId = useRef<string | null>(null)
+  const unlockAction = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     setStation(getStoredStation())
@@ -49,7 +50,7 @@ export function RadioPlayer() {
       setStation(next)
       setExternalStation(null)
       setExternalPlaying(false)
-      unlock()
+      unlockAction.current()
       setPlaying(true)
     }
     window.addEventListener('morefm:select-station', onDiscoverSelect)
@@ -105,6 +106,7 @@ export function RadioPlayer() {
       })
   }, [mutate, station])
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
+  unlockAction.current = unlock
 
   useEffect(() => {
     if (!playing || data?.offAir) return
