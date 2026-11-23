@@ -127,20 +127,22 @@ export function RadioPlayer() {
 
   const toggleStationVideo = () => {
     const video = stationVideoRef.current
-    if (!video) return
-    if (video.paused) {
-      // Start the visual video muted and the RJ FM broadcast audio from the same user tap.
-      video.muted = true
-      video.currentTime = 0
-      void video.play().then(() => {
-        setStationVideoPlaying(true)
-        unlock()
-        setPlaying(true)
-      }).catch(() => setStationVideoPlaying(false))
-    } else {
-      video.pause()
+    if (stationVideoPlaying || (video && !video.paused)) {
+      video?.pause()
       setStationVideoPlaying(false)
       setPlaying(false)
+      return
+    }
+    // Start RJ FM audio directly from the tap; a video decode/autoplay issue
+    // must never disable the main Play button or prevent radio audio.
+    unlock()
+    setPlaying(true)
+    if (video) {
+      video.muted = true
+      try { video.currentTime = 0 } catch { /* wait for metadata */ }
+      void video.play()
+        .then(() => setStationVideoPlaying(true))
+        .catch(() => setStationVideoPlaying(false))
     }
   }
   const onAirAgain = data?.nextOnAir
