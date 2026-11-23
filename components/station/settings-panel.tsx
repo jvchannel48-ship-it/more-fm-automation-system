@@ -7,7 +7,6 @@ import { readCustomPlayerHtml, saveCustomPlayerHtml, removeCustomPlayerHtml } fr
 import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, savePlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
-const CUSTOM_PLAYER_KEY = 'rjfm_custom_player_html_v1'
 const MAX_CUSTOM_HTML = 6 * 1024 * 1024
 
 type WakeLockLike = { released: boolean; release: () => Promise<void>; addEventListener?: (type: 'release', listener: () => void) => void }
