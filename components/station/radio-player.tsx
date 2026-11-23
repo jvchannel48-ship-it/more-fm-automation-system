@@ -31,12 +31,14 @@ export function RadioPlayer() {
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
+  const [customPlayerHtml, setCustomPlayerHtml] = useState('')
   const listenerId = useRef<string | null>(null)
   const unlockAction = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     setStation(getStoredStation())
     setPlayerPreferences(readPlayerPreferences())
+    try { setCustomPlayerHtml(window.localStorage.getItem('rjfm_custom_player_html_v1') || '') } catch { setCustomPlayerHtml('') }
     const onStationChange = (event: Event) => {
       const next = (event as CustomEvent<StationId>).detail
       if (next) setStation(next)
@@ -54,8 +56,11 @@ export function RadioPlayer() {
     window.addEventListener('morefm:select-station', onDiscoverSelect)
     const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
     window.addEventListener('morefm-player-preferences', update)
+    const onCustomPlayerChange = (event: Event) => setCustomPlayerHtml((event as CustomEvent<string>).detail || '')
+    window.addEventListener('rjfm:custom-player-change', onCustomPlayerChange)
     return () => {
       window.removeEventListener('morefm-player-preferences', update)
+      window.removeEventListener('rjfm:custom-player-change', onCustomPlayerChange)
       window.removeEventListener('morefm:station-change', onStationChange)
       window.removeEventListener('morefm:select-station', onDiscoverSelect)
     }
@@ -230,35 +235,45 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
-        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#26364b_0%,#111923_48%,#080b10_100%)]">
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <div className="flex size-28 items-center justify-center rounded-full border-[5px] border-amber-300/90 bg-[radial-gradient(circle_at_35%_25%,#fff4c2_0%,#d99a32_28%,#761d25_68%,#26090c_100%)] p-1 shadow-[0_0_0_5px_rgba(255,255,255,.12),0_0_38px_rgba(245,158,11,.28)] sm:size-36">
-              <div className="flex size-full flex-col items-center justify-center rounded-full border border-amber-100/70 bg-black/25 text-center">
-                <span className="text-[9px] font-black tracking-[.34em] text-amber-100 sm:text-[10px]">YOUR STATION</span>
-                <span className="mt-1 text-2xl font-black italic tracking-tight text-white drop-shadow sm:text-3xl">RJ FM</span>
-                <span className="mt-0.5 max-w-[95px] truncate text-[9px] font-extrabold uppercase tracking-[.16em] text-amber-100 sm:max-w-[120px] sm:text-[10px]">{meta.city}</span>
+      {customPlayerHtml ? (
+        <iframe title="RJ FM custom speaker player" srcDoc={customPlayerHtml} sandbox="allow-scripts" referrerPolicy="no-referrer" className="aspect-video w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-black shadow-2xl" />
+      ) : playerPreferences.playerStyle === 'speakers' ? (
+        <div className="relative flex aspect-[16/9] w-full max-w-2xl items-center justify-center gap-5 overflow-hidden rounded-[1.6rem] border border-white/15 bg-[radial-gradient(ellipse_at_center,#26364b_0%,#101923_55%,#05080d_100%)] px-4 shadow-2xl sm:gap-10" style={{ ['--speaker-light' as string]: playerPreferences.speakerLight }}>
+          {[0, 1].map((speaker) => (
+            <div key={speaker} className={'relative z-10 flex aspect-square w-[42%] max-w-[220px] items-center justify-center rounded-full border-[5px] border-slate-500/80 bg-[radial-gradient(circle_at_35%_25%,#687386_0%,#252d3a_22%,#080b12_70%)] p-[5%] shadow-[inset_0_0_22px_rgba(255,255,255,.18),0_15px_28px_rgba(0,0,0,.7)] ' + (live ? 'rj-speaker-live' : '')}>
+              <div className="absolute inset-[5%] rounded-full border border-white/20 bg-[repeating-radial-gradient(circle,#252b36_0_3px,#111722_4px_7px)] shadow-inner" />
+              <div className={'relative flex aspect-square w-[68%] items-center justify-center rounded-full border-[5px] border-slate-400/80 bg-[radial-gradient(circle_at_35%_30%,#818b9b_0%,#323b49_25%,#080b11_72%)] shadow-inner ' + (live ? 'rj-speaker-cone' : '')}>
+                <div className="absolute inset-[12%] rounded-full border-[3px] border-white/20 bg-[radial-gradient(circle_at_35%_30%,#384252,#090d14_75%)]" />
+                <div className="relative size-[24%] rounded-full border-2 border-white/30 bg-[radial-gradient(circle_at_35%_25%,#fff,#8b929d_35%,#242b36_75%)]" style={{ boxShadow: '0 0 18px ' + playerPreferences.speakerLight }} />
+              </div>
+              <div className={'absolute inset-[2%] rounded-full border-[3px] border-transparent ' + (live ? 'rj-speaker-led' : '')} />
+            </div>
+          ))}
+          <div className="absolute bottom-3 left-0 right-0 z-20 flex items-center justify-center gap-2 text-[10px] font-black tracking-[.32em] text-white/80"><span className={'size-2 rounded-full ' + (live ? 'animate-pulse bg-red-400 shadow-[0_0_12px_#fb7185]' : 'bg-slate-500')} /> RJ FM DUAL SPEAKERS</div>
+          <style jsx>{`
+            .rj-speaker-live { animation: speakerGlow 1.1s ease-in-out infinite alternate; }
+            .rj-speaker-cone { animation: conePulse .32s ease-in-out infinite alternate; }
+            .rj-speaker-led { border-color: var(--speaker-light); box-shadow: 0 0 9px var(--speaker-light), inset 0 0 9px var(--speaker-light); animation: ledBlink .75s steps(2,end) infinite; }
+            @keyframes speakerGlow { from { box-shadow: 0 0 8px var(--speaker-light); } to { box-shadow: 0 0 22px var(--speaker-light); } }
+            @keyframes conePulse { from { transform: scale(.97); } to { transform: scale(1.035); } }
+            @keyframes ledBlink { from { opacity: .45; } to { opacity: 1; } }
+            @media (prefers-reduced-motion: reduce) { .rj-speaker-live,.rj-speaker-cone,.rj-speaker-led { animation: none; } }
+          `}</style>
+        </div>
+      ) : (
+        <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#26364b_0%,#111923_48%,#080b10_100%)]">
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <div className="flex size-28 items-center justify-center rounded-full border-[5px] bg-[radial-gradient(circle_at_35%_25%,#fff4c2_0%,#d99a32_28%,#761d25_68%,#26090c_100%)] p-1 sm:size-36" style={{ borderColor: playerPreferences.accentColor, boxShadow: '0 0 0 5px rgba(255,255,255,.12), 0 0 38px ' + playerPreferences.accentColor + '66' }}>
+                <div className="flex size-full flex-col items-center justify-center rounded-full border border-amber-100/70 bg-black/25 text-center"><span className="text-[9px] font-black tracking-[.34em] text-amber-100 sm:text-[10px]">YOUR STATION</span><span className="mt-1 text-2xl font-black italic tracking-tight text-white drop-shadow sm:text-3xl">RJ FM</span><span className="mt-0.5 max-w-[95px] truncate text-[9px] font-extrabold uppercase tracking-[.16em] text-amber-100 sm:max-w-[120px] sm:text-[10px]">{meta.city}</span></div>
               </div>
             </div>
+            {!playing && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />}
+            {!playing && <button type="button" onClick={() => { unlock(); setPlaying(true) }} aria-label={`Play ${meta.name}`} className="radio-play-overlay flex size-[4.5rem] items-center justify-center rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 active:scale-95"><Play className="size-8 translate-x-0.5" /></button>}
           </div>
-          {!playing && (
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
-          )}
-          {!playing && (
-            <button
-              type="button"
-              onClick={() => { unlock(); setPlaying(true) }}
-              aria-label={`Play ${meta.name}`}
-              className="radio-play-overlay flex size-[4.5rem] items-center justify-center rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 active:scale-95"
-            >
-              <Play className="size-8 translate-x-0.5" />
-            </button>
-          )}
+          <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white"><span className="size-2 animate-pulse rounded-full bg-red-400" aria-hidden="true" /> LIVE</div>
         </div>
-        <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
-          <span className="size-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_12px_rgba(248,113,113,.9)]" aria-hidden="true" /> LIVE
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-col items-center gap-1">
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
