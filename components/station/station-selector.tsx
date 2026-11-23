@@ -80,12 +80,14 @@ export function StationSelector() {
                     }`}
                     onClick={() => select(id)}
                   >
-                    <img
-                      src={`/station-logos/${id}.svg`}
-                      alt={`RJ FM ${item.city} ${item.frequency}`}
-                      className={`size-16 shrink-0 rounded-xl object-cover shadow-lg transition ${active ? 'ring-2 ring-amber-300 shadow-cyan-400/20' : 'opacity-90'}`}
-                      loading="lazy"
-                    />
+                    <span
+                      className={`flex size-10 shrink-0 flex-col items-center justify-center rounded-lg font-mono text-[10px] font-bold leading-tight ${
+                        active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                      }`}
+                    >
+                      <span className="text-[8px] opacity-80">FM</span>
+                      <span className="text-[11px]">{item.frequency}</span>
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="text-sm font-semibold leading-snug tracking-wide">
