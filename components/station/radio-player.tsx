@@ -25,32 +25,14 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [externalStation, setExternalStation] = useState<{ name: string; url_resolved: string } | null>(null)
   const [externalPlaying, setExternalPlaying] = useState(false)
-  const [stationVideoPlaying, setStationVideoPlaying] = useState(false)
   const externalAudioRef = useRef<HTMLAudioElement>(null)
-  const stationVideoRef = useRef<HTMLVideoElement>(null)
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
-  const [philippineTime, setPhilippineTime] = useState(() => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
-  const [philippineWeekday, setPhilippineWeekday] = useState(() => new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(new Date()))
-  const isDearMorStation = station === 'cebu'
-  const isDearMorDay = philippineWeekday !== 'Sun'
-  const dearMorBlocktime = isDearMorStation && isDearMorDay && ((philippineTime >= '13:00' && philippineTime < '15:00') || (philippineTime >= '20:00' && philippineTime < '22:00'))
   const listenerId = useRef<string | null>(null)
   const unlockAction = useRef<() => void>(() => undefined)
-
-  useEffect(() => {
-    const updatePhilippineTime = () => {
-      const now = new Date()
-      setPhilippineTime(now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
-      setPhilippineWeekday(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(now))
-    }
-    updatePhilippineTime()
-    const timer = window.setInterval(updatePhilippineTime, 15_000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   useEffect(() => {
     setStation(getStoredStation())
@@ -122,24 +104,6 @@ export function RadioPlayer() {
       })
   }, [mutate, station])
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
-  useEffect(() => {
-    if (!dearMorBlocktime) {
-      stationVideoRef.current?.pause()
-      setStationVideoPlaying(false)
-      return
-    }
-    setPlaying(false)
-    setExternalPlaying(false)
-    externalAudioRef.current?.pause()
-    const video = stationVideoRef.current
-    if (video) {
-      video.muted = true
-      video.loop = true
-      void video.play()
-        .then(() => setStationVideoPlaying(true))
-        .catch(() => setStationVideoPlaying(false))
-    }
-  }, [dearMorBlocktime])
   unlockAction.current = unlock
 
   useEffect(() => {
@@ -205,26 +169,6 @@ export function RadioPlayer() {
     return () => { cancelled = true }
   }, [live, externalStation, station])
 
-  const toggleStationVideo = () => {
-    const video = stationVideoRef.current
-    if (stationVideoPlaying || (video && !video.paused)) {
-      video?.pause()
-      setStationVideoPlaying(false)
-      setPlaying(false)
-      return
-    }
-    // Start RJ FM audio directly from the tap; a video decode/autoplay issue
-    // must never disable the main Play button or prevent radio audio.
-    unlock()
-    setPlaying(true)
-    if (video) {
-      video.muted = true
-      try { video.currentTime = 0 } catch { /* wait for metadata */ }
-      void video.play()
-        .then(() => setStationVideoPlaying(true))
-        .catch(() => setStationVideoPlaying(false))
-    }
-  }
   const onAirAgain = data?.nextOnAir
     ? new Date(data.nextOnAir).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
     : null
@@ -288,26 +232,13 @@ export function RadioPlayer() {
 
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#17191f]">
-          {dearMorBlocktime && <video
-            ref={stationVideoRef}
-            className="absolute inset-0 block h-full w-full object-cover"
-            src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
-            muted
-            autoPlay
-            loop
-            playsInline
-            preload="metadata"
-            aria-label={`${meta.name} video player`}
-            onPlay={() => setStationVideoPlaying(true)}
-            onPause={() => setStationVideoPlaying(false)}
-          />}
-          {!playing && !stationVideoPlaying && (
+          {!playing && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
-          {!dearMorBlocktime && !stationVideoPlaying && (
+          {!playing && (
             <button
               type="button"
-              onClick={toggleStationVideo}
+              onClick={() => { unlock(); setPlaying(true) }}
               aria-label={`Play ${meta.name}`}
               className="radio-play-overlay flex size-[4.5rem] items-center justify-center rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 active:scale-95"
             >
