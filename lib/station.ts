@@ -533,6 +533,22 @@ async function loadState(now: number, path = STATE_PATH) {
     const isActive = t.startAt <= now && trackEnd(t) > now
     return Boolean((schedule && now >= schedule.availableFrom && now < schedule.expiresAt || isActive) && trackEnd(t) >= now - 1000)
   })
+  // Keep only the currently playing song and the next two songs per station.
+  // Track sources are external stream URLs, not downloaded MP3 files; pruning
+  // this queue removes stale playlist metadata without deleting station assets.
+  const music = state.tracks
+    .filter((track) => track.kind === 'music')
+    .sort((a, b) => a.startAt - b.startAt)
+  const activeMusic = music.filter((track) => track.startAt <= now && trackEnd(track) > now)
+  const upcomingMusic = music.filter((track) => track.startAt > now).slice(0, PRELOAD_AHEAD_TRACKS)
+  const retainedMusic = new Set([...activeMusic, ...upcomingMusic].map((track) => track.uid))
+  const queueHorizon = upcomingMusic.length
+    ? trackEnd(upcomingMusic[upcomingMusic.length - 1])
+    : activeMusic.length ? trackEnd(activeMusic[activeMusic.length - 1]) : now
+  state.tracks = state.tracks.filter((track) => {
+    if (track.kind === 'music') return retainedMusic.has(track.uid)
+    return trackEnd(track) > now && track.startAt <= queueHorizon
+  })
   state.history = state.history.filter((h) => h.t > now - 30 * 24 * 60 * 60 * 1000)
   return { state, changed: state.tracks.length !== before }
 }
