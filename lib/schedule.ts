@@ -91,6 +91,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
   ]),
   'OPM 2000s-2026': artists('tagalog', [
     'Nina', 'Kyla', 'Juris', 'Jay R|jay r', 'Sarah Geronimo|sarah',
+    'Parokya ni Edgar|parokya ni edgar', 'Yeng Constantino|yeng', 'Janine Berdin|janine berdin', 'Gary Valenciano|gary v', 'Moira Dela Torre|moira',
     'Erik Santos|erik santos', 'Jed Madela|jed madela', 'KZ Tandingan|kz',
     'Moira Dela Torre|moira', 'TJ Monterde', 'Arthur Nery',
     'Zack Tabudlo', 'Adie', 'Dionela', 'Maki', 'Cup of Joe',
@@ -303,6 +304,18 @@ const PINOY_LOVE = artists('tagalog', [
   'South Border|south border',
   'Freestyle|freestyle opm',
   'Side A|side a',
+  'Parokya ni Edgar|parokya ni edgar',
+  'Yeng Constantino|yeng constantino',
+  'Janine Berdin|janine berdin',
+  'Gary Valenciano|gary valenciano',
+  'Moira Dela Torre|moira dela torre',
+  'Orange & Lemons|orange and lemons',
+  'Eraserheads|eraserheads',
+  'Christian Bautista|christian bautista',
+  'Sam Concepcion|sam concepcion',
+  'Julie Anne San Jose|julie anne san jose',
+  'Alden Richards|alden richards',
+  'Julie Anne San Jose|julie anne san jose',
 ])
 
 export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
@@ -319,6 +332,17 @@ export const NEW_TAGALOG_OPM_ARTISTS = artists('tagalog', [
   'Jona|jona',
   'Morissette Amon|morissette',
   'Willie Revillame|willie revillame',
+  'Parokya ni Edgar|parokya ni edgar',
+  'Yeng Constantino|yeng constantino',
+  'Janine Berdin|janine berdin',
+  'Gary Valenciano|gary valenciano',
+  'Moira Dela Torre|moira dela torre',
+  'Orange & Lemons|orange and lemons',
+  'Eraserheads|eraserheads',
+  'Christian Bautista|christian bautista',
+  'Sam Concepcion|sam concepcion',
+  'Julie Anne San Jose|julie anne san jose',
+  'Alden Richards|alden richards',
 ])
 
 export const NEW_TAGALOG_OPM_VARIANTS = [
@@ -545,7 +569,7 @@ const DISCO_VARIANTS = [
   'latest 2026 disco pop song',
   '2026 dance music official audio',
 ]
-const OPM_VARIANTS = ['classic OPM oldies love song ballad', 'old Filipino romantic love song original artist', '2026 new OPM love song ballad official audio', '2026 latest Tagalog romantic ballad official audio', '2026 soft Filipino love song original artist']
+const OPM_VARIANTS = ['classic OPM oldies love song ballad', 'old Filipino romantic love song original artist', '2026 new OPM love song ballad official audio', '2026 latest Tagalog romantic ballad official audio', '2026 soft Filipino love song original artist', 'Ililigtas Ka Niya Gary Valenciano official audio', 'Parokya ni Edgar Huwag Kang Matakot official audio', 'GMA teleserye theme song Filipino love ballad official audio', 'ABS-CBN teleserye theme song Filipino love ballad official audio']
 const SUNDAY_OLDIES_VARIANTS = ['classic English oldies love song ballad', 'old English romantic love song original artist', '60s 70s classic oldies love songs']
 const MASBATE_CURRENT_TAGALOG = artists('tagalog', [
   'BINI',
