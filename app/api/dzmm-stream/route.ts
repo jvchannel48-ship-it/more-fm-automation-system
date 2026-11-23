@@ -26,7 +26,7 @@ export async function GET() {
       // Use the first six healthy DZMM/TeleRadyo matches as ordered candidates.
       const candidates = stations
         .filter((station) =>
-          /dzmm|teleradyo|radyo patrol/i.test(station.name ?? '')
+          /dzmm|teleradyo/i.test(station.name ?? '')
           && (station.countrycode === 'PH' || !station.countrycode)
           && station.lastcheckok === 1
           && Boolean(station.stationuuid)
@@ -44,7 +44,7 @@ export async function GET() {
           if (click.ok) {
             const resolved = await click.json() as { url?: string }
             if (resolved.url && /^https?:\/\//i.test(resolved.url)) {
-              return NextResponse.json({ name: station.name ?? 'DZMM TeleRadyo', url: resolved.url, source: 'radio-browser', candidatesTried: candidates.indexOf(station) + 1 }, { headers: { 'Cache-Control': 'no-store' } })
+              return NextResponse.json({ name: 'DZMM TeleRadyo', url: resolved.url, source: 'radio-browser', candidatesTried: candidates.indexOf(station) + 1 }, { headers: { 'Cache-Control': 'no-store' } })
             }
           }
         } catch {
@@ -52,12 +52,12 @@ export async function GET() {
         }
         const url = station.url_resolved || station.url
         if (url && /^https?:\/\//i.test(url)) {
-          return NextResponse.json({ name: station.name ?? 'DZMM TeleRadyo', url, source: 'radio-browser', candidatesTried: candidates.indexOf(station) + 1 }, { headers: { 'Cache-Control': 'no-store' } })
+          return NextResponse.json({ name: 'DZMM TeleRadyo', url, source: 'radio-browser', candidatesTried: candidates.indexOf(station) + 1 }, { headers: { 'Cache-Control': 'no-store' } })
         }
       }
     }
   } catch (error) {
     console.warn('[RJ FM] Radio Browser DZMM lookup failed; using configured fallback.', error)
   }
-  return NextResponse.json({ name: 'DZMM', url: FALLBACK_STREAM, source: 'fallback' }, { headers: { 'Cache-Control': 'no-store' } })
+  return NextResponse.json({ name: 'DZMM TeleRadyo', url: FALLBACK_STREAM, source: 'fallback' }, { headers: { 'Cache-Control': 'no-store' } })
 }
