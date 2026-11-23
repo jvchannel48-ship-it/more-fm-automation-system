@@ -734,24 +734,25 @@ const CALABANGA_LOVE_PROGRAM: Program = {
 // Nationwide seasonal Christmas rotation: upbeat, contemporary and sing-along.
 const CHRISTMAS_ENGLISH_ARTISTS = artists('english', [
   'Mariah Carey', 'Ariana Grande', 'Kelly Clarkson', 'Justin Bieber',
-  'Jackson 5|jackson 5', 'Brenda Lee', 'NSYNC|nsync', 'Sia',
+  'Jackson 5|jackson 5', 'Brenda Lee', 'NSYNC|nsync', 'Sia', 'Wham!|wham', 'Kelly Clarkson', 'Paul McCartney',
   'Meghan Trainor', 'Leona Lewis', 'Michael Buble|michael buble',
   'Jonas Brothers|jonas brothers', 'Gwen Stefani', 'Pentatonix',
 ])
 const CHRISTMAS_TAGALOG_ARTISTS = artists('tagalog', [
-  'Ariel Rivera|ariel rivera', 'Jose Mari Chan|jose mari chan',
+  'Ariel Rivera|ariel rivera', 'Jose Mari Chan|jose mari chan', 'Apo Hiking Society|apo hiking society',
   'Sarah Geronimo|sarah geronimo', 'Aiza Seguerra|aiza seguerra',
   'Julie Anne San Jose|julie anne san jose', 'Yeng Constantino|yeng constantino',
 ])
 const CHRISTMAS_ENGLISH_VARIANTS = [
+  'Give Love on Christmas Day Jackson 5 official audio',
   'upbeat feel good English Christmas pop song official audio',
-  'modern Christmas party pop song original artist official audio',
+  'modern Christmas pop hit original artist official audio',
   'fun cheerful Christmas pop hit official audio',
 ]
 const CHRISTMAS_TAGALOG_VARIANTS = [
+  'Sana Ngayong Pasko Ariel Rivera official audio',
   'upbeat Tagalog OPM Christmas song official audio',
   'masayang modern Filipino Christmas pop song official audio',
-  'Sana Ngayong Pasko official audio',
 ]
 const CHRISTMAS_PROGRAM: Program = {
   id: 'christmas-mix',
