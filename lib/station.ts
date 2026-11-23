@@ -178,16 +178,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   // Only the curated RJ FM artist library is approved for automatic rotation.
   // Ignore auto-discovered artists so an unreviewed artist cannot enter the playlist.
   const normalPool = program.pools[language]
-  // Feature the two songs specifically requested at the start of each 12-song
-  // Christmas cycle, while the remaining slots rotate through the wider library.
-  const featuredChristmasArtist = program.id === 'christmas-mix'
-    ? language === 'english' && songCount % 12 === 0
-      ? normalPool.find((artist) => normalize(artist.name) === 'jackson 5')
-      : language === 'tagalog' && songCount % 12 === 3
-        ? normalPool.find((artist) => normalize(artist.name) === 'ariel rivera')
-        : undefined
-    : undefined
-  const pool = featuredChristmasArtist ? [featuredChristmasArtist] : normalPool
+  const pool = normalPool
   const candidatesArtists = eligibleArtists(pool, history, now)
   const variants = program.variants[language]
   if (candidatesArtists.length === 0 || variants.length === 0) return null
@@ -203,11 +194,6 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const variantIndex = (songCount + offset + index + Math.floor(now / 60_000)) % variants.length
       const primary = variants[variantIndex] ?? ''
       const secondary = variants[(variantIndex + 1) % variants.length] ?? ''
-      const featuredQuery = program.id === 'christmas-mix' && normalize(artist.name) === 'jackson 5'
-        ? 'Give Love on Christmas Day Jackson 5 official audio'
-        : program.id === 'christmas-mix' && normalize(artist.name) === 'ariel rivera'
-          ? 'Sana Ngayong Pasko Ariel Rivera official audio'
-          : ''
       const queries = [...new Set([
         ...(featuredQuery ? [featuredQuery] : []),
         primary, secondary,
