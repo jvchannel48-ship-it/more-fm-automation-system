@@ -137,6 +137,24 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
   }
 
   try {
+    // Prefer a configured Vercel Blob store on Render. The built-in Supabase
+    // fallback credentials may exist even when that project's Storage bucket is
+    // not configured; choosing them first strands station queues in per-instance
+    // memory and causes repeated AutoDJ refills on fresh instances.
+    if (hasVercelBlobCredentials()) {
+      const result = await get(pathname, { access: 'private', useCache: false })
+      if (!result || !result.stream) {
+        blobOperational = true
+        return readMemory(pathname, fallback)
+      }
+      const text = await new Response(result.stream).text()
+      const data = JSON.parse(text) as T
+      memoryFallback.set(pathname, text)
+      retryBlobAfter = 0
+      blobOperational = true
+      return data
+    }
+
     if (hasSupabaseCredentials()) {
       const text = await readFromSupabase(pathname)
       if (text == null) {
@@ -150,17 +168,9 @@ export async function readJson<T>(pathname: string, fallback: T): Promise<T> {
       return data
     }
 
-    const result = await get(pathname, { access: 'private', useCache: false })
-    if (!result || !result.stream) {
-      blobOperational = true
-      return readMemory(pathname, fallback)
-    }
-    const text = await new Response(result.stream).text()
-    const data = JSON.parse(text) as T
-    memoryFallback.set(pathname, text)
-    retryBlobAfter = 0
-    blobOperational = true
-    return data
+    blobOperational = false
+    warnMemoryFallback()
+    return readMemory(pathname, fallback)
   } catch (error) {
     logStorageFailure('read', pathname, error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
@@ -181,6 +191,21 @@ export async function writeJson(pathname: string, data: unknown) {
   }
 
   try {
+    // Use the same provider priority as reads so every Render instance shares
+    // the exact same station queue and listener state.
+    if (hasVercelBlobCredentials()) {
+      await put(pathname, text, {
+        access: 'private',
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: 'application/json',
+        cacheControlMaxAge: 60,
+      })
+      retryBlobAfter = 0
+      blobOperational = true
+      return true
+    }
+
     if (hasSupabaseCredentials()) {
       await writeToSupabase(pathname, text)
       retryBlobAfter = 0
@@ -188,16 +213,9 @@ export async function writeJson(pathname: string, data: unknown) {
       return true
     }
 
-    await put(pathname, text, {
-      access: 'private',
-      allowOverwrite: true,
-      addRandomSuffix: false,
-      contentType: 'application/json',
-      cacheControlMaxAge: 60,
-    })
-    retryBlobAfter = 0
-    blobOperational = true
-    return true
+    blobOperational = false
+    warnMemoryFallback()
+    return false
   } catch (error) {
     logStorageFailure('write', pathname, error)
     retryBlobAfter = Date.now() + BLOB_RETRY_DELAY_MS
