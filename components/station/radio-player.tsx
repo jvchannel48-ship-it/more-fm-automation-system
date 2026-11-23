@@ -220,13 +220,13 @@ export function RadioPlayer() {
       )}
 
       <div className={`player-artwork relative flex aspect-square w-full max-w-[19rem] items-center justify-center overflow-hidden rounded-[2rem] ${live ? 'is-playing' : ''}`}>
-        <div className="listener-avatar" aria-label="3D character wearing headphones and listening to music" role="img">
-          <span className="avatar-note avatar-note-one">♪</span><span className="avatar-note avatar-note-two">♫</span><span className="avatar-note avatar-note-three">♪</span>
-          <span className="avatar-shadow" />
-          <span className="avatar-leg avatar-leg-left" /><span className="avatar-leg avatar-leg-right" />
-          <span className="avatar-shoe avatar-shoe-left" /><span className="avatar-shoe avatar-shoe-right" />
-          <span className="avatar-body"><i className="avatar-arm avatar-arm-left" /><i className="avatar-arm avatar-arm-right" /></span>
-          <span className="avatar-neck" /><span className="avatar-head"><i className="avatar-hair" /><i className="avatar-earcup avatar-earcup-left" /><i className="avatar-earcup avatar-earcup-right" /><i className="avatar-headband" /><i className="avatar-eye avatar-eye-left" /><i className="avatar-eye avatar-eye-right" /><i className="avatar-smile" /></span>
+        <div className="player-video-background" aria-hidden="true">
+          <video className="player-loop-video player-loop-video-one" autoPlay muted loop playsInline preload="metadata" tabIndex={-1}>
+            <source src="/audio/Music%20Notes%20Colorful%20Rays%20Abstract%20Background%20Looped%20Video%20_%20Ultra%20HD%204K.mp4" type="video/mp4" />
+          </video>
+          <video className="player-loop-video player-loop-video-two" autoPlay muted loop playsInline preload="metadata" tabIndex={-1}>
+            <source src="/audio/Music%20Note%20FREE%20Background%20Animation%2C%20Loop%2C%204k%20%20%20FREE%20STOCK%20VIDEOS.mp4" type="video/mp4" />
+          </video>
         </div>
         <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
         <div className="player-artwork-mark">
