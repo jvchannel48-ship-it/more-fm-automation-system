@@ -520,11 +520,13 @@ async function loadState(now: number, path = STATE_PATH) {
   const announcementSchedule = dailyAnnouncementScheduleAt(now)
   if (!announcementSchedule || now >= announcementSchedule.expiresAt) state.dailyAnnouncementPlayed = true
   const before = state.tracks.length
-  const approvedEnglishArtists = new Set(PROGRAMS['love-mix'].pools.english.map((artist) => normalize(artist.name)))
+  const approvedArtists = new Set([
+    ...PROGRAMS['love-mix'].pools.english,
+    ...PROGRAMS['love-mix'].pools.tagalog,
+  ].map((artist) => normalize(artist.name)))
   state.tracks = state.tracks.filter((t) => {
-    // Let a song already on-air finish, but remove queued future tracks that
-    // are not by an artist in RJ FM's curated English-only approved library.
-    if (t.kind === 'music' && t.startAt > now && !approvedEnglishArtists.has(normalize(t.artist))) return false
+    // Keep future English and Tagalog tracks from RJ FM's curated library.
+    if (t.kind === 'music' && t.startAt > now && !approvedArtists.has(normalize(t.artist))) return false
     if (t.uid.includes('dj-christopher-')) return trackEnd(t) >= now - 1000
     if (t.kind !== 'dj-mic' || t.uid.startsWith('dzmm-transition-') || t.uid.startsWith('dzmm-love-connect-')) return trackEnd(t) >= now - 1000
     const schedule = dailyAnnouncementScheduleAt(now)
@@ -592,22 +594,26 @@ export async function getNowPlaying(options: { skipFill?: boolean; station?: Sta
       }
     }
 
-    // Naga runs its own independent AutoDJ queue. Do not mirror Manila's
-    // queue here: if Manila has no saved tracks (or storage is recovering),
-    // Naga would otherwise return an empty playlist and remain silent.
-    const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
-    if (needsFill && state.fillingUntil < now && !options.skipFill) {
-      state.fillingUntil = now + FILL_LOCK_MS
-      await writeJson(statePath, state)
-      await withAutoDjFillLock(async () => {
-        try {
-          await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
-        } finally {
-          state.fillingUntil = 0
-          await writeJson(statePath, state)
-        }
-      })
-    } else if (changed) { await writeJson(statePath, state) }
+    if (station === 'naga') {
+      // Naga is a delayed relay of Manila's playlist: first make sure Manila
+      // has searched and stored upcoming songs, then mirror them in order.
+      await getNowPlaying({ station: 'main' })
+      await syncNagaFromManila(state, Date.now())
+    } else {
+      const needsFill = state.tracks.filter((track) => track.kind === 'music' && track.startAt > now).length < PRELOAD_AHEAD_TRACKS
+      if (needsFill && state.fillingUntil < now && !options.skipFill) {
+        state.fillingUntil = now + FILL_LOCK_MS
+        await writeJson(statePath, state)
+        await withAutoDjFillLock(async () => {
+          try {
+            await fill(state, now, settings.sundayScheduleEnabled, genresForSettings(settings), station, settings.rjFmNationwideEnabled, settings.djChristopherEnabled, settings.djChristopherIntervalMinutes)
+          } finally {
+            state.fillingUntil = 0
+            await writeJson(statePath, state)
+          }
+        })
+      } else if (changed) { await writeJson(statePath, state) }
+    }
     return { serverTime: Date.now(), offAir: false, nextOnAir: null, tracks: state.tracks.map(toClientTrack), bassBoostDb: settings.bassBoostDb, autoDeletePlayedCache: settings.autoDeletePlayedCache, transmitterWatts: settings.transmitterWatts, liveDj }
   }
   const [{ state, changed }, settings] = await Promise.all([loadState(now), getSettings()])
