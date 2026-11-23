@@ -1,26 +1,20 @@
 {
-  "id": "https://more-fm-automation-system.onrender.com/",
+  "id": "/",
   "name": "RJ FM",
   "short_name": "RJ FM",
   "description": "RJ FM live radio — Your Voice • Your Music • Live",
-  "start_url": "https://more-fm-automation-system.onrender.com/",
-  "scope": "https://more-fm-automation-system.onrender.com/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#080f1e",
   "theme_color": "#080f1e",
-  "categories": [
-    "music",
-    "entertainment"
-  ],
+  "categories": ["music", "entertainment"],
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/rjfm-app-icon.svg?v=2",
+      "src": "/rjfm-app-icon.svg?v=3",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
