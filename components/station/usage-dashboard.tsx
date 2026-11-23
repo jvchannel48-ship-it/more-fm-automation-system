@@ -1,16 +1,163 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Activity, Clock3, Database, RotateCcw } from 'lucide-react'
+
+import { useEffect, useMemo, useState } from 'react'
+import { Activity, ArrowDownToLine, CalendarDays, Check, Clock3, Headphones, RotateCcw, Smartphone, X } from 'lucide-react'
+
 type UsageData = { totalBytes: number; totalSeconds: number; days: Record<string, number> }
+type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }> }
 const KEY = 'rjfm_data_usage_v1'
 const empty: UsageData = { totalBytes: 0, totalSeconds: 0, days: {} }
-function readUsage(): UsageData { try { const v=JSON.parse(localStorage.getItem(KEY)||'null'); if(v&&typeof v.totalBytes==='number'&&typeof v.totalSeconds==='number') return {...empty,...v} } catch {} return empty }
-function fmt(b:number){return b<1048576?(b/1024).toFixed(1)+' KB':b<1073741824?(b/1048576).toFixed(2)+' MB':(b/1073741824).toFixed(2)+' GB'}
-function duration(s:number){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+'h '+m+'m':m+'m'}
-export function UsageDashboard(){
- const [u,setU]=useState<UsageData>(empty)
- useEffect(()=>{const f=()=>setU(readUsage());f();window.addEventListener('rjfm:usage-update',f);window.addEventListener('storage',f);return()=>{window.removeEventListener('rjfm:usage-update',f);window.removeEventListener('storage',f)}},[])
- const today=new Date().toLocaleDateString('en-CA')
- const reset=()=>{if(!confirm('Reset the usage totals saved on this device?'))return;try{localStorage.removeItem(KEY)}catch{};setU(empty)}
- return <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-28 pt-4"><section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#102b3d] via-[#101d31] to-[#251633] p-5 shadow-2xl"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-200"><Activity className="size-6"/></span><div><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-cyan-200">RJ FM · DEVICE STATS</p><h1 className="text-xl font-black text-white">Data Usage Dashboard</h1><p className="text-xs text-slate-300">Saved on this phone</p></div></div><div className="mt-5 grid grid-cols-2 gap-3">{[['Estimated total data',fmt(u.totalBytes)],['Today',fmt(u.days[today]||0)],['Listening time',duration(u.totalSeconds)],['At 32 kbps', '14.4 MB/hr']].map(([a,b])=><div key={a} className="rounded-2xl border border-white/10 bg-black/25 p-4"><p className="text-xs text-slate-300">{a}</p><p className="mt-1 text-2xl font-black text-cyan-100">{b}</p></div>)}</div><div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-relaxed text-amber-100"><Database className="mt-0.5 size-4 shrink-0"/><span>Estimate based on RJ FM listening time at the 32 kbps AAC-LC target. This is not a direct reading from your SIM or mobile carrier; actual data may differ due to network overhead and stream format.</span></div><div className="mt-4 flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-300"><Clock3 className="size-4"/> Stored on this device; normally survives app updates.</span><button onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white"><RotateCcw className="size-3.5"/> Reset</button></div></section></main>
+
+function readUsage(): UsageData {
+  try {
+    const value = JSON.parse(localStorage.getItem(KEY) || 'null')
+    if (value && typeof value.totalBytes === 'number' && typeof value.totalSeconds === 'number') return { ...empty, ...value }
+  } catch {}
+  return empty
+}
+function fmt(bytes: number) {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 ** 3) return (bytes / 1024 ** 2).toFixed(2) + ' MB'
+  return (bytes / 1024 ** 3).toFixed(2) + ' GB'
+}
+function duration(seconds: number) {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return hours ? hours + 'h ' + minutes + 'm' : minutes + 'm'
+}
+function localDay(date: Date) {
+  return date.toLocaleDateString('en-CA')
+}
+
+export function UsageDashboard() {
+  const [usage, setUsage] = useState<UsageData>(empty)
+  const [resetOpen, setResetOpen] = useState(false)
+  const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null)
+  const [standalone, setStandalone] = useState(false)
+  const [installing, setInstalling] = useState(false)
+
+  useEffect(() => {
+    const refresh = () => setUsage(readUsage())
+    refresh()
+    window.addEventListener('rjfm:usage-update', refresh)
+    window.addEventListener('storage', refresh)
+    setStandalone(window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+    const onInstall = (event: Event) => {
+      event.preventDefault()
+      setInstallEvent(event as InstallPromptEvent)
+    }
+    const onInstalled = () => { setStandalone(true); setInstallEvent(null) }
+    window.addEventListener('beforeinstallprompt', onInstall)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('rjfm:usage-update', refresh)
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('beforeinstallprompt', onInstall)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  const today = localDay(new Date())
+  const week = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (6 - index))
+    const key = localDay(date)
+    return { key, label: date.toLocaleDateString('en', { weekday: 'short' }), bytes: usage.days[key] || 0 }
+  }), [usage.days])
+  const maxDay = Math.max(1, ...week.map((day) => day.bytes))
+  const todayBytes = usage.days[today] || 0
+
+  const install = async () => {
+    if (!installEvent) return
+    setInstalling(true)
+    try {
+      await installEvent.prompt()
+      const choice = await installEvent.userChoice
+      if (choice.outcome === 'accepted') setInstallEvent(null)
+    } finally {
+      setInstalling(false)
+    }
+  }
+  const reset = () => {
+    try { localStorage.removeItem(KEY) } catch {}
+    setUsage(empty)
+    setResetOpen(false)
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-32 pt-4">
+      <section className="relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[linear-gradient(145deg,#102c45_0%,#101c32_52%,#211632_100%)] p-5 shadow-[0_24px_70px_rgba(0,0,0,.38)] sm:p-6">
+        <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex size-12 items-center justify-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-200"><Activity className="size-6" /></span>
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-[.28em] text-cyan-200">RJ FM · DEVICE STATS</p>
+              <h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">Data Usage</h1>
+              <p className="text-xs text-slate-300">Your listening activity</p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200"><span className="size-1.5 rounded-full bg-emerald-300" /> On this phone</span>
+        </div>
+
+        <div className="relative mt-6 rounded-3xl border border-cyan-200/15 bg-[#061321]/65 p-5 shadow-inner">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-300">TOTAL DATA USED</p>
+            <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">32 KBPS TARGET</span>
+          </div>
+          <p className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">{fmt(usage.totalBytes)}</p>
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-400"><Headphones className="size-4 text-cyan-300" /> RJ FM listening estimate</div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400" style={{ width: usage.totalBytes ? '100%' : '0%' }} /></div>
+        </div>
+
+        <div className="relative mt-3 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[.055] p-4">
+            <div className="flex items-center gap-2 text-xs text-slate-300"><CalendarDays className="size-4 text-cyan-200" /> Today</div>
+            <p className="mt-2 text-2xl font-extrabold text-white">{fmt(todayBytes)}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[.055] p-4">
+            <div className="flex items-center gap-2 text-xs text-slate-300"><Clock3 className="size-4 text-violet-200" /> Listening time</div>
+            <p className="mt-2 text-2xl font-extrabold text-white">{duration(usage.totalSeconds)}</p>
+          </div>
+        </div>
+
+        <div className="relative mt-5 rounded-2xl border border-white/10 bg-[#071321]/65 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div><h2 className="text-sm font-bold text-white">Last 7 days</h2><p className="mt-0.5 text-[11px] text-slate-400">Daily listening data</p></div>
+            <span className="text-[10px] font-semibold text-cyan-200">MB / KB</span>
+          </div>
+          <div className="flex h-28 items-end justify-between gap-2">
+            {week.map((day) => <div key={day.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+              <div className="flex h-[78px] w-full items-end justify-center rounded-lg bg-white/[.035] p-1">
+                <div className="w-full max-w-7 rounded-md bg-gradient-to-t from-blue-600 to-cyan-300 shadow-[0_0_14px_rgba(34,211,238,.18)]" style={{ height: day.bytes ? Math.max(7, day.bytes / maxDay * 100) + '%' : '3px', opacity: day.bytes ? 1 : .2 }} />
+              </div>
+              <span className="text-[10px] font-medium text-slate-400">{day.label}</span>
+            </div>)}
+          </div>
+        </div>
+
+        <div className="relative mt-4 flex flex-col gap-3 rounded-2xl border border-cyan-200/15 bg-cyan-300/[.06] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200"><Smartphone className="size-5" /></span>
+            <div><p className="text-sm font-bold text-white">{standalone ? 'RJ FM App Mode' : 'Make RJ FM your app'}</p><p className="text-[11px] leading-relaxed text-slate-400">{standalone ? 'Opened without browser controls' : 'Install to open without the browser address bar'}</p></div>
+          </div>
+          {standalone ? <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-200"><Check className="size-4" /> Installed</span> : installEvent ? <button type="button" onClick={install} disabled={installing} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-xs font-extrabold text-slate-950 disabled:opacity-60"><ArrowDownToLine className="size-4" /> {installing ? 'Opening…' : 'Install App'}</button> : <span className="text-[10px] leading-relaxed text-cyan-100/80 sm:max-w-36">Chrome ⋮ → Add to Home screen</span>}
+        </div>
+
+        <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+          <p className="text-[11px] text-slate-400">Saved on this device</p>
+          <button type="button" onClick={() => setResetOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10"><RotateCcw className="size-3.5" /> Reset stats</button>
+        </div>
+      </section>
+
+      {resetOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#171d2a] p-5 shadow-2xl">
+          <div className="flex items-center justify-between"><span className="flex size-10 items-center justify-center rounded-xl bg-rose-400/10 text-rose-200"><RotateCcw className="size-5" /></span><button type="button" aria-label="Close" onClick={() => setResetOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10"><X className="size-5" /></button></div>
+          <h2 id="reset-title" className="mt-4 text-lg font-extrabold text-white">Reset usage stats?</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-300">Mawawala ang saved listening totals sa phone na ito.</p>
+          <div className="mt-6 grid grid-cols-2 gap-2"><button type="button" onClick={() => setResetOpen(false)} className="min-h-11 rounded-xl border border-white/15 text-sm font-bold text-slate-200">Cancel</button><button type="button" onClick={reset} className="min-h-11 rounded-xl bg-rose-500 text-sm font-extrabold text-white">Reset</button></div>
+        </section>
+      </div>}
+    </main>
+  )
 }
