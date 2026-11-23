@@ -40,7 +40,7 @@ export function StationSelector() {
         variant="ghost"
         size="sm"
         className="h-9 gap-1.5 rounded-full border border-primary/25 bg-card/40 px-3 font-mono text-[11px] tracking-wide"
-        aria-label="Select station"
+        aria-label="Select RJ FM station"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
