@@ -157,9 +157,12 @@ export function isAllowedStationTrack(input: {
   allowCalabangaDisco?: boolean
 }) {
   const haystack = [input.title, input.artist ?? '', input.genre ?? ''].join(' ')
+  // AI-generated audio, cloned voices, and alternate performances are never allowed,
+  // including Calabanga's otherwise separate disco-program exception.
+  if (AI_OR_NON_ORIGINAL_RULE.test(haystack)) return false
   if (input.allowCalabangaDisco) {
     // This exception is intentionally station-scoped: Calabanga's scheduled disco
-    // window may use clearly labelled AI-generated originals, but not covers/remixes,
+    // window may use original-artist disco tracks, but never AI or covers/remixes,
     // karaoke, live recordings, news, or non-music uploads.
     if (!input.title || NON_LATIN.test(input.title)) return false
     if (/\b(?:cover|karaoke|remix(?:ed)?|mash ?up|bootleg|tribute|parody|live|concert|interview|news|podcast|full album|nonstop|playlist|compilation|reaction|tutorial|sped ?up|slowed|nightcore|ringtone)\b/i.test(haystack)) return false
