@@ -68,7 +68,7 @@ export default function Home() {
                       <span className="block truncate text-sm font-bold text-white">{item.name}</span>
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400"><MapPin className="size-3" />{item.city}</span>
                     </span>
-                  </div>
+                  </button>
                 )
               })}
             </div>
