@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { UsageDashboard } from '@/components/station/usage-dashboard'
 import { Radio, MapPin, Headphones } from 'lucide-react'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
@@ -73,6 +74,7 @@ export default function Home() {
             </div>
           </section>
         </main>
+      {activeTab === 'usage' && <UsageDashboard />}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </StationShell>
   )
