@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Mail, RefreshCw, Settings, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { readCustomPlayerHtml, saveCustomPlayerHtml, removeCustomPlayerHtml } from '@/lib/custom-player-storage'
 import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, savePlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
@@ -29,9 +30,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     try {
       setStayAwake(window.localStorage.getItem(STAY_AWAKE_KEY) === 'true')
-      const savedHtml = window.localStorage.getItem(CUSTOM_PLAYER_KEY) || ''
-      setCustomHtml(savedHtml)
-      setCustomFileName(savedHtml ? 'Custom player uploaded' : '')
+      void readCustomPlayerHtml().then((savedHtml) => { setCustomHtml(savedHtml); setCustomFileName(savedHtml ? 'Custom player uploaded' : '') }).catch(() => undefined)
     } catch { setStayAwake(false) }
     setPreferences(readPlayerPreferences())
   }, [])
@@ -94,7 +93,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
       return
     }
     try {
-      window.localStorage.setItem(CUSTOM_PLAYER_KEY, source)
+      await saveCustomPlayerHtml(source)
       setCustomHtml(source)
       setCustomFileName(file.name)
       setUploadMessage('Na-save ang custom speaker. Makikita ito sa Home player.')
@@ -105,7 +104,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
   }
 
   const removeCustomPlayer = () => {
-    try { window.localStorage.removeItem(CUSTOM_PLAYER_KEY) } catch { /* ignore */ }
+    void removeCustomPlayerHtml().catch(() => undefined)
     setCustomHtml('')
     setCustomFileName('')
     setUploadMessage('Inalis ang custom HTML. Bumalik sa built-in player.')
