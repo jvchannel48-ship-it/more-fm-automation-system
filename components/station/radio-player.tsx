@@ -161,6 +161,31 @@ export function RadioPlayer() {
 
   const offAir = data?.offAir ?? false
   const live = externalPlaying || (playing && !buffering && !offAir)
+
+  // Device-local estimate: 32 kbps AAC-LC target = 4,000 bytes per active second.
+  // Persisted in localStorage so normal website/APK updates do not reset the totals.
+  useEffect(() => {
+    if (!live || externalStation) return
+    const tick = () => {
+      try {
+        const key = 'rjfm_data_usage_v1'
+        const saved = JSON.parse(window.localStorage.getItem(key) || '{}')
+        const day = new Date().toLocaleDateString('en-CA')
+        const days = saved.days && typeof saved.days === 'object' ? saved.days : {}
+        const bytes = 4000
+        const next = {
+          totalBytes: (Number(saved.totalBytes) || 0) + bytes,
+          totalSeconds: (Number(saved.totalSeconds) || 0) + 1,
+          days: { ...days, [day]: (Number(days[day]) || 0) + bytes },
+          updatedAt: new Date().toISOString(),
+        }
+        window.localStorage.setItem(key, JSON.stringify(next))
+        window.dispatchEvent(new Event('rjfm:usage-update'))
+      } catch { /* Device storage may be disabled or full. */ }
+    }
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [live, externalStation])
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
     let cancelled = false
