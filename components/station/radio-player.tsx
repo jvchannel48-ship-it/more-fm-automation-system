@@ -77,11 +77,17 @@ export function RadioPlayer() {
       const mins = hour * 60 + minute
       const isDzmmStation = station === 'main' || station === 'naga' || station === 'calabanga'
       const isCebuDavao = station === 'cebu' || station === 'davao'
+      const signOff = isDzmmStation && mins >= 3 * 60 && mins < 4 * 60
       const scheduled = (isDzmmStation && (mins >= 12 * 60 && mins < 13 * 60 || mins >= 18 * 60 + 28 && mins < 20 * 60 || mins >= 22 * 60 || mins < 3 * 60))
         || (isCebuDavao && mins >= 18 * 60 + 28 && mins < 20 * 60)
       const audio = externalAudioRef.current
       if (!audio) return
-      if (scheduled) {
+      if (signOff) {
+        audio.pause()
+        if (externalStation?.name === 'DZMM') setExternalStation(null)
+        setExternalPlaying(false)
+        setPlaying(false)
+      } else if (scheduled) {
         if (externalStation?.name === 'DZMM' && externalPlaying) return
         setPlaying(false)
         setExternalStation({ name: 'DZMM', url_resolved: 'https://us1.amfmph.com:8852/live' })
