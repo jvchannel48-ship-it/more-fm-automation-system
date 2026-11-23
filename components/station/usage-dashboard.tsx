@@ -120,7 +120,7 @@ export function UsageDashboard() {
         <section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#171d2a] p-5 shadow-2xl">
           <div className="flex items-center justify-between"><span className="flex size-10 items-center justify-center rounded-xl bg-rose-400/10 text-rose-200"><RotateCcw className="size-5" /></span><button type="button" aria-label="Close" onClick={() => setResetOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10"><X className="size-5" /></button></div>
           <h2 id="reset-title" className="mt-4 text-lg font-extrabold text-white">Reset usage stats?</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-300">Mawawala ang saved listening totals sa phone na ito.</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-300">This will permanently delete the listening totals saved on this phone.</p>
           <div className="mt-6 grid grid-cols-2 gap-2"><button type="button" onClick={() => setResetOpen(false)} className="min-h-11 rounded-xl border border-white/15 text-sm font-bold text-slate-200">Cancel</button><button type="button" onClick={reset} className="min-h-11 rounded-xl bg-rose-500 text-sm font-extrabold text-white">Reset</button></div>
         </section>
       </div>}
