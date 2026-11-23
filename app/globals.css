@@ -607,3 +607,38 @@ body {
   letter-spacing: .08em;
   backdrop-filter: blur(8px);
 }
+
+
+/* Muted looped music-note visuals: the RJ FM stream remains the only audible source. */
+.player-video-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #172554, #6d28d9 48%, #0891b2);
+}
+.player-loop-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.player-loop-video-one { opacity: 1; animation: player-video-crossfade-one 24s ease-in-out infinite; }
+.player-loop-video-two { opacity: 0; animation: player-video-crossfade-two 24s ease-in-out infinite; }
+@keyframes player-video-crossfade-one {
+  0%, 42% { opacity: 1; }
+  50%, 92% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes player-video-crossfade-two {
+  0%, 42% { opacity: 0; }
+  50%, 92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-loop-video-one, .player-loop-video-two { animation: none; }
+  .player-loop-video-two { display: none; }
+}
