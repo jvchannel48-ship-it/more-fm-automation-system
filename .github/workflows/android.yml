@@ -9,6 +9,7 @@ on:
       - 'app/layout.tsx'
       - 'app/page.tsx'
       - 'components/station/bottom-navigation.tsx'
+      - 'components/station/settings-panel.tsx'
       - 'components/station/vpn-panel.tsx'
       - 'components/pwa-register.tsx'
       - 'public/sw.js'
