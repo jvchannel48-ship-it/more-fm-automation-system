@@ -78,6 +78,11 @@ assert.equal(
 )
 assert.equal(isBlockedByTitleRules('Whitney Houston - Christmas Worship'), true, 'seasonal worship tracks stay blocked on standard stations')
 assert.equal(isBlockedByTitleRules('Whitney Houston - I Wanna Dance With Somebody', { allowDancePop: true }), true, 'dance remains blocked for every program')
+assert.equal(isBlockedByTitleRules('Taylor Swift - Love Story'), true, 'Taylor Swift is excluded from the easy-listening rotation')
+assert.equal(isAllowedStationTrack({ title: 'Taylor Swift - Lover', artist: 'Taylor Swift', genre: 'Pop', blockedGenres: [] }), false, 'Taylor Swift is blocked even when the source tags only say pop')
+assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'Soft pop ballad', blockedGenres: [] }), true, 'soft love ballads remain eligible')
+assert.equal(isAllowedStationTrack({ title: 'Coldplay - Yellow', artist: 'Coldplay', genre: 'Alternative rock', blockedGenres: [] }), false, 'rock-associated artists are blocked')
+
 
 assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'Disco Dance Remix', blockedGenres: [] }), false, 'genre metadata blocks dance/disco/remix even when admin list is empty')
 assert.equal(isAllowedStationTrack({ title: 'Whitney Houston - Saving All My Love for You', artist: 'Whitney Houston', genre: 'AI generated music by Suno', blockedGenres: [] }), false, 'AI metadata is blocked')
