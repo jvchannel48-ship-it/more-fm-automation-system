@@ -240,7 +240,6 @@ export function RadioPlayer() {
                 <span className="mt-0.5 max-w-[95px] truncate text-[9px] font-extrabold uppercase tracking-[.16em] text-amber-100 sm:max-w-[120px] sm:text-[10px]">{meta.city}</span>
               </div>
             </div>
-            <span className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-[10px] font-bold tracking-[.28em] text-white/90">{meta.frequency} · LOVE SONGS</span>
           </div>
           {!playing && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
