@@ -318,7 +318,6 @@ export function RadioPlayer() {
             <div className="relative z-10 flex size-[34%] items-center justify-center rounded-full border-4 border-slate-400 bg-slate-900 text-xl font-black italic text-white shadow-xl">RJ</div>
             <span className="absolute bottom-[12%] z-10 text-[10px] font-black tracking-[.35em] text-white">RJ FM</span>
           </div>
-          <style jsx>{`@keyframes rjCircleRoll { to { transform: rotate(360deg); } } .rj-circle-roll { animation: rjCircleRoll 9s linear infinite; } @media (prefers-reduced-motion: reduce) { .rj-circle-roll { animation: none; } }`}</style>
         </div>
       ) : (
         <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
@@ -335,7 +334,6 @@ export function RadioPlayer() {
         </div>
       )}
 
-      <style jsx global>{`.player-theme-ocean { background: linear-gradient(145deg,#071d35,#123f65,#081827) !important; } .player-theme-sunset { background: linear-gradient(145deg,#301044,#742c5b,#17101f) !important; } .player-theme-night { background: #17191f !important; }`}</style>
       <div className="flex flex-col items-center gap-1">
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
