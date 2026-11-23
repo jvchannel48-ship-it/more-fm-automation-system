@@ -42,8 +42,8 @@ export default function Home() {
                 <Headphones className="size-4 text-cyan-200" />
                 RJ FM STATIONS
               </div>
-              <p className="mb-3 text-xs text-slate-300">Pumili ng istasyon. Pagkatapos pumili, babalik ka sa Home player para pindutin ang Play.</p>
-              <StationSelector />
+              <p className="mb-3 text-xs text-slate-300">Choose a station. After selecting, you’ll return to the Home player to press Play.</p>
+              <StationSelector onSelect={() => setActiveTab('home')} />
             </div>
           </section>
 
