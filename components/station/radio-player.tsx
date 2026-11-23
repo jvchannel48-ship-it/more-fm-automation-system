@@ -256,7 +256,7 @@ export function RadioPlayer() {
           {dearMorBlocktime ? (
             <iframe
               className="absolute inset-0 h-full w-full"
-              src="https://www.youtube-nocookie.com/embed/Fv0aKay72ss?autoplay=1&playsinline=1&rel=0"
+              src="https://www.youtube-nocookie.com/embed/Fv0aKay72ss?autoplay=1&playsinline=1&rel=0&controls=0&modestbranding=1&iv_load_policy=3&disablekb=1"
               title="Dear MOR Stories — MOR Entertainment"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -296,7 +296,6 @@ export function RadioPlayer() {
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        {dearMorBlocktime && <p className="rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-200">Dear MOR Blocktime · Monday–Saturday</p>}
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
         </p>
