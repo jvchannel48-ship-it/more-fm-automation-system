@@ -327,7 +327,6 @@ export function useBroadcast(
           slot.lastPlayAttemptAt = 0
           slot.retryAttempts = 0
           slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
-          slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -335,6 +334,7 @@ export function useBroadcast(
           slot.synced = false
           slot.retryAttempts = 0
           slot.lastRetryAt = 0
+          slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
           slot.el.src = track.src
           slot.el.load()
         }
