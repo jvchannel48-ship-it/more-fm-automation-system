@@ -26,6 +26,9 @@ const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const ARTIST_HISTORY_PATH = 'station/artist-history.json'
 const PLAYED_SONG_HISTORY_PATH = 'station/played-song-history.json'
 const SONG_REPEAT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+// Keep only a compact rolling anti-repeat window instead of an ever-growing song log.
+const MAX_STATION_HISTORY_ENTRIES = 24
+const MAX_NETWORK_HISTORY_ENTRIES = 100
 interface ArtistHistoryRecord { artist: string; plays: number; lastPlayedAt: number }
 async function recordArtistPlay(artist: string, playedAt: number) {
   const saved = await readJson<ArtistHistoryRecord[]>(ARTIST_HISTORY_PATH, [])
@@ -319,7 +322,7 @@ function statePathFor(station: StationId) {
 }
 async function fill(state: StationState, now: number, sundayScheduleEnabled: boolean, blockedGenres: string[], station: StationId = 'main', nationwideEnabled = true, djChristopherEnabled = false, djChristopherIntervalMinutes = 40) {
   const savedNetworkHistory = await readJson<HistoryEntry[]>(PLAYED_SONG_HISTORY_PATH, [])
-  const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS)
+  const networkHistory = savedNetworkHistory.filter((entry) => entry.t > now - SONG_REPEAT_WINDOW_MS).slice(-MAX_NETWORK_HISTORY_ENTRIES)
   const localHistoryIds = new Set(state.history.map((entry) => entry.id))
   const selectionHistory = [...state.history, ...networkHistory.filter((entry) => !localHistoryIds.has(entry.id))]
   let guard = 0
@@ -376,7 +379,9 @@ async function fill(state: StationState, now: number, sundayScheduleEnabled: boo
     state.tracks.push({ uid: `${song.id}-${songStart}`, src: song.src, startAt: songStart, duration: song.duration, fadeIn: songFadeIn, fadeOut: identAfterSong ? 0 : CROSSFADE_SECONDS, kind: 'music', title: song.title, artist: song.artist })
     const playedEntry = { id: song.id, key: song.key, artist: song.artist, t: songStart }
     state.history.push(playedEntry)
+    if (state.history.length > MAX_STATION_HISTORY_ENTRIES) state.history = state.history.slice(-MAX_STATION_HISTORY_ENTRIES)
     networkHistory.push(playedEntry)
+    if (networkHistory.length > MAX_NETWORK_HISTORY_ENTRIES) networkHistory.splice(0, networkHistory.length - MAX_NETWORK_HISTORY_ENTRIES)
     selectionHistory.push(playedEntry)
     await writeJson(PLAYED_SONG_HISTORY_PATH, networkHistory)
     await recordArtistPlay(song.artist, songStart)
@@ -498,6 +503,7 @@ async function syncNagaFromManila(state: StationState, now: number) {
     const source = manilaMusic.find((item) => item.uid === sourceUid)
     if (!source || state.history.some((entry) => entry.id === source.uid)) continue
     state.history.push({ id: source.uid, key: songKey(source.title), artist: source.artist, t: track.startAt })
+    if (state.history.length > MAX_STATION_HISTORY_ENTRIES) state.history = state.history.slice(-MAX_STATION_HISTORY_ENTRIES)
     state.songCount++
   }
   state.fillingUntil = 0
@@ -549,7 +555,7 @@ async function loadState(now: number, path = STATE_PATH) {
     if (track.kind === 'music') return retainedMusic.has(track.uid)
     return trackEnd(track) > now && track.startAt <= queueHorizon
   })
-  state.history = state.history.filter((h) => h.t > now - 30 * 24 * 60 * 60 * 1000)
+  state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS).slice(-MAX_STATION_HISTORY_ENTRIES)
   return { state, changed: state.tracks.length !== before }
 }
 let songRequestQueue: Promise<void> = Promise.resolve()
