@@ -33,7 +33,7 @@ export default function Home() {
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-cyan-200">Discover More</p>
                 <h1 className="text-xl font-black tracking-wide text-white">RJ FM NATIONWIDE</h1>
-                <p className="text-xs text-slate-300">Pakinggan ang RJ FM stations sa buong Pilipinas.</p>
+                <p className="text-xs text-slate-300">Listen to RJ FM stations nationwide.</p>
               </div>
             </div>
 
@@ -51,7 +51,7 @@ export default function Home() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-extrabold tracking-wide text-white">RJ FM STATIONS</h2>
-                <p className="text-xs text-muted-foreground">Nationwide station directory</p>
+                <p className="text-xs text-muted-foreground">Tap a station to play it on Home</p>
               </div>
               <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">{STATION_ORDER.length} STATIONS</span>
             </div>
@@ -59,7 +59,7 @@ export default function Home() {
               {STATION_ORDER.map((id) => {
                 const item = STATIONS[id]
                 return (
-                  <div key={id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 shadow-lg">
+                  <button key={id} type="button" onClick={() => { try { window.localStorage.setItem('morefm_selected_station', id) } catch { /* storage may be unavailable */ } window.dispatchEvent(new CustomEvent('morefm:select-station', { detail: id })); setActiveTab('home') }} className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-left shadow-lg transition hover:border-cyan-200/40 hover:bg-slate-900/80 active:scale-[.99]">
                     <span className="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-cyan-200/20 bg-cyan-300/10 font-mono text-cyan-100">
                       <span className="text-[8px] font-bold tracking-widest">FM</span>
                       <span className="text-sm font-black">{item.frequency}</span>
