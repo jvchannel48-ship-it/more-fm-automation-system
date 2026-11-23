@@ -55,6 +55,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Bread', 'Barry Manilow', 'Anne Murray', 'Rita Coolidge', 'Glen Campbell',
     'B.J. Thomas|bj thomas', 'The Righteous Brothers|righteous brothers',
     'Imelda Papin|imelda papin', 'Claire dela Fuente|claire dela fuente',
+    'Connie Francis', 'Brenda Lee', 'Skeeter Davis', 'Petula Clark', 'Bobby Darin', 'Sam Cooke', 'Al Martino', 'Patti Page', 'Doris Day', 'Jack Jones', 'Vikki Carr', 'B.J. Thomas', 'Gordon Lightfoot', 'John Denver', 'Olivia Newton-John', 'Carole King', 'Helen Reddy', 'Rita Coolidge', 'Dion', 'The Lettermen', 'The Platters', 'The Cascades', 'The Association',
   ]),
   '80s-90s': artists('english', [
     'Sade', 'Anita Baker', 'Luther Vandross', 'Peabo Bryson', 'James Ingram',
@@ -71,6 +72,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Josh Groban', 'Sara Bareilles', 'Colbie Caillat', 'Corinne Bailey Rae',
     'Natasha Bedingfield', 'David Archuleta', 'Kelly Clarkson',
     'Daniel Powter', 'Gavin DeGraw', 'Jordin Sparks', 'David Cook',
+    'Adele', 'Bruno Mars', 'Ed Sheeran', 'Sam Smith', 'Ariana Grande', 'Charlie Puth', 'Shawn Mendes', 'Katy Perry', 'Kelly Clarkson', 'Christina Perri', 'Sara Bareilles', 'Ingrid Michaelson', 'Lianne La Havas', 'Birdy', 'Emeli Sande', 'James Morrison', 'Jason Derulo', 'OneRepublic', 'Train', 'The Script',
   ]),
   '2023-2026': artists('english', [
     'Benson Boone', 'Teddy Swims', 'Alex Warren', 'Stephen Sanchez',
@@ -95,6 +97,7 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
     'Earl Agustin', 'Rob Deniel', 'Jan Roberts', 'Mikee Sarmiento',
     'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso', 'Mariah Deborah', 'Thea Astley',
     'Morissette Amon|morissette', 'Jona|jona', 'Angeline Quinto',
+    'Kitchie Nadal', 'Yeng Constantino', 'Aiza Seguerra', 'Sitti', 'Jessa Zaragoza', 'Donna Cruz', 'Roselle Nava', 'Lani Misalucha', 'Vina Morales', 'Kuh Ledesma', 'Pops Fernandez', 'Jaya', 'Janno Gibbs', 'Dingdong Avanzado', 'Renz Verano', 'Gino Padilla', 'Rodel Naval', 'April Boy Regino', 'Rico Blanco', 'Paolo Santos', 'Barbie Almalbis', 'Julianne', 'Kyla', 'Nina', 'Juris', 'Jay R', 'Erik Santos', 'Jed Madela', 'KZ Tandingan', 'Zia Quizon', 'Daryl Ong', 'Jason Dy', 'Darren Espanto', 'Ben&Ben', 'December Avenue', 'The Juans', 'Silent Sanctuary', 'Over October', 'Sunkissed Lola', 'Lola Amour', 'Maki', 'Dionela', 'Earl Agustin', 'Rob Deniel', 'Syd Hartha', 'Jikamarie', 'Paolo Sandejas',
   ]),
 }
 const ENGLISH_ERA_EXPANSION = [
