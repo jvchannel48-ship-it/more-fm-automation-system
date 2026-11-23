@@ -20,7 +20,7 @@ const CLASSIC_LOVE_EXCLUSION_RULE =
 
 /** Live / concert / news / non-song media. */
 const LIVE_CONCERT_NEWS_RULE =
-  /\b(?:live\s*(?:at|from|in|performance|session|concert|version|on)|concert|tour|stadium|unplugged|acoustic\s*session|audience|crowd|interview|news|breaking\s*news|bulletin|podcast|spoken\s*word|speech|sermon|commentary)\b/i
+  /\b(?:live\s*(?:at|from|in|performance|session|concert|version|on|stream|broadcast)|concert|tour|stadium|unplugged|acoustic\s*session|audience|crowd|interview|news|breaking\s*news|bulletin|podcast|spoken\s*word|speech|sermon|commentary|wish\s*107\.?5|wish\s*bus|wishclusive|wish\s*fm|wishcovery|wish\s*music\s*awards)\b/i
 
 const NON_MUSIC_OR_ALTERNATE_RULE =
   /\b(?:full album|nonstop|non-stop|reaction|tutorial|sped\s?up|slowed|nightcore|8d|reverb|bass\s?boost|playlist|compilation|1 hour|one hour|loop|ringtone|lesson|chords|sing-?along|with lyrics in|version by|rendition|trailer|ost\s*only|movie\s*scene)\b/i
@@ -52,6 +52,11 @@ export const DEFAULT_BLOCKED_GENRES = [
   'concert',
   'live',
   'news',
+  'live concert',
+  'wish 107.5',
+  'wish bus',
+  'wishclusive',
+  'wish fm',
 ] as const
 
 export const GENRE_BLOCK_PRESETS = [
@@ -69,6 +74,10 @@ export const GENRE_BLOCK_PRESETS = [
   { id: 'concert', label: 'Concert' },
   { id: 'live', label: 'Live' },
   { id: 'news', label: 'News' },
+  { id: 'live concert', label: 'Live Concert' },
+  { id: 'wish 107.5', label: 'Wish 107.5' },
+  { id: 'wish bus', label: 'Wish Bus' },
+  { id: 'wishclusive', label: 'Wishclusive' },
 ] as const
 
 /**
@@ -165,7 +174,7 @@ export function isAllowedStationTrack(input: {
     // window may use original-artist disco tracks, but never AI or covers/remixes,
     // karaoke, live recordings, news, or non-music uploads.
     if (!input.title || NON_LATIN.test(input.title)) return false
-    if (/\b(?:cover|karaoke|remix(?:ed)?|mash ?up|bootleg|tribute|parody|live|concert|interview|news|podcast|full album|nonstop|playlist|compilation|reaction|tutorial|sped ?up|slowed|nightcore|ringtone)\b/i.test(haystack)) return false
+    if (/\b(?:cover|karaoke|remix(?:ed)?|mash ?up|bootleg|tribute|parody|live|concert|interview|news|podcast|full album|nonstop|playlist|compilation|reaction|tutorial|sped ?up|slowed|nightcore|ringtone|wish\s*107\.?5|wish\s*bus|wishclusive|wish\s*fm|wishcovery)\b/i.test(haystack)) return false
     if (FOREIGN_RULE.test(haystack) || NON_MUSIC_OR_ALTERNATE_RULE.test(haystack)) return false
     const blocked = (input.blockedGenres ?? []).filter((genre) => !/^(disco|dance|eurodance|funk|party|club|ai)$/i.test(normalize(genre)))
     return !matchesBlockedGenre(haystack, blocked)
