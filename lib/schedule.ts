@@ -12,7 +12,6 @@ export type ProgramId =
   | 'sunday-english-love'
   | 'english-love'
   | 'daytime-love'
-  | 'christmas-mix'
   | 'disco'
   | 'night-love'
   | 'love-mix'
@@ -911,12 +910,6 @@ export function programAt(ms: number, _sundayScheduleEnabled = true, _station: s
   const { hour, minute, day } = manilaTime(ms)
   const minuteOfDay = hour * 60 + minute
 
-  // Nationwide Christmas good-vibes rotation: 3 English tracks then 1 Tagalog track.
-  // Manila calendar dates: November 1 through January 6, inclusive.
-  const localDate = new Date(ms + MANILA_OFFSET_MS)
-  const month = localDate.getUTCMonth()
-  const date = localDate.getUTCDate()
-  if (month === 10 || month === 11 || (month === 0 && date <= 6)) return PROGRAMS['christmas-mix']
   // Every RJ FM station plays a full-day mix of English and Tagalog love songs.
   if (minuteOfDay >= 22 * 60) return PROGRAMS['night-love']
   return PROGRAMS['daytime-love']
