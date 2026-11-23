@@ -71,47 +71,81 @@ export function RadioPlayer() {
 
   useEffect(() => {
     const checkDzmmSchedule = () => {
-      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date())
+      const audio = externalAudioRef.current
+      if (!audio) return
+
+      // DZMM is a scheduled program for RJ FM Manila only.
+      // Every regional RJ FM station stays on its own continuous music stream.
+      if (station !== 'main') {
+        if (externalStation?.name === 'DZMM TeleRadyo' || externalStation?.name === 'DZMM') {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+          setExternalStation(null)
+          setExternalPlaying(false)
+          setPlaying(true)
+        }
+        return
+      }
+
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Manila',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date())
       const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0)
       const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0)
       const mins = hour * 60 + minute
-      const isDzmmStation = station === 'main' || station === 'naga' || station === 'calabanga'
-      const isCebuDavao = station === 'cebu' || station === 'davao'
-      const signOff = isDzmmStation && mins >= 3 * 60 && mins < 4 * 60
-      const scheduled = (isDzmmStation && (mins >= 12 * 60 && mins < 13 * 60 || mins >= 18 * 60 + 28 && mins < 20 * 60 || mins >= 22 * 60 || mins < 3 * 60))
-        || (isCebuDavao && mins >= 18 * 60 + 28 && mins < 20 * 60)
-      const audio = externalAudioRef.current
-      if (!audio) return
+      const signOff = mins >= 3 * 60 && mins < 4 * 60
+      const scheduled = (mins >= 12 * 60 && mins < 13 * 60)
+        || (mins >= 18 * 60 + 28 && mins < 20 * 60)
+        || mins >= 22 * 60
+        || mins < 3 * 60
+
       if (signOff) {
-        audio.pause()
-        if (externalStation?.name === 'DZMM') setExternalStation(null)
-        setExternalPlaying(false)
+        if (externalStation?.name === 'DZMM TeleRadyo' || externalStation?.name === 'DZMM') {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+          setExternalStation(null)
+          setExternalPlaying(false)
+          setPlaying(false)
+        }
+        return
+      }
+
+      if (scheduled) {
+        if (externalStation?.name === 'DZMM TeleRadyo' && externalPlaying) return
         setPlaying(false)
-      } else if (scheduled) {
-        if (externalStation?.name === 'DZMM' && externalPlaying) return
-        setPlaying(false)
-        setExternalStation({ name: 'DZMM', url_resolved: 'https://us1.amfmph.com:8852/live' })
+        setExternalStation({ name: 'DZMM TeleRadyo', url_resolved: 'https://us1.amfmph.com:8852/live' })
         audio.src = 'https://us1.amfmph.com:8852/live'
         void audio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
-        void fetch('/api/dzmm-stream', { cache: 'no-store' }).then(async (response) => {
-          if (!response.ok) return null
-          return response.json() as Promise<{ name?: string; url?: string }>
-        }).then((result) => {
-          if (!result?.url || !externalAudioRef.current || !result.url.startsWith('http')) return
-          const currentAudio = externalAudioRef.current
-          if (currentAudio.src !== result.url) {
-            currentAudio.src = result.url
-            void currentAudio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
-          }
-          if (result.name) setExternalStation({ name: result.name, url_resolved: result.url })
-        }).catch(() => undefined)
-      } else if (externalStation?.name === 'DZMM') {
+        void fetch('/api/dzmm-stream', { cache: 'no-store' })
+          .then(async (response) => {
+            if (!response.ok) return null
+            return response.json() as Promise<{ name?: string; url?: string }>
+          })
+          .then((result) => {
+            if (!result?.url || !externalAudioRef.current || !result.url.startsWith('http')) return
+            const currentAudio = externalAudioRef.current
+            if (currentAudio.src !== result.url) {
+              currentAudio.src = result.url
+              void currentAudio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
+            }
+            setExternalStation({ name: 'DZMM TeleRadyo', url_resolved: result.url })
+          })
+          .catch(() => undefined)
+      } else if (externalStation?.name === 'DZMM TeleRadyo' || externalStation?.name === 'DZMM') {
         audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
         setExternalStation(null)
         setExternalPlaying(false)
         setPlaying(true)
       }
     }
+
     checkDzmmSchedule()
     const timer = window.setInterval(checkDzmmSchedule, 15000)
     return () => window.clearInterval(timer)
