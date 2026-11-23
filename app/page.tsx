@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import { UsageDashboard } from '@/components/station/usage-dashboard'
-import { Radio, MapPin, Headphones } from 'lucide-react'
+import { Radio, MapPin } from 'lucide-react'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationShell } from '@/components/station/station-shell'
 import { BottomNavigation, type AppTab } from '@/components/station/bottom-navigation'
-import { StationSelector } from '@/components/station/station-selector'
 import { STATIONS, STATION_ORDER } from '@/lib/stations'
 
 export default function Home() {
@@ -37,21 +36,13 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-                <Headphones className="size-4 text-cyan-200" />
-                RJ FM STATIONS
-              </div>
-              <p className="mb-3 text-xs text-slate-300">Choose a station to return to Home and start playing automatically.</p>
-              <StationSelector onSelect={() => setActiveTab('home')} />
-            </div>
           </section>
 
           <section className="mt-5">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-extrabold tracking-wide text-white">RJ FM STATIONS</h2>
-                <p className="text-xs text-muted-foreground">Tap a station to play it on Home</p>
+                <p className="text-xs text-muted-foreground">Choose a station to return to Home and start playing automatically.</p>
               </div>
               <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">{STATION_ORDER.length} STATIONS</span>
             </div>
