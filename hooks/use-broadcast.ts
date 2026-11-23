@@ -7,9 +7,9 @@ const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAI
 const PRELOAD_AHEAD_MS = 90_000
 const PRELOAD_DJ_VOICE_AHEAD_MS = 120_000
 const DRIFT_TOLERANCE_S = 15
-const MAX_MEDIA_RETRIES = 6
-const RETRY_BACKOFF_MS = 2_000
-const START_TIMEOUT_MS = 12_000
+const MAX_MEDIA_RETRIES = 8
+const RETRY_BACKOFF_MS = 3_000
+const START_TIMEOUT_MS = 25_000
 const DJ_VOICE_START_TIMEOUT_MS = 55_000
 
 interface Slot {
@@ -326,7 +326,7 @@ export function useBroadcast(
           slot.lastRetryAt = 0
           slot.lastPlayAttemptAt = 0
           slot.retryAttempts = 0
-          slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
+          slot.el.preload = activeIds.has(track.uid) || track.uid === firstUpcomingMusic?.uid ? 'auto' : 'metadata'
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -340,7 +340,7 @@ export function useBroadcast(
         }
         const isActive = activeIds.has(track.uid)
         const el = slot.el
-        el.preload = isActive ? 'auto' : 'metadata'
+        el.preload = isActive || track.uid === firstUpcomingMusic?.uid ? 'auto' : 'metadata'
         // Keep cached tracks available for offline listening; cache is size-limited by the service worker.\n        el.dataset.rjfmAutoDelete = 'false'
 
         if (!playing) {
