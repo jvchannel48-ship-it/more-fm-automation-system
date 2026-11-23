@@ -749,6 +749,7 @@ const APPROVED_ENGLISH_SOFT_POOL = [
 ]
 
 const ENGLISH_SOFT_VARIANTS = [
+  '1950s 1960s English romantic oldies love songs original artist official audio',
   'classic English oldies soft love song ballad official audio',
   'easy listening mellow romantic pop ballad original artist',
   'soft adult contemporary love song official audio',
