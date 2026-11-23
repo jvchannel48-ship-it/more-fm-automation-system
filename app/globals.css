@@ -642,3 +642,20 @@ body {
   .player-loop-video-one, .player-loop-video-two { animation: none; }
   .player-loop-video-two { display: none; }
 }
+
+
+/* Keep the video Play button centered despite the global touch-target rule. */
+.radio-player-card .radio-play-overlay {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  z-index: 20 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: translate(-50%, -50%) !important;
+  touch-action: manipulation;
+}
+.radio-player-card .radio-play-overlay:active {
+  transform: translate(-50%, -50%) scale(.96) !important;
+}
