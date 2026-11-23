@@ -191,7 +191,7 @@ export function RadioPlayer() {
   }, [meta])
 
   return (
-    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#09090b] text-white ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
+    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#17191f] text-white ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
       {!Capacitor.isNativePlatform() && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
         <Download className="size-4" /> Download RJ FM APK
       </a>}
@@ -206,8 +206,8 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-black shadow-[0_22px_55px_rgba(0,0,0,.62)]">
-        <div className="relative aspect-video w-full overflow-hidden bg-black">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
+        <div className="relative aspect-video w-full overflow-hidden bg-[#17191f]">
           <video
             ref={stationVideoRef}
             className="absolute inset-0 block h-full w-full object-cover"
@@ -223,15 +223,17 @@ export function RadioPlayer() {
           {!stationVideoPlaying && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
-          <Button
-            type="button"
-            size="icon"
-            onClick={toggleStationVideo}
-            aria-label={stationVideoPlaying ? `Pause ${meta.name}` : `Play ${meta.name}`}
-            className="absolute left-1/2 top-1/2 z-10 size-[4.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 bg-black/55 text-white shadow-[0_0_0_8px_rgba(255,255,255,.12),0_10px_28px_rgba(0,0,0,.55)] backdrop-blur-md hover:bg-black/75 [&_svg]:size-8"
-          >
-            {stationVideoPlaying ? <Pause /> : <Play className="translate-x-0.5" />}
-          </Button>
+          {!stationVideoPlaying && (
+            <Button
+              type="button"
+              size="icon"
+              onClick={toggleStationVideo}
+              aria-label={`Play ${meta.name}`}
+              className="absolute left-1/2 top-1/2 z-10 size-[4.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 [&_svg]:size-8"
+            >
+              <Play className="translate-x-0.5" />
+            </Button>
+          )}
         </div>
         <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
           <span className="size-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_12px_rgba(248,113,113,.9)]" aria-hidden="true" /> LIVE
