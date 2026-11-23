@@ -4,5 +4,5 @@ minimumReleaseAgeExclude:
   - '@next/*'
   - next
 
-onlyBuiltDependencies:
-  - ffmpeg-static
+allowBuilds:
+  ffmpeg-static: true
