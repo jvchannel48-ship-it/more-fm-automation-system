@@ -25,7 +25,9 @@ export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
   const [externalStation, setExternalStation] = useState<{ name: string; url_resolved: string } | null>(null)
   const [externalPlaying, setExternalPlaying] = useState(false)
+  const [stationVideoPlaying, setStationVideoPlaying] = useState(false)
   const externalAudioRef = useRef<HTMLAudioElement>(null)
+  const stationVideoRef = useRef<HTMLVideoElement>(null)
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
@@ -153,14 +155,22 @@ export function RadioPlayer() {
 
   useEffect(() => () => { if (sleepTimerRef.current) window.clearInterval(sleepTimerRef.current) }, [])
 
-  const togglePlay = () => {
-    if (externalStation && externalAudioRef.current) {
-      if (externalPlaying) { externalAudioRef.current.pause(); setExternalPlaying(false) }
-      else { externalAudioRef.current.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false)) }
-      return
+  const toggleStationVideo = () => {
+    const video = stationVideoRef.current
+    if (!video) return
+    if (video.paused) {
+      // Start the visual video muted and the RJ FM broadcast audio from the same user tap.
+      video.muted = true
+      void video.play().then(() => {
+        setStationVideoPlaying(true)
+        unlock()
+        setPlaying(true)
+      }).catch(() => setStationVideoPlaying(false))
+    } else {
+      video.pause()
+      setStationVideoPlaying(false)
+      setPlaying(false)
     }
-    unlock()
-    setPlaying((p) => !p)
   }
   const onAirAgain = data?.nextOnAir
     ? new Date(data.nextOnAir).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })
@@ -212,6 +222,10 @@ export function RadioPlayer() {
       {!Capacitor.isNativePlatform() && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
         <Download className="size-4" /> Download RJ FM APK
       </a>}
+      <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>
+        <span className={`size-1.5 rounded-full ${offAir ? 'bg-muted-foreground' : 'animate-pulse bg-live'}`} aria-hidden="true" />
+        {externalStation ? (externalPlaying ? 'Live · External station' : 'External station paused') : (offAir ? 'Off air' : 'Live')}
+      </span>
       {data?.liveDj?.active && (
         <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-200">
           <span className="size-1.5 animate-pulse rounded-full bg-rose-400" aria-hidden="true" />
@@ -219,23 +233,36 @@ export function RadioPlayer() {
         </span>
       )}
 
-      <div className={`player-artwork relative flex aspect-square w-full max-w-[19rem] items-center justify-center overflow-hidden rounded-[2rem] ${live ? 'is-playing' : ''}`}>
-        <div className="player-video-background" aria-hidden="true">
-          <video className="player-loop-video player-loop-video-one" autoPlay muted loop playsInline preload="metadata" tabIndex={-1}>
-            <source src="/audio/Music%20Notes%20Colorful%20Rays%20Abstract%20Background%20Looped%20Video%20_%20Ultra%20HD%204K.mp4" type="video/mp4" />
-          </video>
-          <video className="player-loop-video player-loop-video-two" autoPlay muted loop playsInline preload="metadata" tabIndex={-1}>
-            <source src="/audio/Music%20Note%20FREE%20Background%20Animation%2C%20Loop%2C%204k%20%20%20FREE%20STOCK%20VIDEOS.mp4" type="video/mp4" />
-          </video>
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-black shadow-[0_22px_55px_rgba(0,0,0,.62)]">
+        <div className="relative aspect-video w-full overflow-hidden bg-black">
+          <video
+            ref={stationVideoRef}
+            className="absolute inset-0 block h-full w-full object-cover"
+            src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-label={`${meta.name} video player`}
+            onPlay={() => setStationVideoPlaying(true)}
+            onPause={() => setStationVideoPlaying(false)}
+          />
+          {!stationVideoPlaying && (
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
+          )}
+          <Button
+            type="button"
+            size="icon"
+            onClick={toggleStationVideo}
+            aria-label={stationVideoPlaying ? `Pause ${meta.name}` : `Play ${meta.name}`}
+            className="absolute left-1/2 top-1/2 z-10 size-[4.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80 bg-black/55 text-white shadow-[0_0_0_8px_rgba(255,255,255,.12),0_10px_28px_rgba(0,0,0,.55)] backdrop-blur-md hover:bg-black/75 [&_svg]:size-8"
+          >
+            {stationVideoPlaying ? <Pause /> : <Play className="translate-x-0.5" />}
+          </Button>
         </div>
-        <div className="artwork-orbit artwork-orbit-one" aria-hidden="true" /><div className="artwork-orbit artwork-orbit-two" aria-hidden="true" />
-        <div className="player-artwork-mark">
-          <img src={`/station-logos/${station}.svg`} alt={`RJ FM ${meta.city} ${meta.frequency}`} className="player-station-logo" />
-          <small>{meta.city} · {meta.frequency}</small>
+        <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
+          <span className="size-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_12px_rgba(248,113,113,.9)]" aria-hidden="true" /> LIVE
         </div>
-        <Button size="icon" onClick={togglePlay} aria-label={playing ? (offAir ? `Stop static for ${meta.name}` : `Pause ${meta.name}`) : (offAir ? `Hear off-air static for ${meta.name}` : `Play ${meta.name}`)} className="record-button relative size-[5rem] rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-9">
-          {(externalStation ? externalPlaying : playing) ? <Pause /> : <Play className="translate-x-0.5" />}
-        </Button>
       </div>
 
       <div className="flex flex-col items-center gap-1">
