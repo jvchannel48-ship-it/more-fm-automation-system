@@ -34,13 +34,19 @@ export function RadioPlayer() {
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const [philippineTime, setPhilippineTime] = useState(() => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
+  const [philippineWeekday, setPhilippineWeekday] = useState(() => new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(new Date()))
   const isDearMorStation = station === 'main' || station === 'cebu' || station === 'naga'
-  const dearMorBlocktime = isDearMorStation && ((philippineTime >= '13:00' && philippineTime < '15:00') || (philippineTime >= '20:00' && philippineTime < '22:00'))
+  const isDearMorDay = philippineWeekday !== 'Sun'
+  const dearMorBlocktime = isDearMorStation && isDearMorDay && ((philippineTime >= '13:00' && philippineTime < '15:00') || (philippineTime >= '20:00' && philippineTime < '22:00'))
   const listenerId = useRef<string | null>(null)
   const unlockAction = useRef<() => void>(() => undefined)
 
   useEffect(() => {
-    const updatePhilippineTime = () => setPhilippineTime(new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
+    const updatePhilippineTime = () => {
+      const now = new Date()
+      setPhilippineTime(now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }))
+      setPhilippineWeekday(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short' }).format(now))
+    }
     updatePhilippineTime()
     const timer = window.setInterval(updatePhilippineTime, 15_000)
     return () => window.clearInterval(timer)
@@ -251,7 +257,7 @@ export function RadioPlayer() {
             <iframe
               className="absolute inset-0 h-full w-full"
               src="https://www.youtube-nocookie.com/embed/Fv0aKay72ss?autoplay=1&playsinline=1&rel=0"
-              title="Dear MOR Marathon: Stories of Love — MOR Entertainment"
+              title="Dear MOR Stories — MOR Entertainment"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
@@ -290,7 +296,7 @@ export function RadioPlayer() {
       </div>
 
       <div className="flex flex-col items-center gap-1">
-        {dearMorBlocktime && <p className="rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-200">Dear MOR Blocktime · Daily</p>}
+        {dearMorBlocktime && <p className="rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-200">Dear MOR Blocktime · Monday–Saturday</p>}
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
         </p>
