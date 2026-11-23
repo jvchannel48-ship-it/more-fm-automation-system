@@ -231,7 +231,17 @@ export function RadioPlayer() {
       )}
 
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
-        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#17191f]">
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#26364b_0%,#111923_48%,#080b10_100%)]">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <div className="flex size-28 items-center justify-center rounded-full border-[5px] border-amber-300/90 bg-[radial-gradient(circle_at_35%_25%,#fff4c2_0%,#d99a32_28%,#761d25_68%,#26090c_100%)] p-1 shadow-[0_0_0_5px_rgba(255,255,255,.12),0_0_38px_rgba(245,158,11,.28)] sm:size-36">
+              <div className="flex size-full flex-col items-center justify-center rounded-full border border-amber-100/70 bg-black/25 text-center">
+                <span className="text-[9px] font-black tracking-[.34em] text-amber-100 sm:text-[10px]">YOUR STATION</span>
+                <span className="mt-1 text-2xl font-black italic tracking-tight text-white drop-shadow sm:text-3xl">RJ FM</span>
+                <span className="mt-0.5 max-w-[95px] truncate text-[9px] font-extrabold uppercase tracking-[.16em] text-amber-100 sm:max-w-[120px] sm:text-[10px]">{meta.city}</span>
+              </div>
+            </div>
+            <span className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-[10px] font-bold tracking-[.28em] text-white/90">{meta.frequency} · LOVE SONGS</span>
+          </div>
           {!playing && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
