@@ -32,11 +32,13 @@ export function RadioPlayer() {
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
   const [customPlayerHtml, setCustomPlayerHtml] = useState('')
+  const [apkDownloadHidden, setApkDownloadHidden] = useState(false)
   const listenerId = useRef<string | null>(null)
   const unlockAction = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     setStation(getStoredStation())
+    try { setApkDownloadHidden(window.localStorage.getItem('rjfm_apk_downloaded_v1') === 'true') } catch { setApkDownloadHidden(false) }
     setPlayerPreferences(readPlayerPreferences())
     try { setCustomPlayerHtml(window.localStorage.getItem('rjfm_custom_player_html_v1') || '') } catch { setCustomPlayerHtml('') }
     const onStationChange = (event: Event) => {
@@ -221,7 +223,7 @@ export function RadioPlayer() {
 
   return (
     <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#17191f] text-white ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
-      {!Capacitor.isNativePlatform() && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
+      {!Capacitor.isNativePlatform() && !apkDownloadHidden && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" onClick={() => { setApkDownloadHidden(true); try { window.localStorage.setItem('rjfm_apk_downloaded_v1', 'true') } catch { /* ignore */ } }} className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
         <Download className="size-4" /> Download RJ FM APK
       </a>}
       <span className={`live-badge inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'}`}>
@@ -238,9 +240,9 @@ export function RadioPlayer() {
       {customPlayerHtml ? (
         <iframe title="RJ FM custom speaker player" srcDoc={customPlayerHtml} sandbox="allow-scripts" referrerPolicy="no-referrer" className="aspect-video w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-black shadow-2xl" />
       ) : playerPreferences.playerStyle === 'speakers' ? (
-        <div className="relative flex aspect-[16/9] w-full max-w-2xl items-center justify-center gap-5 overflow-hidden rounded-[1.6rem] border border-white/15 bg-[radial-gradient(ellipse_at_center,#26364b_0%,#101923_55%,#05080d_100%)] px-4 shadow-2xl sm:gap-10" style={{ ['--speaker-light' as string]: playerPreferences.speakerLight }}>
+        <div className="relative flex aspect-[3/4] w-full max-w-sm flex-col items-center justify-center gap-5 overflow-hidden rounded-[1.6rem] border border-white/15 bg-[radial-gradient(ellipse_at_center,#26364b_0%,#101923_55%,#05080d_100%)] px-4 py-6 shadow-2xl" style={{ ['--speaker-light' as string]: playerPreferences.speakerLight }}>
           {[0, 1].map((speaker) => (
-            <div key={speaker} className={'relative z-10 flex aspect-square w-[42%] max-w-[220px] items-center justify-center rounded-full border-[5px] border-slate-500/80 bg-[radial-gradient(circle_at_35%_25%,#687386_0%,#252d3a_22%,#080b12_70%)] p-[5%] shadow-[inset_0_0_22px_rgba(255,255,255,.18),0_15px_28px_rgba(0,0,0,.7)] ' + (live ? 'rj-speaker-live' : '')}>
+            <div key={speaker} className={'relative z-10 flex aspect-square w-[58%] max-w-[220px] shrink-0 items-center justify-center rounded-full border-[5px] border-slate-500/80 bg-[radial-gradient(circle_at_35%_25%,#687386_0%,#252d3a_22%,#080b12_70%)] p-[5%] shadow-[inset_0_0_22px_rgba(255,255,255,.18),0_15px_28px_rgba(0,0,0,.7)] ' + (live ? 'rj-speaker-live' : '')}>
               <div className="absolute inset-[5%] rounded-full border border-white/20 bg-[repeating-radial-gradient(circle,#252b36_0_3px,#111722_4px_7px)] shadow-inner" />
               <div className={'relative flex aspect-square w-[68%] items-center justify-center rounded-full border-[5px] border-slate-400/80 bg-[radial-gradient(circle_at_35%_30%,#818b9b_0%,#323b49_25%,#080b11_72%)] shadow-inner ' + (live ? 'rj-speaker-cone' : '')}>
                 <div className="absolute inset-[12%] rounded-full border-[3px] border-white/20 bg-[radial-gradient(circle_at_35%_30%,#384252,#090d14_75%)]" />
