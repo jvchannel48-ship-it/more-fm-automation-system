@@ -33,10 +33,6 @@ export function RadioPlayer() {
   const [recoveryIssue, setRecoveryIssue] = useState<string | null>(null)
   const [station, setStation] = useState<StationId>('main')
   const [playerPreferences, setPlayerPreferences] = useState<PlayerPreferences>(DEFAULT_PLAYER_PREFERENCES)
-  const [sleepMinutes, setSleepMinutes] = useState('0')
-  const [sleepRemaining, setSleepRemaining] = useState<number | null>(null)
-  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const sleepDeadlineRef = useRef<number | null>(null)
   const listenerId = useRef<string | null>(null)
 
   useEffect(() => {
@@ -129,38 +125,13 @@ export function RadioPlayer() {
     return () => { cancelled = true }
   }, [live, externalStation, station])
 
-  const clearSleepTimer = () => {
-    if (sleepTimerRef.current) window.clearInterval(sleepTimerRef.current)
-    sleepTimerRef.current = null
-    sleepDeadlineRef.current = null
-    setSleepRemaining(null)
-  }
-
-  const startSleepTimer = () => {
-    const minutes = Number(sleepMinutes)
-    if (!Number.isFinite(minutes) || minutes <= 0) { clearSleepTimer(); return }
-    if (sleepTimerRef.current) window.clearInterval(sleepTimerRef.current)
-    sleepDeadlineRef.current = Date.now() + minutes * 60_000
-    setSleepRemaining(minutes * 60)
-    sleepTimerRef.current = window.setInterval(() => {
-      const remaining = Math.max(0, Math.ceil(((sleepDeadlineRef.current ?? Date.now()) - Date.now()) / 1000))
-      setSleepRemaining(remaining)
-      if (remaining <= 0) {
-        if (externalAudioRef.current) { externalAudioRef.current.pause(); setExternalPlaying(false) }
-        setPlaying(false)
-        clearSleepTimer()
-      }
-    }, 1000)
-  }
-
-  useEffect(() => () => { if (sleepTimerRef.current) window.clearInterval(sleepTimerRef.current) }, [])
-
   const toggleStationVideo = () => {
     const video = stationVideoRef.current
     if (!video) return
     if (video.paused) {
       // Start the visual video muted and the RJ FM broadcast audio from the same user tap.
       video.muted = true
+      video.currentTime = 0
       void video.play().then(() => {
         setStationVideoPlaying(true)
         unlock()
@@ -218,7 +189,7 @@ export function RadioPlayer() {
   }, [meta])
 
   return (
-    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'} ${playerPreferences.background === 'ocean' ? 'bg-gradient-to-b from-blue-950/60 to-background' : playerPreferences.background === 'sunset' ? 'bg-gradient-to-b from-orange-950/50 to-background' : 'bg-background/20'}`}>
+    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#09090b] text-white ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
       {!Capacitor.isNativePlatform() && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
         <Download className="size-4" /> Download RJ FM APK
       </a>}
@@ -287,18 +258,6 @@ export function RadioPlayer() {
         </Button>
         <Slider value={[muted ? 0 : volume * 100]} onValueChange={(v) => { const next = typeof v === 'number' ? v : v[0]; setMuted(false); setVolume((next ?? 70) / 100) }} max={100} step={1} aria-label="Volume" />
       </div>}
-
-      <div className="flex w-full max-w-xs items-center gap-2 rounded-2xl border border-violet-300/30 bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-400/10 p-3 shadow-[0_8px_24px_rgba(45,30,110,.12)]">
-        <Moon className="size-4 shrink-0 text-violet-500" />
-        <div className="min-w-0 flex-1 text-left">
-          <p className="text-xs font-semibold">Sleep timer</p>
-          <p className="text-[10px] text-muted-foreground">{sleepRemaining === null ? 'Auto-stop radio after your chosen time' : `Stops in ${Math.floor(sleepRemaining / 60)}:${String(sleepRemaining % 60).padStart(2, '0')}`}</p>
-        </div>
-        <select aria-label="Sleep timer duration" value={sleepMinutes} onChange={(event) => setSleepMinutes(event.target.value)} className="h-9 max-w-[6.5rem] rounded-xl border border-white/20 bg-slate-950/80 px-2 text-xs text-white">
-          <option value="0">Off</option><option value="40">40 min</option><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option><option value="180">3 hours</option>
-        </select>
-        <Button type="button" size="sm" variant="outline" onClick={startSleepTimer} className="h-9 px-3 text-xs">{sleepRemaining === null ? 'Set' : 'Reset'}</Button>
-      </div>
 
       <audio ref={externalAudioRef} className="hidden" preload="none" onPlay={() => setExternalPlaying(true)} onPause={() => setExternalPlaying(false)} onError={() => setExternalPlaying(false)} />
       {externalStation && <Button type="button" variant="outline" size="sm" onClick={() => { externalAudioRef.current?.pause(); setExternalStation(null); setExternalPlaying(false) }}>Return to RJ FM</Button>}
