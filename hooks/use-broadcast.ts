@@ -210,6 +210,33 @@ export function useBroadcast(
     }
   }, [data])
 
+  // Android may suspend Web Audio while another app (for example Facebook) is
+  // in the foreground. When RJ FM becomes visible again, resume the context and
+  // re-request only tracks that are active now; the normal scheduler handles the rest.
+  useEffect(() => {
+    const resumeAfterBackground = () => {
+      if (document.visibilityState !== 'visible' || !playing) return
+      const context = audioContext.current
+      if (context && context.state === 'suspended') {
+        void context.resume().catch(() => undefined)
+      }
+      const now = Date.now() + offset.current
+      for (const track of data?.tracks ?? []) {
+        if (now < track.startAt || now >= track.startAt + track.duration * 1000) continue
+        const slot = slots.current.find((candidate) => candidate.uid === track.uid && candidate.src === track.src)
+        if (slot?.el.paused && !slot.el.ended) {
+          void slot.el.play().catch(() => undefined)
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', resumeAfterBackground)
+    window.addEventListener('pageshow', resumeAfterBackground)
+    return () => {
+      document.removeEventListener('visibilitychange', resumeAfterBackground)
+      window.removeEventListener('pageshow', resumeAfterBackground)
+    }
+  }, [data, playing])
+
   useEffect(() => {
     const tick = () => {
       const now = Date.now() + offset.current
