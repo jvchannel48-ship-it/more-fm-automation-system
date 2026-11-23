@@ -123,12 +123,22 @@ export function RadioPlayer() {
   }, [mutate, station])
   const { buffering, playbackIssue, unlock } = useBroadcast(data, playing, muted ? 0 : volume, recoverStream, station)
   useEffect(() => {
-    if (!dearMorBlocktime) return
+    if (!dearMorBlocktime) {
+      stationVideoRef.current?.pause()
+      setStationVideoPlaying(false)
+      return
+    }
     setPlaying(false)
     setExternalPlaying(false)
     externalAudioRef.current?.pause()
-    stationVideoRef.current?.pause()
-    setStationVideoPlaying(false)
+    const video = stationVideoRef.current
+    if (video) {
+      video.muted = true
+      video.loop = true
+      void video.play()
+        .then(() => setStationVideoPlaying(true))
+        .catch(() => setStationVideoPlaying(false))
+    }
   }, [dearMorBlocktime])
   unlockAction.current = unlock
 
@@ -277,12 +287,13 @@ export function RadioPlayer() {
       )}
 
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
-        <div className="relative aspect-video w-full overflow-hidden bg-[#17191f]">
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#17191f]">
           {dearMorBlocktime && <video
             ref={stationVideoRef}
             className="absolute inset-0 block h-full w-full object-cover"
             src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
             muted
+            autoPlay
             loop
             playsInline
             preload="metadata"
