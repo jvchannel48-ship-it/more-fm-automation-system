@@ -799,7 +799,7 @@ function mixedProgram(id: ProgramId): Program {
 export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-oldies': mixedProgram('sunday-oldies'),
   'sunday-english-oldies': mixedProgram('sunday-english-oldies'),
-  'sunday-tagalog-classic': mixedProgram('sunday-tagalog-classic'),
+  'sunday-tagalog-classic': { id: 'sunday-tagalog-classic', pools: { english: APPROVED_ENGLISH_SOFT_POOL, tagalog: SUNDAY_TAGALOG_CLASSICS }, variants: { english: ENGLISH_SOFT_VARIANTS, tagalog: OPM_VARIANTS } },
   'sunday-english-love': mixedProgram('sunday-english-love'),
   'english-love': mixedProgram('english-love'),
   'daytime-love': mixedProgram('daytime-love'),
