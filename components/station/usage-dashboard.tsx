@@ -185,7 +185,7 @@ export function UsageDashboard() {
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-[.28em] text-cyan-200">RJ FM · DEVICE STATS</p>
               <h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">Data Usage & Network</h1>
-              <p className="text-xs text-slate-300">Listening activity and live connection test</p>
+              <p className="text-xs text-slate-300">Your listening stats and connection speed</p>
             </div>
           </div>
           <span className="flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200"><span className="size-1.5 rounded-full bg-emerald-300" /> On this phone</span>
@@ -232,16 +232,16 @@ export function UsageDashboard() {
         </div>
       </section>
 
-      <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[linear-gradient(145deg,#0b253b_0%,#101b30_58%,#171b35_100%)] p-5 shadow-[0_20px_55px_rgba(0,0,0,.3)] sm:p-6">
+      <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-cyan-300/25 bg-[radial-gradient(circle_at_90%_0%,rgba(34,211,238,.16),transparent_38%),linear-gradient(145deg,#0b253b_0%,#101b30_58%,#171b35_100%)] p-5 shadow-[0_24px_65px_rgba(0,0,0,.36)] sm:p-6">
         <div className="pointer-events-none absolute -right-14 -top-16 size-56 rounded-full bg-blue-400/10 blur-3xl" />
         <div className="relative flex items-center gap-3">
           <span className="flex size-11 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-200"><Gauge className="size-5" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-[.25em] text-cyan-200">CLOUDFLARE NETWORK TEST</p>
-            <h2 className="text-lg font-black text-white">Internet Speed Test</h2>
+            <p className="text-[10px] font-extrabold uppercase tracking-[.25em] text-cyan-200">NETWORK PERFORMANCE</p>
+            <h2 className="text-lg font-black tracking-tight text-white">Internet Speed Test</h2>
             <p className="truncate text-[11px] text-slate-400">{networkName}</p>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-bold text-slate-300">REAL TEST</span>
+          <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[9px] font-bold tracking-wider text-emerald-200">LIVE TEST</span>
         </div>
 
         <div className="relative mt-5 grid grid-cols-2 gap-3">
@@ -279,7 +279,7 @@ export function UsageDashboard() {
             {speedStatus === 'running' ? <><X className="size-4" /> Stop test</> : speedResult ? <><RefreshCw className="size-4" /> Test again</> : <><Play className="size-4" /> Start speed test</>}
           </button>
         </div>
-        <p className="relative mt-3 text-[10px] leading-relaxed text-slate-400">Measures this phone's current connection to Cloudflare's nearby network, whether on Wi-Fi or mobile data. The test transfers real data and may use around 15–20 MB. Cloudflare collects completed test measurements for aggregated connection-quality insights. Browser network type may not always be available.</p>
+        <p className="relative mt-3 text-[10px] leading-relaxed text-slate-400"></p>
       </section>
 
       {resetOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setResetOpen(false) }}>
