@@ -245,15 +245,14 @@ export function RadioPlayer() {
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
           {!stationVideoPlaying && (
-            <Button
+            <button
               type="button"
-              size="icon"
               onClick={toggleStationVideo}
               aria-label={`Play ${meta.name}`}
-              className="radio-play-overlay size-[4.5rem] rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 [&_svg]:size-8"
+              className="radio-play-overlay flex size-[4.5rem] items-center justify-center rounded-full border-2 border-white/85 bg-black/60 text-white shadow-[0_0_0_8px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/75 active:scale-95"
             >
-              <Play className="translate-x-0.5" />
-            </Button>
+              <Play className="size-8 translate-x-0.5" />
+            </button>
           )}
         </div>
         <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-gradient-to-r from-[#26090c] via-[#7f1019] to-[#26090c] px-4 py-3 text-sm font-black tracking-[0.28em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.15)]">
