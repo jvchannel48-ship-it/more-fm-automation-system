@@ -40,7 +40,8 @@
     "@onesignal/capacitor-plugin": "^1.2.3",
     "@capacitor/app": "^8.0.0",
     "node-edge-tts": "^1.2.12",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "@cloudflare/speedtest": "^1.13.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
