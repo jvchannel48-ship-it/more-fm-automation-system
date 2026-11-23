@@ -29,6 +29,7 @@ export function StationSelector({ onSelect }: { onSelect?: () => void }) {
     try { window.localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
     setOpen(false)
     window.dispatchEvent(new CustomEvent<StationId>('morefm:station-change', { detail: next }))
+    window.dispatchEvent(new CustomEvent<StationId>('morefm:select-station', { detail: next }))
     onSelect?.()
   }
 
