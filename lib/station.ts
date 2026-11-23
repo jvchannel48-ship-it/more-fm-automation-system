@@ -213,6 +213,9 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (playedIds.has(item.id) || playedKeys.has(songKey(item.title))) continue
 
       const normalizedMetadata = normalize([item.artist, item.channelTitle, item.channel, item.uploader].filter(Boolean).join(' '))
+      // Prefer clean releases with explicit official/artist-channel attribution; reject low-trust reuploads.
+      const hasTrustedReleaseSource = /\\b(?:official|topic)\\b/.test(normalizedMetadata)
+      if (!hasTrustedReleaseSource || !normalizedMetadata.includes(normalize(artist.name))) continue
       const normalizedTitle = normalize(item.title)
       const durationScore = Math.max(0, 24 - Math.abs(seconds - 240) / 6)
       const sourceScore = /official audio|official music|topic$/.test(normalizedMetadata + ' ' + normalizedTitle) ? 12 : 0
