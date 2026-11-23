@@ -742,23 +742,6 @@ const CHRISTMAS_TAGALOG_ARTISTS = artists('tagalog', [
   'Sarah Geronimo|sarah geronimo', 'Aiza Seguerra|aiza seguerra',
   'Julie Anne San Jose|julie anne san jose', 'Yeng Constantino|yeng constantino',
 ])
-const CHRISTMAS_ENGLISH_VARIANTS = [
-  'Give Love on Christmas Day Jackson 5 official audio',
-  'upbeat feel good English Christmas pop song official audio',
-  'modern Christmas pop hit original artist official audio',
-  'fun cheerful Christmas pop hit official audio',
-]
-const CHRISTMAS_TAGALOG_VARIANTS = [
-  'Sana Ngayong Pasko Ariel Rivera official audio',
-  'upbeat Tagalog OPM Christmas song official audio',
-  'masayang modern Filipino Christmas pop song official audio',
-]
-const CHRISTMAS_PROGRAM: Program = {
-  id: 'christmas-mix',
-  pools: { english: CHRISTMAS_ENGLISH_ARTISTS, tagalog: CHRISTMAS_TAGALOG_ARTISTS },
-  variants: { english: CHRISTMAS_ENGLISH_VARIANTS, tagalog: CHRISTMAS_TAGALOG_VARIANTS },
-}
-
 const APPROVED_ENGLISH_SOFT_POOL = [
   ...ENGLISH_OLDIES_AND_2026,
   ...ENGLISH_LOVE,
@@ -803,7 +786,6 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-english-love': mixedProgram('sunday-english-love'),
   'english-love': mixedProgram('english-love'),
   'daytime-love': mixedProgram('daytime-love'),
-  'christmas-mix': CHRISTMAS_PROGRAM,
   disco: mixedProgram('disco'),
   'night-love': mixedProgram('night-love'),
   'masbate-tagalog': tagalogProgram('masbate-tagalog', MASBATE_TAGALOG, MASBATE_TAGALOG_VARIANTS),
