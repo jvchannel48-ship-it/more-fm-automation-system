@@ -11,6 +11,7 @@ import type { NowResponse } from '@/lib/types'
 import { STATIONS, type StationId } from '@/lib/stations'
 import { Equalizer } from './equalizer'
 import { getStoredStation } from './station-selector'
+import { readCustomPlayerHtml } from '@/lib/custom-player-storage'
 import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
 
 const fetcher = (url: string) =>
@@ -40,7 +41,7 @@ export function RadioPlayer() {
     setStation(getStoredStation())
     try { setApkDownloadHidden(window.localStorage.getItem('rjfm_apk_downloaded_v1') === 'true') } catch { setApkDownloadHidden(false) }
     setPlayerPreferences(readPlayerPreferences())
-    try { setCustomPlayerHtml(window.localStorage.getItem('rjfm_custom_player_html_v1') || '') } catch { setCustomPlayerHtml('') }
+    void readCustomPlayerHtml().then(setCustomPlayerHtml).catch(() => setCustomPlayerHtml(''))
     const onStationChange = (event: Event) => {
       const next = (event as CustomEvent<StationId>).detail
       if (next) setStation(next)
