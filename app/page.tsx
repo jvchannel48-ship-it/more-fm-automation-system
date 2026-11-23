@@ -8,6 +8,7 @@ import { NotificationCenter } from '@/components/station/notification-center'
 import { StationShell } from '@/components/station/station-shell'
 import { BottomNavigation, type AppTab } from '@/components/station/bottom-navigation'
 import { STATIONS, STATION_ORDER } from '@/lib/stations'
+import { SettingsPanel } from '@/components/station/settings-panel'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>('home')
@@ -66,6 +67,7 @@ export default function Home() {
           </section>
         </main>
       {activeTab === 'usage' && <UsageDashboard />}
+      {activeTab === 'settings' && <SettingsPanel embedded />}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </StationShell>
   )
