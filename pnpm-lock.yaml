@@ -20,6 +20,9 @@ importers:
       '@capacitor/core':
         specifier: ^8.0.0
         version: 8.6.2
+      '@cloudflare/speedtest':
+        specifier: ^1.13.1
+        version: 1.17.0
       '@onesignal/capacitor-plugin':
         specifier: ^1.2.3
         version: 1.2.3(@capacitor/core@8.6.2)
@@ -292,6 +295,10 @@ packages:
 
   '@capacitor/core@8.6.2':
     resolution: {integrity: sha512-UEb9crRuqEAe2Iu2eGOEuQ8rLQxpwg7ZZIpl17UJoytEpnV1e4oXXW0K7yYS2NsCOGmJjyLeKjNlgG7tkAoX8g==}
+
+  '@cloudflare/speedtest@1.17.0':
+    resolution: {integrity: sha512-u8iEX2VnGItFzZlYsx0tNovR8MDBiPcarCXlRFL+paqQMycqPZrFohIMQ47PEnal+tFPJubYFxxpAFg8ZaCYUQ==}
+    engines: {node: '>=18'}
 
   '@date-fns/tz@1.4.1':
     resolution: {integrity: sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA==}
@@ -2662,6 +2669,8 @@ snapshots:
   '@capacitor/core@8.6.2':
     dependencies:
       tslib: 2.8.1
+
+  '@cloudflare/speedtest@1.17.0': {}
 
   '@date-fns/tz@1.4.1':
     optional: true
