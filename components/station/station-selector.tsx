@@ -16,7 +16,7 @@ export function getStoredStation(): StationId {
   }
 }
 
-export function StationSelector() {
+export function StationSelector({ onSelect }: { onSelect?: () => void }) {
   const [station, setStation] = useState<StationId>('main')
   const [open, setOpen] = useState(false)
 
@@ -28,7 +28,8 @@ export function StationSelector() {
     setStation(next)
     try { window.localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
     setOpen(false)
-    window.location.reload()
+    window.dispatchEvent(new CustomEvent<StationId>('morefm:station-change', { detail: next }))
+    onSelect?.()
   }
 
   const current = STATIONS[station]
