@@ -1,11 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, Check, RefreshCw, Settings, X } from 'lucide-react'
+import { Bell, Check, RefreshCw, Settings, ShieldCheck, X } from 'lucide-react'
 import { getPushPermissionStatus, requestPushPermission } from '@/lib/app-permissions'
 import { Button } from '@/components/ui/button'
-import { savePlayerPreferences, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
-import { Slider as RangeSlider } from '@/components/ui/slider'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
 
@@ -19,10 +17,16 @@ type WakeLockNavigator = Navigator & {
   wakeLock?: { request: (type: 'screen') => Promise<WakeLockLike> }
 }
 
+const APK_PERMISSIONS = [
+  { name: 'WAKE_LOCK', detail: 'Panatilihing gising ang audio service habang tumutugtog.' },
+  { name: 'FOREGROUND_SERVICE', detail: 'Payagan ang Android foreground playback service.' },
+  { name: 'FOREGROUND_SERVICE_MEDIA_PLAYBACK', detail: 'Media playback service permission para sa Android 14 pataas.' },
+  { name: 'POST_NOTIFICATIONS', detail: 'Ipakita ang RJ FM playback notification sa Android 13 pataas.' },
+  { name: 'ACCESS_NETWORK_STATE', detail: 'Basahin kung may network connection ang device.' },
+] as const
+
 export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
   const [open, setOpen] = useState(embedded)
-  const [prefs, setPrefs] = useState<PlayerPreferences>(readPlayerPreferences)
-  const [eq, setEq] = useState([50, 50, 50, 50, 50])
   const [stayAwake, setStayAwake] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [awakeError, setAwakeError] = useState('')
@@ -32,7 +36,6 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
   const wakeLock = useRef<WakeLockLike | null>(null)
 
   useEffect(() => {
-    setPrefs(readPlayerPreferences())
     try {
       setStayAwake(window.localStorage.getItem(STAY_AWAKE_KEY) === 'true')
     } catch {
@@ -47,7 +50,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
     try {
       setPushStatus(await requestPushPermission())
     } catch (error) {
-      setPushError(error instanceof Error ? error.message : 'Could not request notification permission.')
+      setPushError(error instanceof Error ? error.message : 'Hindi ma-request ang notification permission.')
     } finally {
       setPushBusy(false)
     }
@@ -62,18 +65,16 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
   const requestWakeLock = useCallback(async () => {
     const api = navigator as WakeLockNavigator
     if (!api.wakeLock) {
-      setAwakeError('Stay Awake is not supported in this browser.')
+      setAwakeError('Hindi suportado ng browser ang Stay Awake.')
       return false
     }
     try {
       wakeLock.current = await api.wakeLock.request('screen')
-      wakeLock.current.addEventListener?.('release', () => {
-        wakeLock.current = null
-      })
+      wakeLock.current.addEventListener?.('release', () => { wakeLock.current = null })
       setAwakeError('')
       return true
     } catch {
-      setAwakeError('Could not activate Stay Awake. Try again while the page is open.')
+      setAwakeError('Hindi ma-activate ang Stay Awake. Subukan habang bukas ang app.')
       return false
     }
   }, [])
@@ -123,32 +124,51 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
       {!embedded && <Button type="button" variant="ghost" size="icon" aria-label="Settings" title="Settings" onClick={() => setOpen(true)}><Settings aria-hidden="true" /></Button>}
       {open && (
         <div
-          className={`${embedded ? "relative z-10 w-full" : "fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"}`}
+          className={`${embedded ? 'relative z-10 w-full' : 'fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm'}`}
           role="presentation"
           onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}
         >
-          <section role="dialog" aria-modal="true" aria-labelledby="settings-title" className={`relative w-full ${embedded ? "mx-auto max-w-3xl" : "max-w-md"} rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl`}>
+          <section role="dialog" aria-modal="true" aria-labelledby="settings-title" className={`relative w-full ${embedded ? 'mx-auto max-w-3xl' : 'max-w-md'} rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl`}>
             {!embedded && <Button type="button" variant="ghost" size="icon-sm" aria-label="Close settings" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>}
             <div className="flex items-center gap-3 pr-8">
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary"><Settings aria-hidden="true" /></span>
               <div>
-                <h2 id="settings-title" className="text-xl font-semibold">Settings</h2>
-                <p className="text-sm text-muted-foreground">Playback and app updates</p>
+                <h2 id="settings-title" className="text-xl font-semibold">RJ FM Settings</h2>
+                <p className="text-sm text-muted-foreground">Permissions at playback controls</p>
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+            <div className="mt-6 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+              <div className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /><p className="font-medium">Android APK permissions</p></div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Kasama ang mga permission na ito sa Android APK build. Hindi sila puwedeng i-on/off bilang ordinaryong website switch; ang Android system ang namamahala sa access.</p>
+              <div className="mt-3 space-y-3">
+                {APK_PERMISSIONS.map((permission) => (
+                  <div key={permission.name} className="flex items-start justify-between gap-3 border-t border-border/60 pt-3">
+                    <div className="min-w-0">
+                      <p className="break-all text-sm font-medium">{permission.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{permission.detail}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-400"><Check className="size-3" /> APK manifest</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+              <div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><p className="font-medium">Notification permission</p></div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">I-allow ang notifications para makita ang RJ FM playback notification. Sa Android 13 pataas, kailangan itong aprubahan sa system prompt.</p>
+              <Button type="button" variant="outline" className="mt-3 w-full" onClick={enableNotifications} disabled={pushBusy || pushStatus === true}>
+                {pushBusy ? 'Requesting permission…' : pushStatus === true ? 'Notifications enabled' : pushStatus === false ? 'Enable notifications' : 'Available in installed Android APK'}
+              </Button>
+              {pushError && <p className="mt-2 text-xs text-amber-300" role="status">{pushError}</p>}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
               <div>
                 <p className="font-medium">Stay Awake</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Keep the screen on while listening. Saved on this device only.</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Panatilihing bukas ang screen habang nakikinig. Naka-save sa device na ito.</p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={stayAwake}
-                onClick={toggleStayAwake}
-                className={`relative h-7 w-12 shrink-0 rounded-full transition ${stayAwake ? 'bg-primary' : 'bg-muted'}`}
-              >
+              <button type="button" role="switch" aria-checked={stayAwake} onClick={toggleStayAwake} className={`relative h-7 w-12 shrink-0 rounded-full transition ${stayAwake ? 'bg-primary' : 'bg-muted'}`}>
                 <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${stayAwake ? 'left-6' : 'left-1'}`} />
                 <span className="sr-only">{stayAwake ? 'Stay Awake on' : 'Stay Awake off'}</span>
               </button>
@@ -156,18 +176,8 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
             {awakeError && <p className="mt-3 text-xs text-amber-300" role="status">{awakeError}</p>}
 
             <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
-              <div className="flex items-center gap-2"><Bell className="size-4 text-primary" /><p className="font-medium">Notifications & lock-screen player</p></div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Allow RJ FM notifications in the installed Android app. While playing, Android media controls can show Play/Pause and station artwork on the lock screen.</p>
-              <Button type="button" variant="outline" className="mt-3 w-full" onClick={enableNotifications} disabled={pushBusy || pushStatus === true || pushStatus === null}>
-                {pushBusy ? 'Requesting permission…' : pushStatus === true ? 'Notifications enabled' : pushStatus === false ? 'Enable notifications' : 'Available in Android app'}
-              </Button>
-              {pushError && <p className="mt-2 text-xs text-amber-300" role="status">{pushError}</p>}
-              <p className="mt-2 text-[11px] text-muted-foreground">Nearby Devices access is not required for radio playback; it is only needed if RJ FM adds Bluetooth device discovery.</p>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
               <p className="font-medium">App update</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Clear old browser cache and load the latest features.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">I-refresh ang app at i-load ang pinakabagong website files.</p>
               <Button type="button" variant="outline" className="mt-3 w-full" onClick={updateApp} disabled={updating}>
                 {updating ? <RefreshCw className="animate-spin" /> : <Check />}
                 {updating ? 'Updating…' : 'Update app'}
