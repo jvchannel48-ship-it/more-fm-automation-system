@@ -1,8 +1,7 @@
 export type PlayerBackground = 'night' | 'ocean' | 'sunset'
 export type VolumeIcon = 'speaker' | 'minimal' | 'waves'
 export type VinylColor = 'silver' | 'gold' | 'blue' | 'red' | 'purple' | 'green'
-/** DJ-style center visual */
-export type PlayerStyle = 'vinyl' | 'headphones' | 'radio' | 'speakers'
+export type PlayerStyle = 'vinyl' | 'headphones' | 'radio' | 'speakers' | 'none'
 
 export interface PlayerPreferences {
   compact: boolean
@@ -12,6 +11,8 @@ export interface PlayerPreferences {
   volumeIcon: VolumeIcon
   vinylColor: VinylColor
   playerStyle: PlayerStyle
+  accentColor: string
+  speakerLight: string
 }
 
 export const PLAYER_PREFERENCES_KEY = 'morefm_player_preferences'
@@ -23,10 +24,14 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   volumeIcon: 'speaker',
   vinylColor: 'gold',
   playerStyle: 'vinyl',
+  accentColor: '#22d3ee',
+  speakerLight: '#facc15',
 }
 
 const COLORS: VinylColor[] = ['silver', 'gold', 'blue', 'red', 'purple', 'green']
-const STYLES: PlayerStyle[] = ['vinyl', 'headphones', 'radio', 'speakers']
+const STYLES: PlayerStyle[] = ['vinyl', 'headphones', 'radio', 'speakers', 'none']
+const safeHex = (value: unknown, fallback: string) =>
+  typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback
 
 export function readPlayerPreferences(): PlayerPreferences {
   if (typeof window === 'undefined') return DEFAULT_PLAYER_PREFERENCES
@@ -40,6 +45,8 @@ export function readPlayerPreferences(): PlayerPreferences {
       volumeIcon: raw.volumeIcon === 'minimal' || raw.volumeIcon === 'waves' ? raw.volumeIcon : 'speaker',
       vinylColor: COLORS.includes(raw.vinylColor as VinylColor) ? (raw.vinylColor as VinylColor) : 'gold',
       playerStyle: STYLES.includes(raw.playerStyle as PlayerStyle) ? (raw.playerStyle as PlayerStyle) : 'vinyl',
+      accentColor: safeHex(raw.accentColor, DEFAULT_PLAYER_PREFERENCES.accentColor),
+      speakerLight: safeHex(raw.speakerLight, DEFAULT_PLAYER_PREFERENCES.speakerLight),
     }
   } catch {
     return DEFAULT_PLAYER_PREFERENCES
