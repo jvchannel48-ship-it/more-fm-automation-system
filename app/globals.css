@@ -659,3 +659,12 @@ body {
 .radio-player-card .radio-play-overlay:active {
   transform: translate(-50%, -50%) scale(.96) !important;
 }
+
+
+/* RJ FM player themes and optional rolling vinyl */
+.player-theme-ocean { background: linear-gradient(145deg,#071d35,#123f65,#081827) !important; }
+.player-theme-sunset { background: linear-gradient(145deg,#301044,#742c5b,#17101f) !important; }
+.player-theme-night { background: #17191f !important; }
+@keyframes rjCircleRoll { to { transform: rotate(360deg); } }
+.rj-circle-roll { animation: rjCircleRoll 9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .rj-circle-roll { animation: none; } }
