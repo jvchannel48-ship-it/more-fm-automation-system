@@ -12,7 +12,7 @@ const AI_OR_NON_ORIGINAL_RULE =
  * Clean pop is allowed; rock, dance, disco, and other excluded genres remain blocked.
  */
 const EXCLUDED_GENRE_RULE =
-  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie\s*rock|punk(?:\s*rock)?|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:[\s-]*hits?|[\s-]*mix|[\s-]*pop)?|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger|worship|gospel|praise|religious|children'?s?|kids?|nursery|lullaby|classical|opera|broadway|soundtrack|movie\s*music)\b/i
+  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie(?:\s*rock|\s*pop)?|pop\s*rock|punk(?:\s*rock)?|post\s*punk|new\s*wave|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:[\s-]*hits?|[\s-]*mix|[\s-]*pop)?|electro\s*pop|synth\s*pop|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger|worship|gospel|praise|religious|children'?s?|kids?|nursery|lullaby|classical|opera|broadway|soundtrack|movie\s*music)\b/i
 
 /** Extra club / party terms that often appear without the word "dance". */
 const CLASSIC_LOVE_EXCLUSION_RULE =
@@ -28,7 +28,7 @@ const NON_MUSIC_OR_ALTERNATE_RULE =
 const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
-const NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
+const STRICTLY_EXCLUDED_ARTIST_RULE = /\\b(?:taylor\\s+swift|parokya\\s+ni\\s+edgar|kitchie\\s+nadal|maroon\\s+5|coldplay|one\\s*direction|the\\s+script)\\b/i\n\nconst NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
 const NAGA_MORNING_HARD_BLOCK_RULE = /\b(?:rock|metal|punk|grunge|emo|screamo|hardcore|headbang|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|reggaeton|dubstep|drum\s*and\s*bass|dnb)\b/i
 
 /** Disco program still blocks rock/metal/EDM extremes, but allows Pinoy party/rap (Andrew E). */
@@ -109,6 +109,7 @@ function hasArtistCreditAttribution(title: string, artist: ArtistTrackCredit) {
 /** Title fails hard genre / media rules (independent of admin list). */
 export function isBlockedByTitleRules(title: string, options: { allowDancePop?: boolean } = {}) {
   if (!title || NON_LATIN.test(title)) return true
+  if (STRICTLY_EXCLUDED_ARTIST_RULE.test(title)) return true
   const normalizedTitle = normalize(title)
   if (AI_OR_NON_ORIGINAL_RULE.test(title)) return true
   // Ignore legacy allowDancePop exceptions: RJ FM blocks dance/disco in every rotation.
@@ -169,6 +170,7 @@ export function isAllowedStationTrack(input: {
   // AI-generated audio, cloned voices, and alternate performances are never allowed,
   // including Calabanga's otherwise separate disco-program exception.
   if (AI_OR_NON_ORIGINAL_RULE.test(haystack)) return false
+  if (STRICTLY_EXCLUDED_ARTIST_RULE.test(haystack)) return false
   if (input.allowCalabangaDisco) {
     // This exception is intentionally station-scoped: Calabanga's scheduled disco
     // window may use original-artist disco tracks, but never AI or covers/remixes,
