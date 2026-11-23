@@ -15,6 +15,8 @@ type SpeedEngine = {
 }
 const KEY = 'rjfm_data_usage_v1'
 const SPEED_KEY = 'rjfm_speed_test_v1'
+const AUTO_SPEED_KEY = 'rjfm_auto_speed_test_v1'
+const AUTO_SPEED_INTERVAL_MS = 5 * 60 * 1000
 const empty: UsageData = { totalBytes: 0, totalSeconds: 0, days: {} }
 
 function readUsage(): UsageData {
@@ -65,6 +67,7 @@ export function UsageDashboard() {
   const [speedPhase, setSpeedPhase] = useState('Ready to test your connection')
   const [speedError, setSpeedError] = useState('')
   const [speedResult, setSpeedResult] = useState<SpeedResult | null>(null)
+  const [autoSpeedEnabled, setAutoSpeedEnabled] = useState(false)
   const [networkName, setNetworkName] = useState('Checking connection…')
   const engineRef = useRef<SpeedEngine | null>(null)
 
@@ -72,6 +75,7 @@ export function UsageDashboard() {
     const refresh = () => setUsage(readUsage())
     refresh()
     setSpeedResult(readSavedSpeed())
+    try { setAutoSpeedEnabled(localStorage.getItem(AUTO_SPEED_KEY) === 'true') } catch {}
     setNetworkName(networkLabel())
     window.addEventListener('rjfm:usage-update', refresh)
     window.addEventListener('storage', refresh)
@@ -99,7 +103,7 @@ export function UsageDashboard() {
     setResetOpen(false)
   }
 
-  const startSpeedTest = async () => {
+  const startSpeedTest = async (automatic = false) => {
     if (speedStatus === 'running') {
       engineRef.current?.pause()
       engineRef.current = null
@@ -119,13 +123,11 @@ export function UsageDashboard() {
         measureDownloadLoadedLatency: true,
         measureUploadLoadedLatency: true,
         measurements: [
-          { type: 'latency', numPackets: 10 },
-          { type: 'download', bytes: 100000, count: 3, bypassMinDuration: true },
-          { type: 'download', bytes: 1000000, count: 3 },
-          { type: 'download', bytes: 5000000, count: 1 },
-          { type: 'upload', bytes: 100000, count: 3, bypassMinDuration: true },
-          { type: 'upload', bytes: 1000000, count: 3 },
-          { type: 'upload', bytes: 5000000, count: 1 },
+          { type: 'latency', numPackets: automatic ? 5 : 10 },
+          { type: 'download', bytes: 100000, count: automatic ? 1 : 3, bypassMinDuration: true },
+          ...(!automatic ? [{ type: 'download', bytes: 1000000, count: 3 }, { type: 'download', bytes: 5000000, count: 1 }] : []),
+          { type: 'upload', bytes: 100000, count: automatic ? 1 : 3, bypassMinDuration: true },
+          ...(!automatic ? [{ type: 'upload', bytes: 1000000, count: 3 }, { type: 'upload', bytes: 5000000, count: 1 }] : []),
         ],
       }) as unknown as SpeedEngine
       engineRef.current = engine
@@ -172,6 +174,32 @@ export function UsageDashboard() {
       setSpeedStatus('error')
       setSpeedPhase('Unable to start speed test')
       setSpeedError(error instanceof Error ? error.message : 'Unable to load the speed test engine.')
+    }
+  }
+
+  useEffect(() => {
+    if (!autoSpeedEnabled) return
+    let stopped = false
+    const runAutomaticTest = () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      if (engineRef.current) return
+      void startSpeedTest(true)
+    }
+    runAutomaticTest()
+    const timer = window.setInterval(runAutomaticTest, AUTO_SPEED_INTERVAL_MS)
+    const onVisible = () => { if (document.visibilityState === 'visible') runAutomaticTest() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { stopped = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
+  }, [autoSpeedEnabled])
+
+  const toggleAutoSpeed = (enabled: boolean) => {
+    setAutoSpeedEnabled(enabled)
+    try { localStorage.setItem(AUTO_SPEED_KEY, String(enabled)) } catch {}
+    if (!enabled) {
+      engineRef.current?.pause()
+      engineRef.current = null
+      setSpeedStatus('ready')
+      setSpeedPhase('Automatic monitoring is off')
     }
   }
 
@@ -242,6 +270,16 @@ export function UsageDashboard() {
             <p className="truncate text-[11px] text-slate-400">{networkName}</p>
           </div>
           <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[9px] font-bold tracking-wider text-emerald-200">LIVE TEST</span>
+        </div>
+
+        <div className="relative mt-4 flex items-center justify-between gap-3 rounded-2xl border border-cyan-200/20 bg-[#061321]/65 p-4">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-white">Auto speed test</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">Automatic connection-speed check every 5 minutes while this page is open. Uses a small amount of mobile data.</p>
+          </div>
+          <button type="button" role="switch" aria-checked={autoSpeedEnabled} onClick={() => toggleAutoSpeed(!autoSpeedEnabled)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${autoSpeedEnabled ? 'bg-emerald-400' : 'bg-slate-600'}`}>
+            <span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-all ${autoSpeedEnabled ? 'left-7' : 'left-1'}`} />
+          </button>
         </div>
 
         <div className="relative mt-5 grid grid-cols-2 gap-3">
