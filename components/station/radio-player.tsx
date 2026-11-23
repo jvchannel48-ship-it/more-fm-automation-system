@@ -278,32 +278,18 @@ export function RadioPlayer() {
 
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
         <div className="relative aspect-video w-full overflow-hidden bg-[#17191f]">
-          {dearMorBlocktime ? (
-            <div className="absolute inset-0">
-            <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_35%,#7f1d3b_0%,#3b102c_48%,#100d1c_100%)] px-5 text-center" role="img" aria-label="Dear MOR logo">
-              <div className="absolute inset-0 opacity-25" aria-hidden="true" style={{ backgroundImage: 'radial-gradient(circle at 20% 25%, #fbcfe8 0 2px, transparent 3px), radial-gradient(circle at 78% 72%, #fda4af 0 2px, transparent 3px)', backgroundSize: '54px 54px' }} />
-              <div className="relative flex size-24 items-center justify-center rounded-full border-4 border-amber-200 bg-white shadow-[0_0_35px_rgba(251,191,36,.35)]">
-                <span className="text-3xl font-black tracking-tighter text-rose-700">MOR</span>
-              </div>
-              <div className="relative mt-5 text-4xl font-black tracking-[0.12em] text-white drop-shadow-[0_3px_8px_rgba(0,0,0,.6)] sm:text-5xl">DEAR <span className="text-amber-300">MOR</span></div>
-              <div className="relative mt-2 text-xs font-semibold uppercase tracking-[0.38em] text-rose-100/90">Stories of Love</div>
-              <div className="relative mt-5 rounded-full border border-rose-200/50 bg-black/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-rose-100">RJ FM Special Blocktime</div>
-            </div>
-
-            <video
-              ref={stationVideoRef}
-              className="absolute inset-0 block h-full w-full object-cover"
-              src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              aria-label={`${meta.name} video player`}
-              onPlay={() => setStationVideoPlaying(true)}
-              onPause={() => setStationVideoPlaying(false)}
-            />
-            </div>
-          )}
+          {dearMorBlocktime && <video
+            ref={stationVideoRef}
+            className="absolute inset-0 block h-full w-full object-cover"
+            src="/audio/raphael-video-c3d072c0-ee50-469c-a19c-0378ca47dc7e.mp4"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-label={`${meta.name} video player`}
+            onPlay={() => setStationVideoPlaying(true)}
+            onPause={() => setStationVideoPlaying(false)}
+          />}
           {!playing && !stationVideoPlaying && (
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" aria-hidden="true" />
           )}
