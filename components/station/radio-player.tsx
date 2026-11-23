@@ -80,7 +80,7 @@ export function RadioPlayer() {
 
   const nowUrl = `/api/now?station=${station}`
   const { data, error, mutate } = useSWR(nowUrl, fetcher, {
-    refreshInterval: playing ? 3000 : 30000,
+    refreshInterval: playing ? 8000 : 30000,
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
