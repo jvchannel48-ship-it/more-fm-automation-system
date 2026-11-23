@@ -28,7 +28,8 @@ const NON_MUSIC_OR_ALTERNATE_RULE =
 const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
-const STRICTLY_EXCLUDED_ARTIST_RULE = /\\b(?:taylor\\s+swift|parokya\\s+ni\\s+edgar|kitchie\\s+nadal|maroon\\s+5|coldplay|one\\s*direction|the\\s+script)\\b/i\n\nconst NON_LATIN = /[^\u0000-\u024F\u2000-\u206F\u20A0-\u20CF\u2100-\u214F]/
+const STRICTLY_EXCLUDED_ARTIST_RULE = /\b(?:taylor\s+swift|parokya\s+ni\s+edgar|kitchie\s+nadal|maroon\s+5|coldplay|one\s*direction|the\s+script)\b/i
+
 const NAGA_MORNING_HARD_BLOCK_RULE = /\b(?:rock|metal|punk|grunge|emo|screamo|hardcore|headbang|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|reggaeton|dubstep|drum\s*and\s*bass|dnb)\b/i
 
 /** Disco program still blocks rock/metal/EDM extremes, but allows Pinoy party/rap (Andrew E). */
