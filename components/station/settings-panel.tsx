@@ -7,7 +7,7 @@ import { DEFAULT_PLAYER_PREFERENCES, readPlayerPreferences, savePlayerPreference
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
 const CUSTOM_PLAYER_KEY = 'rjfm_custom_player_html_v1'
-const MAX_CUSTOM_HTML = 1024 * 1024
+const MAX_CUSTOM_HTML = 6 * 1024 * 1024
 
 type WakeLockLike = { released: boolean; release: () => Promise<void>; addEventListener?: (type: 'release', listener: () => void) => void }
 type WakeLockNavigator = Navigator & { wakeLock?: { request: (type: 'screen') => Promise<WakeLockLike> } }
@@ -169,8 +169,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
 
             <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/50 p-4">
               <div className="flex items-center gap-2"><Upload className="size-4 text-primary" /><h3 className="font-semibold">Upload Custom Speaker (index.html)</h3></div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pumili ng sarili mong HTML speaker design hanggang 1 MB. Ipapakita ito sa Home player sa device na ito; sandboxed ang HTML para hindi nito ma-access ang app data.</p>
-              <input type="file" accept=".html,text/html" aria-label="Upload custom player HTML file" onChange={(e) => void uploadCustomPlayer(e.target.files?.[0])} className="mt-3 block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-primary-foreground" />
+                      <input type="file" accept=".html,text/html" aria-label="Upload custom player HTML file" onChange={(e) => void uploadCustomPlayer(e.target.files?.[0])} className="mt-3 block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-semibold file:text-primary-foreground" />
               {customFileName && <p className="mt-2 text-xs text-emerald-300">Loaded: {customFileName}</p>}
               {customHtml && <Button type="button" variant="outline" className="mt-3 w-full" onClick={removeCustomPlayer}>Remove custom player / Restore default</Button>}
               {uploadMessage && <p className="mt-2 text-xs text-muted-foreground" role="status">{uploadMessage}</p>}
