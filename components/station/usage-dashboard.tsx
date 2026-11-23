@@ -1,0 +1,16 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { Activity, Clock3, Database, RotateCcw } from 'lucide-react'
+type UsageData = { totalBytes: number; totalSeconds: number; days: Record<string, number> }
+const KEY = 'rjfm_data_usage_v1'
+const empty: UsageData = { totalBytes: 0, totalSeconds: 0, days: {} }
+function readUsage(): UsageData { try { const v=JSON.parse(localStorage.getItem(KEY)||'null'); if(v&&typeof v.totalBytes==='number'&&typeof v.totalSeconds==='number') return {...empty,...v} } catch {} return empty }
+function fmt(b:number){return b<1048576?(b/1024).toFixed(1)+' KB':b<1073741824?(b/1048576).toFixed(2)+' MB':(b/1073741824).toFixed(2)+' GB'}
+function duration(s:number){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+'h '+m+'m':m+'m'}
+export function UsageDashboard(){
+ const [u,setU]=useState<UsageData>(empty)
+ useEffect(()=>{const f=()=>setU(readUsage());f();window.addEventListener('rjfm:usage-update',f);window.addEventListener('storage',f);return()=>{window.removeEventListener('rjfm:usage-update',f);window.removeEventListener('storage',f)}},[])
+ const today=new Date().toLocaleDateString('en-CA')
+ const reset=()=>{if(!confirm('Reset the usage totals saved on this device?'))return;try{localStorage.removeItem(KEY)}catch{};setU(empty)}
+ return <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-28 pt-4"><section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#102b3d] via-[#101d31] to-[#251633] p-5 shadow-2xl"><div className="flex items-center gap-3"><span className="flex size-12 items-center justify-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-200"><Activity className="size-6"/></span><div><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-cyan-200">RJ FM · DEVICE STATS</p><h1 className="text-xl font-black text-white">Data Usage Dashboard</h1><p className="text-xs text-slate-300">Saved on this phone</p></div></div><div className="mt-5 grid grid-cols-2 gap-3">{[['Estimated total data',fmt(u.totalBytes)],['Today',fmt(u.days[today]||0)],['Listening time',duration(u.totalSeconds)],['At 32 kbps', '14.4 MB/hr']].map(([a,b])=><div key={a} className="rounded-2xl border border-white/10 bg-black/25 p-4"><p className="text-xs text-slate-300">{a}</p><p className="mt-1 text-2xl font-black text-cyan-100">{b}</p></div>)}</div><div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-relaxed text-amber-100"><Database className="mt-0.5 size-4 shrink-0"/><span>Estimate based on RJ FM listening time at the 32 kbps AAC-LC target. This is not a direct reading from your SIM or mobile carrier; actual data may differ due to network overhead and stream format.</span></div><div className="mt-4 flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs text-slate-300"><Clock3 className="size-4"/> Stored on this device; normally survives app updates.</span><button onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white"><RotateCcw className="size-3.5"/> Reset</button></div></section></main>
+}
