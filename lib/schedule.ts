@@ -91,14 +91,14 @@ export const RJFM_ARTIST_LIBRARY: Record<string, Artist[]> = {
   ]),
   'OPM 2000s-2026': artists('tagalog', [
     'Nina', 'Kyla', 'Juris', 'Jay R|jay r', 'Sarah Geronimo|sarah',
-    'Parokya ni Edgar|parokya ni edgar', 'Yeng Constantino|yeng', 'Janine Berdin|janine berdin', 'Gary Valenciano|gary v', 'Moira Dela Torre|moira',
+  'Yeng Constantino|yeng', 'Janine Berdin|janine berdin', 'Gary Valenciano|gary v', 'Moira Dela Torre|moira',
     'Erik Santos|erik santos', 'Jed Madela|jed madela', 'KZ Tandingan|kz',
     'Moira Dela Torre|moira', 'TJ Monterde', 'Arthur Nery',
     'Zack Tabudlo', 'Adie', 'Dionela', 'Maki', 'Cup of Joe',
     'Earl Agustin', 'Rob Deniel', 'Jan Roberts', 'Mikee Sarmiento',
     'LU', 'Lyka Estrella', 'Marielle Montellano', 'Trisha Puso', 'Mariah Deborah', 'Thea Astley',
     'Morissette Amon|morissette', 'Jona|jona', 'Angeline Quinto',
-    'Kitchie Nadal', 'Yeng Constantino', 'Aiza Seguerra', 'Sitti', 'Jessa Zaragoza', 'Donna Cruz', 'Roselle Nava', 'Lani Misalucha', 'Vina Morales', 'Kuh Ledesma', 'Pops Fernandez', 'Jaya', 'Janno Gibbs', 'Dingdong Avanzado', 'Renz Verano', 'Gino Padilla', 'Rodel Naval', 'April Boy Regino', 'Rico Blanco', 'Paolo Santos', 'Barbie Almalbis', 'Julianne', 'Kyla', 'Nina', 'Juris', 'Jay R', 'Erik Santos', 'Jed Madela', 'KZ Tandingan', 'Zia Quizon', 'Daryl Ong', 'Jason Dy', 'Darren Espanto', 'Ben&Ben', 'December Avenue', 'The Juans', 'Silent Sanctuary', 'Over October', 'Sunkissed Lola', 'Lola Amour', 'Maki', 'Dionela', 'Earl Agustin', 'Rob Deniel', 'Syd Hartha', 'Jikamarie', 'Paolo Sandejas',
+  'Yeng Constantino', 'Aiza Seguerra', 'Sitti', 'Jessa Zaragoza', 'Donna Cruz', 'Roselle Nava', 'Lani Misalucha', 'Vina Morales', 'Kuh Ledesma', 'Pops Fernandez', 'Jaya', 'Janno Gibbs', 'Dingdong Avanzado', 'Renz Verano', 'Gino Padilla', 'Rodel Naval', 'April Boy Regino', 'Rico Blanco', 'Paolo Santos', 'Barbie Almalbis', 'Julianne', 'Kyla', 'Nina', 'Juris', 'Jay R', 'Erik Santos', 'Jed Madela', 'KZ Tandingan', 'Zia Quizon', 'Daryl Ong', 'Jason Dy', 'Darren Espanto', 'Ben&Ben', 'December Avenue', 'The Juans', 'Silent Sanctuary', 'Over October', 'Sunkissed Lola', 'Lola Amour', 'Maki', 'Dionela', 'Earl Agustin', 'Rob Deniel', 'Syd Hartha', 'Jikamarie', 'Paolo Sandejas',
   ]),
 }
 const ENGLISH_ERA_EXPANSION = [
@@ -457,7 +457,6 @@ const ENGLISH_LOVE = artists('english', [
   'Ed Sheeran|ed sheeran',
   'Bruno Mars|bruno mars',
   'Adele',
-  'Taylor Swift|taylor swift',
   'John Legend|john legend',
   'James Blunt|james blunt',
   'Jason Mraz|jason mraz',
