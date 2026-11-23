@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, ArrowDownToLine, CalendarDays, Check, Clock3, Headphones, RotateCcw, Smartphone, X } from 'lucide-react'
+import { Activity, CalendarDays, Clock3, Headphones, RotateCcw, X } from 'lucide-react'
 
 type UsageData = { totalBytes: number; totalSeconds: number; days: Record<string, number> }
-type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }> }
 const KEY = 'rjfm_data_usage_v1'
 const empty: UsageData = { totalBytes: 0, totalSeconds: 0, days: {} }
 
@@ -32,28 +31,15 @@ function localDay(date: Date) {
 export function UsageDashboard() {
   const [usage, setUsage] = useState<UsageData>(empty)
   const [resetOpen, setResetOpen] = useState(false)
-  const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null)
-  const [standalone, setStandalone] = useState(false)
-  const [installing, setInstalling] = useState(false)
 
   useEffect(() => {
     const refresh = () => setUsage(readUsage())
     refresh()
     window.addEventListener('rjfm:usage-update', refresh)
     window.addEventListener('storage', refresh)
-    setStandalone(window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
-    const onInstall = (event: Event) => {
-      event.preventDefault()
-      setInstallEvent(event as InstallPromptEvent)
-    }
-    const onInstalled = () => { setStandalone(true); setInstallEvent(null) }
-    window.addEventListener('beforeinstallprompt', onInstall)
-    window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.removeEventListener('rjfm:usage-update', refresh)
       window.removeEventListener('storage', refresh)
-      window.removeEventListener('beforeinstallprompt', onInstall)
-      window.removeEventListener('appinstalled', onInstalled)
     }
   }, [])
 
@@ -67,17 +53,6 @@ export function UsageDashboard() {
   const maxDay = Math.max(1, ...week.map((day) => day.bytes))
   const todayBytes = usage.days[today] || 0
 
-  const install = async () => {
-    if (!installEvent) return
-    setInstalling(true)
-    try {
-      await installEvent.prompt()
-      const choice = await installEvent.userChoice
-      if (choice.outcome === 'accepted') setInstallEvent(null)
-    } finally {
-      setInstalling(false)
-    }
-  }
   const reset = () => {
     try { localStorage.removeItem(KEY) } catch {}
     setUsage(empty)
@@ -136,16 +111,7 @@ export function UsageDashboard() {
           </div>
         </div>
 
-        <div className="relative mt-4 flex flex-col gap-3 rounded-2xl border border-cyan-200/15 bg-cyan-300/[.06] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200"><Smartphone className="size-5" /></span>
-            <div><p className="text-sm font-bold text-white">{standalone ? 'RJ FM App Mode' : 'Make RJ FM your app'}</p><p className="text-[11px] leading-relaxed text-slate-400">{standalone ? 'Opened without browser controls' : 'Install to open without the browser address bar'}</p></div>
-          </div>
-          {standalone ? <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-200"><Check className="size-4" /> Installed</span> : installEvent ? <button type="button" onClick={install} disabled={installing} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-xs font-extrabold text-slate-950 disabled:opacity-60"><ArrowDownToLine className="size-4" /> {installing ? 'Opening…' : 'Install App'}</button> : <span className="text-[10px] leading-relaxed text-cyan-100/80 sm:max-w-36">Chrome ⋮ → Add to Home screen</span>}
-        </div>
-
-        <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
-          <p className="text-[11px] text-slate-400">Saved on this device</p>
+        <div className="relative mt-4 flex items-center justify-end border-t border-white/10 pt-4">
           <button type="button" onClick={() => setResetOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10"><RotateCcw className="size-3.5" /> Reset stats</button>
         </div>
       </section>
