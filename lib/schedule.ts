@@ -12,6 +12,7 @@ export type ProgramId =
   | 'sunday-english-love'
   | 'english-love'
   | 'daytime-love'
+  | 'christmas-mix'
   | 'disco'
   | 'night-love'
   | 'love-mix'
@@ -730,6 +731,34 @@ const CALABANGA_LOVE_PROGRAM: Program = {
   variants: { english: LOVE_VARIANTS, tagalog: OPM_VARIANTS },
 }
 
+// Nationwide seasonal Christmas rotation: upbeat, contemporary and sing-along.
+const CHRISTMAS_ENGLISH_ARTISTS = artists('english', [
+  'Mariah Carey', 'Ariana Grande', 'Kelly Clarkson', 'Justin Bieber',
+  'Jackson 5|jackson 5', 'Brenda Lee', 'NSYNC|nsync', 'Sia',
+  'Meghan Trainor', 'Leona Lewis', 'Michael Buble|michael buble',
+  'Jonas Brothers|jonas brothers', 'Gwen Stefani', 'Pentatonix',
+])
+const CHRISTMAS_TAGALOG_ARTISTS = artists('tagalog', [
+  'Ariel Rivera|ariel rivera', 'Jose Mari Chan|jose mari chan',
+  'Sarah Geronimo|sarah geronimo', 'Aiza Seguerra|aiza seguerra',
+  'Julie Anne San Jose|julie anne san jose', 'Yeng Constantino|yeng constantino',
+])
+const CHRISTMAS_ENGLISH_VARIANTS = [
+  'upbeat feel good English Christmas pop song official audio',
+  'modern Christmas party pop song original artist official audio',
+  'fun cheerful Christmas pop hit official audio',
+]
+const CHRISTMAS_TAGALOG_VARIANTS = [
+  'upbeat Tagalog OPM Christmas song official audio',
+  'masayang modern Filipino Christmas pop song official audio',
+  'Sana Ngayong Pasko official audio',
+]
+const CHRISTMAS_PROGRAM: Program = {
+  id: 'christmas-mix',
+  pools: { english: CHRISTMAS_ENGLISH_ARTISTS, tagalog: CHRISTMAS_TAGALOG_ARTISTS },
+  variants: { english: CHRISTMAS_ENGLISH_VARIANTS, tagalog: CHRISTMAS_TAGALOG_VARIANTS },
+}
+
 const APPROVED_ENGLISH_SOFT_POOL = [
   ...ENGLISH_OLDIES_AND_2026,
   ...ENGLISH_LOVE,
@@ -774,6 +803,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
   'sunday-english-love': mixedProgram('sunday-english-love'),
   'english-love': mixedProgram('english-love'),
   'daytime-love': mixedProgram('daytime-love'),
+  'christmas-mix': CHRISTMAS_PROGRAM,
   disco: mixedProgram('disco'),
   'night-love': mixedProgram('night-love'),
   'masbate-tagalog': tagalogProgram('masbate-tagalog', MASBATE_TAGALOG, MASBATE_TAGALOG_VARIANTS),
@@ -880,6 +910,12 @@ export function programAt(ms: number, _sundayScheduleEnabled = true, _station: s
   const { hour, minute, day } = manilaTime(ms)
   const minuteOfDay = hour * 60 + minute
 
+  // Nationwide Christmas good-vibes rotation: 3 English tracks then 1 Tagalog track.
+  // Manila calendar dates: November 1 through January 6, inclusive.
+  const localDate = new Date(ms + MANILA_OFFSET_MS)
+  const month = localDate.getUTCMonth()
+  const date = localDate.getUTCDate()
+  if (month === 10 || month === 11 || (month === 0 && date <= 6)) return PROGRAMS['christmas-mix']
   // Every RJ FM station plays a full-day mix of English and Tagalog love songs.
   if (minuteOfDay >= 22 * 60) return PROGRAMS['night-love']
   return PROGRAMS['daytime-love']
@@ -890,7 +926,7 @@ export function nagaProgramAt(ms: number): Program {
   return programAt(ms)
 }
 
-/** RJ FM Masbate 103.9 is Tagalog-only and intentionally excludes Christmas programming. */
+/** RJ FM Masbate joins the nationwide seasonal Christmas mix. */
 export function masbateProgramAt(ms: number): Program {
   return programAt(ms)
 }
