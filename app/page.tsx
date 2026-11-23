@@ -18,13 +18,12 @@ export default function Home() {
         <NotificationCenter />
       </header>
 
-      {activeTab === 'home' ? (
-        <main id="home-player" className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-2 pb-28">
+      {/* Keep the player mounted while Discover is open so audio does not stop. */}
+      <main id="home-player" hidden={activeTab !== 'home'} className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-2 pb-28">
           <h1 className="sr-only">RJ FM Home live radio player</h1>
           <RadioPlayer />
         </main>
-      ) : (
-        <main id="discover-more" className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-28 pt-3">
+      <main id="discover-more" hidden={activeTab !== 'discover'} className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 pb-28 pt-3">
           <section className="overflow-visible rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#102b3d]/95 via-[#101d31]/95 to-[#251633]/95 p-5 shadow-2xl">
             <div className="mb-4 flex items-center gap-3">
               <span className="flex size-12 items-center justify-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-200">
@@ -42,7 +41,7 @@ export default function Home() {
                 <Headphones className="size-4 text-cyan-200" />
                 RJ FM STATIONS
               </div>
-              <p className="mb-3 text-xs text-slate-300">Choose a station. After selecting, you’ll return to the Home player to press Play.</p>
+              <p className="mb-3 text-xs text-slate-300">Choose a station to return to Home and start playing automatically.</p>
               <StationSelector onSelect={() => setActiveTab('home')} />
             </div>
           </section>
@@ -74,7 +73,6 @@ export default function Home() {
             </div>
           </section>
         </main>
-      )}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </StationShell>
   )
