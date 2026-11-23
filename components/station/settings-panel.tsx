@@ -83,7 +83,7 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
       return
     }
     if (file.size > MAX_CUSTOM_HTML) {
-      setUploadMessage('Hanggang 1 MB lang ang custom player HTML file.')
+      setUploadMessage('Hanggang 6 MB lang ang custom player HTML file.')
       return
     }
     const source = await file.text()
@@ -153,7 +153,11 @@ export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
               <h3 className="font-semibold">Customize Player</h3>
               <label className="mt-3 block text-xs text-muted-foreground" htmlFor="rj-player-style">Player display</label>
               <select id="rj-player-style" value={preferences.playerStyle} onChange={(e) => savePreferences({ playerStyle: e.target.value as PlayerPreferences['playerStyle'] })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
-                <option value="vinyl">RJ FM classic player</option><option value="speakers">3D dual speakers</option><option value="none">None – default player</option><option value="radio">Radio style</option><option value="headphones">Headphones style</option>
+                <option value="vinyl">RJ FM classic player</option><option value="speakers">3D dual speakers</option><option value="circle">Rolling circle player</option><option value="none">None – default player</option><option value="radio">Radio style</option><option value="headphones">Headphones style</option>
+              </select>
+              <label className="mt-3 block text-xs text-muted-foreground" htmlFor="rj-player-background">Player background theme</label>
+              <select id="rj-player-background" value={preferences.background} onChange={(e) => savePreferences({ background: e.target.value as PlayerPreferences['background'] })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                <option value="night">Night dark</option><option value="ocean">Ocean blue</option><option value="sunset">Sunset purple</option>
               </select>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <label className="text-xs text-muted-foreground">Logo / accent color<input aria-label="Logo accent color" type="color" value={preferences.accentColor} onChange={(e) => savePreferences({ accentColor: e.target.value })} className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-border bg-background p-1" /></label>
