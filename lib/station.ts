@@ -195,7 +195,6 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const primary = variants[variantIndex] ?? ''
       const secondary = variants[(variantIndex + 1) % variants.length] ?? ''
       const queries = [...new Set([
-        ...(featuredQuery ? [featuredQuery] : []),
         primary, secondary,
         ...(normalize(artist.name) === 'kenny rogers' ? ['If I Ever Fall in Love Again Kenny Rogers Anne Murray official audio'] : []),
       ].map((value) => `${artist.name} ${value}`.trim()))]
