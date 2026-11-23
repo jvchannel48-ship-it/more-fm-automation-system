@@ -1,7 +1,7 @@
 export type PlayerBackground = 'night' | 'ocean' | 'sunset'
 export type VolumeIcon = 'speaker' | 'minimal' | 'waves'
 export type VinylColor = 'silver' | 'gold' | 'blue' | 'red' | 'purple' | 'green'
-export type PlayerStyle = 'vinyl' | 'headphones' | 'radio' | 'speakers' | 'none'
+export type PlayerStyle = 'vinyl' | 'headphones' | 'radio' | 'speakers' | 'none' | 'circle'
 
 export interface PlayerPreferences {
   compact: boolean
@@ -29,7 +29,7 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
 }
 
 const COLORS: VinylColor[] = ['silver', 'gold', 'blue', 'red', 'purple', 'green']
-const STYLES: PlayerStyle[] = ['vinyl', 'headphones', 'radio', 'speakers', 'none']
+const STYLES: PlayerStyle[] = ['vinyl', 'headphones', 'radio', 'speakers', 'none', 'circle']
 const safeHex = (value: unknown, fallback: string) =>
   typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback
 
