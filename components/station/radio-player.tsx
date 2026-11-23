@@ -70,6 +70,36 @@ export function RadioPlayer() {
   }, [])
 
   useEffect(() => {
+    const checkDzmmSchedule = () => {
+      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date())
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0)
+      const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0)
+      const mins = hour * 60 + minute
+      const isDzmmStation = station === 'main' || station === 'naga' || station === 'calabanga'
+      const isCebuDavao = station === 'cebu' || station === 'davao'
+      const scheduled = (isDzmmStation && (mins >= 12 * 60 && mins < 13 * 60 || mins >= 18 * 60 + 28 && mins < 20 * 60 || mins >= 22 * 60 || mins < 3 * 60))
+        || (isCebuDavao && mins >= 18 * 60 + 28 && mins < 20 * 60)
+      const audio = externalAudioRef.current
+      if (!audio) return
+      if (scheduled) {
+        if (externalStation?.name === 'DZMM' && externalPlaying) return
+        setPlaying(false)
+        setExternalStation({ name: 'DZMM', url_resolved: 'https://us1.amfmph.com:8852/live' })
+        audio.src = 'https://us1.amfmph.com:8852/live'
+        void audio.play().then(() => setExternalPlaying(true)).catch(() => setExternalPlaying(false))
+      } else if (externalStation?.name === 'DZMM') {
+        audio.pause()
+        setExternalStation(null)
+        setExternalPlaying(false)
+        setPlaying(true)
+      }
+    }
+    checkDzmmSchedule()
+    const timer = window.setInterval(checkDzmmSchedule, 15000)
+    return () => window.clearInterval(timer)
+  }, [station, externalStation, externalPlaying])
+
+  useEffect(() => {
     const playExternal = (event: Event) => {
       const picked = (event as CustomEvent<{ name: string; url_resolved: string }>).detail
       if (!picked?.url_resolved) return
@@ -223,7 +253,7 @@ export function RadioPlayer() {
   }, [meta])
 
   return (
-    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#17191f] text-white ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
+    <section aria-label={`${meta.name} ${meta.frequency} live player`} className={`radio-player radio-player-card flex w-full flex-col items-center text-center bg-[#17191f] text-white ${playerPreferences.background === 'ocean' ? 'player-theme-ocean' : playerPreferences.background === 'sunset' ? 'player-theme-sunset' : 'player-theme-night'} ${playerPreferences.compact ? 'gap-3' : 'gap-4'} ${playerPreferences.showBorder ? 'border border-primary/20' : 'border-0'}`}>
       {!Capacitor.isNativePlatform() && !apkDownloadHidden && <a href="https://github.com/jvchannel48-ship-it/more-fm-automation-system/releases/download/android-latest/rj-fm-android.apk" onClick={() => { setApkDownloadHidden(true); try { window.localStorage.setItem('rjfm_apk_downloaded_v1', 'true') } catch { /* ignore */ } }} className="mb-1 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/40 bg-gradient-to-b from-cyan-300 to-blue-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-[0_7px_0_#123a70,0_12px_25px_rgba(14,165,233,.28)] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#123a70,0_5px_12px_rgba(14,165,233,.25)]" download>
         <Download className="size-4" /> Download RJ FM APK
       </a>}
@@ -263,6 +293,15 @@ export function RadioPlayer() {
             @media (prefers-reduced-motion: reduce) { .rj-speaker-live,.rj-speaker-cone,.rj-speaker-led { animation: none; } }
           `}</style>
         </div>
+      ) : playerPreferences.playerStyle === 'circle' ? (
+        <div className="flex aspect-square w-full max-w-sm items-center justify-center rounded-full bg-slate-950 p-5 shadow-2xl">
+          <div className={'relative flex aspect-square w-full items-center justify-center rounded-full border-[10px] border-slate-500 bg-[repeating-radial-gradient(circle,#252b36_0_3px,#111722_4px_8px)] shadow-[inset_0_0_30px_rgba(0,0,0,.9),0_0_28px_rgba(34,211,238,.22)] ' + (live ? 'rj-circle-roll' : '')}>
+            <div className="absolute inset-[18%] rounded-full border-4 border-white/15 bg-[radial-gradient(circle_at_35%_25%,#596779,#101722_70%)]" />
+            <div className="relative z-10 flex size-[34%] items-center justify-center rounded-full border-4 border-slate-400 bg-slate-900 text-xl font-black italic text-white shadow-xl">RJ</div>
+            <span className="absolute bottom-[12%] z-10 text-[10px] font-black tracking-[.35em] text-white">RJ FM</span>
+          </div>
+          <style jsx>{`@keyframes rjCircleRoll { to { transform: rotate(360deg); } } .rj-circle-roll { animation: rjCircleRoll 9s linear infinite; } @media (prefers-reduced-motion: reduce) { .rj-circle-roll { animation: none; } }`}</style>
+        </div>
       ) : (
         <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/20 bg-[#17191f] shadow-[0_22px_55px_rgba(0,0,0,.42)]">
           <div className="relative aspect-[16/9] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#26364b_0%,#111923_48%,#080b10_100%)]">
@@ -278,6 +317,7 @@ export function RadioPlayer() {
         </div>
       )}
 
+      <style jsx global>{`.player-theme-ocean { background: linear-gradient(145deg,#071d35,#123f65,#081827) !important; } .player-theme-sunset { background: linear-gradient(145deg,#301044,#742c5b,#17101f) !important; } .player-theme-night { background: #17191f !important; }`}</style>
       <div className="flex flex-col items-center gap-1">
         <p className="player-title font-mono text-lg font-semibold tracking-wide">
           {externalStation ? externalStation.name : <>{meta.shortName} <span className="text-primary">{meta.frequency}</span></>}
