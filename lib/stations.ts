@@ -166,7 +166,7 @@ export const STATIONS: Record<StationId, StationMeta> = {
     shortName: 'RJ FM Masbate',
     city: 'Masbate',
     frequency: '103.9',
-    description: 'Tagalog songs only · no Christmas songs',
+    description: 'Tagalog-focused station · joins nationwide Christmas season',
     notificationTagline: 'RJ FM Masbate 103.9',
     mode: 'music',
     shellClass: 'station-masbate',
