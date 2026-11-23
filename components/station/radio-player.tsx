@@ -38,9 +38,17 @@ export function RadioPlayer() {
   useEffect(() => {
     setStation(getStoredStation())
     setPlayerPreferences(readPlayerPreferences())
+    const onStationChange = (event: Event) => {
+      const next = (event as CustomEvent<StationId>).detail
+      if (next) setStation(next)
+    }
+    window.addEventListener('morefm:station-change', onStationChange)
     const update = (event: Event) => setPlayerPreferences((event as CustomEvent<PlayerPreferences>).detail)
     window.addEventListener('morefm-player-preferences', update)
-    return () => window.removeEventListener('morefm-player-preferences', update)
+    return () => {
+      window.removeEventListener('morefm-player-preferences', update)
+      window.removeEventListener('morefm:station-change', onStationChange)
+    }
   }, [])
 
   useEffect(() => {
