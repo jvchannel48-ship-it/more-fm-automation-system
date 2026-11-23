@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell, Check, RefreshCw, Settings, X } from 'lucide-react'
 import { getPushPermissionStatus, requestPushPermission } from '@/lib/app-permissions'
 import { Button } from '@/components/ui/button'
+import { savePlayerPreferences, readPlayerPreferences, type PlayerPreferences } from '@/lib/player-preferences'
+import { Slider as RangeSlider } from '@/components/ui/slider'
 
 const STAY_AWAKE_KEY = 'morefm_stay_awake'
 
@@ -17,8 +19,10 @@ type WakeLockNavigator = Navigator & {
   wakeLock?: { request: (type: 'screen') => Promise<WakeLockLike> }
 }
 
-export function SettingsPanel() {
-  const [open, setOpen] = useState(false)
+export function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
+  const [open, setOpen] = useState(embedded)
+  const [prefs, setPrefs] = useState<PlayerPreferences>(readPlayerPreferences)
+  const [eq, setEq] = useState([50, 50, 50, 50, 50])
   const [stayAwake, setStayAwake] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [awakeError, setAwakeError] = useState('')
@@ -28,6 +32,7 @@ export function SettingsPanel() {
   const wakeLock = useRef<WakeLockLike | null>(null)
 
   useEffect(() => {
+    setPrefs(readPlayerPreferences())
     try {
       setStayAwake(window.localStorage.getItem(STAY_AWAKE_KEY) === 'true')
     } catch {
@@ -115,24 +120,15 @@ export function SettingsPanel() {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Settings"
-        title="Settings"
-        onClick={() => setOpen(true)}
-      >
-        <Settings aria-hidden="true" />
-      </Button>
+      {!embedded && <Button type="button" variant="ghost" size="icon" aria-label="Settings" title="Settings" onClick={() => setOpen(true)}><Settings aria-hidden="true" /></Button>}
       {open && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className={`${embedded ? "relative z-10 w-full" : "fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"}`}
           role="presentation"
           onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}
         >
-          <section role="dialog" aria-modal="true" aria-labelledby="settings-title" className="relative w-full max-w-md rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl">
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Close settings" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>
+          <section role="dialog" aria-modal="true" aria-labelledby="settings-title" className={`relative w-full ${embedded ? "mx-auto max-w-3xl" : "max-w-md"} rounded-3xl border border-primary/25 bg-card p-6 text-left shadow-2xl`}>
+            {!embedded && <Button type="button" variant="ghost" size="icon-sm" aria-label="Close settings" onClick={() => setOpen(false)} className="absolute right-4 top-4"><X /></Button>}
             <div className="flex items-center gap-3 pr-8">
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary"><Settings aria-hidden="true" /></span>
               <div>
