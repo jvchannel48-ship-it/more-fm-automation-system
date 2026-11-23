@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_BASS_BOOST_DB, type NowResponse, type Track } from '@/lib/types'
 
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 600_000
-const PRELOAD_DJ_VOICE_AHEAD_MS = 10 * 60_000
+const PRELOAD_AHEAD_MS = 90_000
+const PRELOAD_DJ_VOICE_AHEAD_MS = 120_000
 const DRIFT_TOLERANCE_S = 15
-const MAX_MEDIA_RETRIES = 10
+const MAX_MEDIA_RETRIES = 6
 const RETRY_BACKOFF_MS = 2_000
-const START_TIMEOUT_MS = 20_000
+const START_TIMEOUT_MS = 12_000
 const DJ_VOICE_START_TIMEOUT_MS = 55_000
 
 interface Slot {
@@ -118,7 +118,8 @@ export function useBroadcast(
     if (slots.current.length === 0) {
       slots.current = Array.from({ length: 6 }, () => {
         const el = new Audio()
-        el.preload = 'auto'
+        // Do not let six audio elements compete for mobile bandwidth at once.
+        el.preload = 'none'
         // Remove only this device's temporary offline copy after the track finishes.
         // The original MP3 and the server playlist are never modified.
         el.addEventListener('ended', () => {
@@ -203,6 +204,7 @@ export function useBroadcast(
         slot.lastRetryAt = 0
         slot.lastPlayAttemptAt = 0
         slot.retryAttempts = 0
+        slot.el.preload = 'auto'
         slot.el.src = track.src
         slot.el.load()
       }
@@ -324,6 +326,8 @@ export function useBroadcast(
           slot.lastRetryAt = 0
           slot.lastPlayAttemptAt = 0
           slot.retryAttempts = 0
+          slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
+          slot.el.preload = activeIds.has(track.uid) ? 'auto' : 'metadata'
           slot.el.src = track.src
           slot.el.load()
         } else if (slot.src !== track.src) {
@@ -336,6 +340,7 @@ export function useBroadcast(
         }
         const isActive = activeIds.has(track.uid)
         const el = slot.el
+        el.preload = isActive ? 'auto' : 'metadata'
         // Keep cached tracks available for offline listening; cache is size-limited by the service worker.\n        el.dataset.rjfmAutoDelete = 'false'
 
         if (!playing) {
