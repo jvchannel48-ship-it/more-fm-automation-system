@@ -15,7 +15,8 @@ export default function Home() {
 
   return (
     <StationShell>
-      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-3">
+      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0"><p className="text-sm font-black tracking-[0.16em] text-white">RJ FM MANILA</p><p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-200">YOUR HOME OF MUSIC</p></div>
         <NotificationCenter />
       </header>
 
