@@ -8,9 +8,9 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'RJ FM — Live Radio',
+  title: 'RJ FM Manila — Your Home of Music',
   description:
-    'RJ FM live radio. Select Manila, Naga, Cebu, Davao, or Iloilo for station-specific programming.',
+    'RJ FM Manila — Your Home of Music. Listen to RJ FM stations nationwide.',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, title: 'RJ FM', statusBarStyle: 'black-translucent' },
   icons: {
