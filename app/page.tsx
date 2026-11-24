@@ -2,21 +2,20 @@
 
 import { useState } from 'react'
 import { UsageDashboard } from '@/components/station/usage-dashboard'
-import { Radio, MapPin } from 'lucide-react'
+import { Radio, MapPin, Headphones } from 'lucide-react'
 import { RadioPlayer } from '@/components/station/radio-player'
 import { NotificationCenter } from '@/components/station/notification-center'
 import { StationShell } from '@/components/station/station-shell'
 import { BottomNavigation, type AppTab } from '@/components/station/bottom-navigation'
+import { StationSelector } from '@/components/station/station-selector'
 import { STATIONS, STATION_ORDER } from '@/lib/stations'
-import { SettingsPanel } from '@/components/station/settings-panel'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>('home')
 
   return (
     <StationShell>
-      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
-        <div className="min-w-0"><p className="text-sm font-black tracking-[0.16em] text-white">RJ FM MANILA</p><p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-200">YOUR HOME OF MUSIC</p></div>
+      <header className="radio-header mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-3">
         <NotificationCenter />
       </header>
 
@@ -38,13 +37,21 @@ export default function Home() {
               </div>
             </div>
 
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+                <Headphones className="size-4 text-cyan-200" />
+                RJ FM STATIONS
+              </div>
+              <p className="mb-3 text-xs text-slate-300">Choose a station to return to Home and start playing automatically.</p>
+              <StationSelector onSelect={() => setActiveTab('home')} />
+            </div>
           </section>
 
           <section className="mt-5">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-extrabold tracking-wide text-white">RJ FM STATIONS</h2>
-                <p className="text-xs text-muted-foreground">Choose a station to return to Home and start playing automatically.</p>
+                <p className="text-xs text-muted-foreground">Tap a station to play it on Home</p>
               </div>
               <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">{STATION_ORDER.length} STATIONS</span>
             </div>
@@ -68,7 +75,6 @@ export default function Home() {
           </section>
         </main>
       {activeTab === 'usage' && <UsageDashboard />}
-      {activeTab === 'settings' && <SettingsPanel embedded />}
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </StationShell>
   )
