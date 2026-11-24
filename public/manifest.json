@@ -1,16 +1,22 @@
 {
   "id": "/",
-  "name": "RJ FM",
-  "short_name": "RJ FM",
-  "description": "RJ FM live radio — Your Voice • Your Music • Live",
+  "name": "RJ FM Manila — Your Home of Music",
+  "short_name": "RJ FM Manila",
+  "description": "RJ FM Manila — Your Home of Music.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
   "background_color": "#080f1e",
   "theme_color": "#080f1e",
-  "categories": ["music", "entertainment"],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {
