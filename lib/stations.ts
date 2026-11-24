@@ -34,12 +34,12 @@ export interface StationMeta {
 export const STATIONS: Record<StationId, StationMeta> = {
   main: {
     id: 'main',
-    name: 'RJ FM',
-    shortName: 'RJ FM',
+    name: 'RJ FM Manila',
+    shortName: 'RJ FM Manila',
     city: 'Manila',
     frequency: '93.5',
-    description: 'Main station',
-    notificationTagline: 'RJ FM Manila 93.5',
+    description: 'Your Home of Music',
+    notificationTagline: 'RJ FM Manila — Your Home of Music',
     mode: 'main-dzmm',
     shellClass: 'station-main',
     modeLabel: 'Main',
