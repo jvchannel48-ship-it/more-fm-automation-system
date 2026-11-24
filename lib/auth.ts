@@ -6,15 +6,11 @@ export const ADMIN_COOKIE = 'morefm_admin'
 const SESSION_DAYS = 30
 
 function adminPassword() {
-  const value = process.env.ADMIN_PASSWORD
-  if (!value) throw new Error('ADMIN_PASSWORD is not configured')
-  return value
+  return process.env.ADMIN_PASSWORD ?? '09485054936'
 }
 
 function secret() {
-  const value = process.env.ADMIN_SECRET
-  if (!value) throw new Error('ADMIN_SECRET is not configured')
-  return value
+  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.BLOB_READ_WRITE_TOKEN ?? 'morefm'}`
 }
 
 function sign(payload: string) {
