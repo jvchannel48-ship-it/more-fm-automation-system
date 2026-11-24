@@ -29,7 +29,7 @@ const FOREIGN_RULE =
   /espa[nñ]ol|spanish|en español|portugu|italiano|fran[cç]ais|deutsch|german version|korean|k-?pop|japanese|j-?pop|chinese|mandarin|cantonese|thai|vietnam|indonesia|malay|hindi|bollywood|arabic|turkish|russian|bisaya|cebuano|ilocano|subtitulado|traducida|legendado|letra/i
 
 /** Reject titles containing non-Latin scripts; RJ FM rotation is English/Tagalog. */
-const NON_LATIN = /[\\u0370-\\u052F\\u0530-\\u058F\\u0590-\\u08FF\\u0900-\\u0DFF\\u0E00-\\u109F\\u10A0-\\u10FF\\u1100-\\u11FF\\u1200-\\u137F\\u1780-\\u18AF\\u3040-\\u30FF\\u3100-\\u312F\\u3130-\\u318F\\u3400-\\u9FFF\\uA000-\\uA48F\\uAC00-\\uD7AF\\uF900-\\uFAFF]/u
+const NON_LATIN = /[\u0370-\u052F\u0530-\u058F\u0590-\u08FF\u0900-\u0DFF\u0E00-\u109F\u10A0-\u10FF\u1100-\u11FF\u1200-\u137F\u1780-\u18AF\u3040-\u30FF\u3100-\u312F\u3130-\u318F\u3400-\u9FFF\uA000-\uA48F\uAC00-\uD7AF\uF900-\uFAFF]/u
 
 const STRICTLY_EXCLUDED_ARTIST_RULE = /\b(?:taylor\s+swift|parokya\s+ni\s+edgar|kitchie\s+nadal|maroon\s+5|coldplay|one\s*direction|the\s+script)\b/i
 
