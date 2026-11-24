@@ -27,7 +27,7 @@ function trackGain(track: Track, now: number) {
 export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
   const slots = useRef<Slot[]>([])
   const offset = useRef(0)
-  const [state, setState] = useState({ onAir: false, buffering: false })
+  const [state, setState] = useState({ onAir: false, buffering: false, audioError: false })
 
   useEffect(() => {
     if (data) offset.current = data.serverTime - Date.now()
@@ -38,6 +38,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     slots.current = Array.from({ length: 3 }, () => {
       const el = new Audio()
       el.preload = 'auto'
+      el.playsInline = true
+      el.addEventListener('error', () => {
+        setState((prev) => ({ ...prev, audioError: true }))
+      })
       el.src = SILENT_WAV
       el.play().catch(() => undefined)
       return { el, uid: null, synced: false }
@@ -71,6 +75,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           slot.synced = false
           slot.el.src = track.src
           slot.el.load()
+          setState((prev) => ({ ...prev, audioError: false }))
         }
         const isActive = active.includes(track)
         const el = slot.el
@@ -89,13 +94,20 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
         }
         if (el.readyState < 3 && !el.ended) buffering = true
         el.volume = clamp01(trackGain(track, now) * volume)
-        if (el.paused && !el.ended) el.play().catch(() => undefined)
+        if (el.paused && !el.ended) {
+          el.play()
+            .then(() => setState((prev) => prev.audioError ? { ...prev, audioError: false } : prev))
+            .catch((error: unknown) => {
+              console.warn('[RJ FM 93.5] Music playback failed:', error)
+              setState((prev) => ({ ...prev, audioError: true }))
+            })
+        }
       }
 
       const onAir = active.length > 0
       setState((prev) => {
-        const next = { onAir, buffering: playing && (buffering || !onAir) }
-        return prev.onAir === next.onAir && prev.buffering === next.buffering ? prev : next
+        const next = { onAir, buffering: playing && (buffering || !onAir), audioError: prev.audioError }
+        return prev.onAir === next.onAir && prev.buffering === next.buffering && prev.audioError === next.audioError ? prev : next
       })
     }
 
@@ -107,8 +119,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'MOR 93.5 Naga',
-      artist: 'MOR 93.5 NAGA LIVESTREAM ONLY',
+      title: 'RJ FM 93.5',
+      artist: 'YOUR HOME OF MUSIC',
       album: 'created by DWLC',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })
