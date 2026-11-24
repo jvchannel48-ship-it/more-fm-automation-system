@@ -107,8 +107,8 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'MOR 93.5 Naga',
-      artist: 'MOR 93.5 NAGA LIVESTREAM ONLY',
+      title: 'RJ FM 93.5',
+      artist: 'RJ FM 93.5 · YOUR HOME OF MUSIC',
       album: 'created by DWLC',
       artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
     })

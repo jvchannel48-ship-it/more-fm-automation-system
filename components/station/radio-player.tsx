@@ -17,7 +17,7 @@ const fetcher = (url: string) =>
 
 export function RadioPlayer() {
   const [playing, setPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.9)
+  const [volume, setVolume] = useState(0.7)
   const [muted, setMuted] = useState(false)
   const { data, error } = useSWR('/api/now', fetcher, {
     refreshInterval: playing ? 8000 : 30000,
