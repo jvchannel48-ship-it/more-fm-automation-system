@@ -24,7 +24,7 @@ export function RadioPlayer() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   })
-  const { buffering, audioError, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
+  const { buffering, unlock } = useBroadcast(data, playing, muted ? 0 : volume)
 
   const offAir = data?.offAir ?? false
   const live = playing && !buffering && !offAir
@@ -105,16 +105,6 @@ export function RadioPlayer() {
         {error && !data && (
           <p className="text-sm text-destructive" role="alert">
             Hindi ma-connect sa station. Sinusubukan ulit...
-          </p>
-        )}
-        {playing && audioError && (
-          <p className="text-sm text-destructive" role="alert">
-            Hindi ma-play ang music stream. Sinusubukan ulit ang susunod na kanta...
-          </p>
-        )}
-        {playing && !audioError && !offAir && (!data?.tracks?.length) && (
-          <p className="text-sm text-muted-foreground" role="status">
-            Naghihintay ng music track mula sa playlist...
           </p>
         )}
       </div>
