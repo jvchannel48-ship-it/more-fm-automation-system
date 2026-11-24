@@ -106,7 +106,7 @@ export async function enqueueChristopherTimeCheck(prompt: string, mode: 'after3'
   const saved = await readJson<ChristopherTimeCheck[]>(DJ_CHRISTOPHER_TIMECHECKS_PATH, [])
   const pending = saved.filter((item) => item.scheduledAt === null)
   const afterSongNumber = mode === 'after3'
-    ? Math.max(songCount, ...pending.filter((item) => item.mode === 'after3').map((item) => item.afterSongNumber)) + 3
+    ? Math.max(songCount, ...pending.filter((item) => item.mode === 'after3').map((item) => item.afterSongNumber)) + 2
     : 0
   const item: ChristopherTimeCheck = { id: crypto.randomUUID(), scriptId, text, createdAt: Date.now(), mode, afterSongNumber, scheduledAt: null }
   await writeJson(DJ_CHRISTOPHER_TIMECHECKS_PATH, [...saved, item])
