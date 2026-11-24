@@ -12,7 +12,7 @@ const AI_OR_NON_ORIGINAL_RULE =
  * Clean pop is allowed; rock, dance, disco, and other excluded genres remain blocked.
  */
 const EXCLUDED_GENRE_RULE =
-  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie(?:\s*rock|\s*pop)?|pop\s*rock|punk(?:\s*rock)?|post\s*punk|new\s*wave|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:[\s-]*hits?|[\s-]*mix|[\s-]*pop)?|electro\s*pop|synth\s*pop|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger|worship|gospel|praise|religious|children'?s?|kids?|nursery|lullaby|classical|opera|broadway|soundtrack|movie\s*music)\b/i
+  /\b(?:rock(?:\s*and\s*roll|\s*n\s*roll)?|hard\s*rock|soft\s*rock|alt(?:ernate)?\s*rock|indie(?:\s*rock|\s*pop)?|pop\s*rock|punk(?:\s*rock)?|post\s*punk|new\s*wave|metal|heavy\s*metal|thrash|grunge|emo|screamo|hardcore|headbang|dance(?:[\s-]*hits?|[\s-]*mix|[\s-]*pop)?|electro\s*pop|synth\s*pop|eurodance|disco|funk(?:y)?|house(?:\s*music)?|techno|edm|electro(?:nic)?|trance|dubstep|drum\s*and\s*bass|dnb|hardstyle|reggaeton|hip[\s-]?hop|rap(?:ping)?|trap|drill|rave|club\s*banger|worship|gospel|praise|religious|christmas|holiday\s*music|carol|children'?s?|kids?|nursery|lullaby|classical|opera|broadway|soundtrack|movie\s*music)\b/i
 
 /** Extra club / party terms that often appear without the word "dance". */
 const CLASSIC_LOVE_EXCLUSION_RULE =
