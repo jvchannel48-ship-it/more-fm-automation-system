@@ -68,17 +68,17 @@ export function AdminMenu() {
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>
-            RJ FM <span className="text-primary">93.5</span>
+            YS FM <span className="text-primary">107.1</span>
           </SheetTitle>
-          <SheetDescription>YOUR HOME OF MUSIC</SheetDescription>
+          <SheetDescription>YOUR HOME OF ROMANTIC MUSIC</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-6 px-4 pb-6">
           <section className="flex flex-col gap-3">
             <SectionTitle icon={Info}>Info</SectionTitle>
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-sm">
-              <p className="font-medium">RJ FM 93.5</p>
-              <p className="text-muted-foreground">Livestream · YOUR HOME OF MUSIC</p>
+              <p className="font-medium">YS FM 107.1</p>
+              <p className="text-muted-foreground">Livestream · YOUR HOME OF ROMANTIC MUSIC</p>
               <p className="text-muted-foreground">Sign off 1:00 AM · Sign on 4:00 AM</p>
               <p className="mt-2 text-muted-foreground">created by DWLC · this app enjoy the music</p>
             </div>
