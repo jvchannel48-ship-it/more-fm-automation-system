@@ -107,10 +107,10 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'RJ FM 93.5',
-      artist: 'RJ FM 93.5 · YOUR HOME OF MUSIC',
-      album: 'created by DWLC',
-      artwork: [{ src: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+      title: 'YS FM 107.1',
+      artist: 'YS FM 107.1 · YOUR HOME OF MUSIC',
+      album: 'YOUR HOME OF ROMANTIC MUSIC',
+      artwork: [{ src: '/ys-fm-logo.svg', sizes: '180x180', type: 'image/svg+xml' }],
     })
   }, [playing])
 
