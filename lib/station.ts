@@ -222,11 +222,10 @@ async function fill(state: StationState, now: number) {
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
     const request = state.pendingRequests?.[0]
-    const song = request
-      ? (await findRequestedSong(request)) ?? (await findSong(program, state.songCount, state.history, startAt))
-      : await findSong(program, state.songCount, state.history, startAt)
+    const requestedSong = request ? await findRequestedSong(request) : null
+    const song = requestedSong ?? (await findSong(program, state.songCount, state.history, startAt))
     if (!song) break
-    if (request && song.artist === request.artist) state.pendingRequests?.shift()
+    if (requestedSong) state.pendingRequests?.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
