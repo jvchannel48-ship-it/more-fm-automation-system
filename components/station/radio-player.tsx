@@ -44,7 +44,7 @@ export function RadioPlayer() {
 
   return (
     <section aria-label="YS FM 107.1 live player" className="flex w-full flex-col items-center gap-8 text-center">
-      <img src="/ys-fm-logo.svg" alt="YS FM 107.1 — YOUR HOME OF ROMANTIC MUSIC" className="mb-1 w-full max-w-[280px] rounded-2xl shadow-xl" />
+      <img src="/ys-fm-logo.svg" alt="YS FM 107.1 — THE BEST ONLINE RADIO MUSIC STATION IN BICOL" className="mb-1 w-full max-w-[280px] rounded-2xl shadow-xl" />
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -91,7 +91,7 @@ export function RadioPlayer() {
 
       <div className="flex flex-col items-center gap-2" aria-live="polite">
         <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-          RJ FM <span className="text-primary">93.5</span>
+          YS FM <span className="text-primary">107.1</span>
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
           YOUR HOME OF ROMANTIC MUSIC
