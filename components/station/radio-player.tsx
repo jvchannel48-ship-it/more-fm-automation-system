@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider'
 import { useBroadcast } from '@/hooks/use-broadcast'
 import type { NowResponse } from '@/lib/types'
 import { Equalizer } from './equalizer'
+import { SongRequestForm } from './song-request-form'
 
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => {
@@ -131,6 +132,8 @@ export function RadioPlayer() {
           aria-label="Volume"
         />
       </div>
+
+      <SongRequestForm />
     </section>
   )
 }
