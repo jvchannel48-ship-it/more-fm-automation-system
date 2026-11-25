@@ -43,7 +43,8 @@ export function RadioPlayer() {
     : null
 
   return (
-    <section aria-label="RJ FM 93.5 live player" className="flex w-full flex-col items-center gap-8 text-center">
+    <section aria-label="YS FM 107.1 live player" className="flex w-full flex-col items-center gap-8 text-center">
+      <img src="/ys-fm-logo.svg" alt="YS FM 107.1 — YOUR HOME OF ROMANTIC MUSIC" className="mb-1 w-full max-w-[280px] rounded-2xl shadow-xl" />
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${
           offAir ? 'border-border text-muted-foreground' : 'border-live/40 bg-live/10 text-live'
@@ -73,7 +74,7 @@ export function RadioPlayer() {
           size="icon"
           onClick={togglePlay}
           disabled={offAir}
-          aria-label={playing ? 'Pause RJ FM 93.5' : 'Play RJ FM 93.5'}
+          aria-label={playing ? 'Pause YS FM 107.1' : 'Play YS FM 107.1'}
           className="relative size-20 rounded-full bg-background text-primary shadow-xl hover:bg-background/90 [&_svg]:size-8"
         >
           {offAir ? (
@@ -93,7 +94,7 @@ export function RadioPlayer() {
           RJ FM <span className="text-primary">93.5</span>
         </h2>
         <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          YOUR HOME OF MUSIC
+          YOUR HOME OF ROMANTIC MUSIC
         </p>
         <div className="mt-2">
           <Equalizer active={live} />
