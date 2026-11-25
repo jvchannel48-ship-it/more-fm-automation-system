@@ -7,29 +7,22 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'RJ FM 93.5 — YOUR HOME OF MUSIC',
-  description: 'RJ FM 93.5 livestream. YOUR HOME OF MUSIC.',
+  title: 'YS FM 107.1 — YOUR HOME OF ROMANTIC MUSIC',
+  description: 'YS FM 107.1 livestream. YOUR HOME OF ROMANTIC MUSIC.',
   generator: 'v0.app',
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/ys-fm-logo.svg',
+    shortcut: '/ys-fm-logo.svg',
+    apple: '/ys-fm-logo.svg',
   },
 }
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
-  themeColor: '#14161f',
+  themeColor: '#061b3a',
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fil" className={`${geist.variable} ${geistMono.variable}`}>
       <body className="antialiased">
