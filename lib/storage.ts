@@ -28,11 +28,15 @@ export const STATE_PATH = 'station/state-v2.json'
 
 export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
+  remixMode: false,
+  fullBass: false,
 }
 
 export async function getSettings(): Promise<StationSettings> {
   const saved = await readJson<Partial<StationSettings>>(SETTINGS_PATH, {})
   return {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
+    remixMode: typeof saved.remixMode === 'boolean' ? saved.remixMode : false,
+    fullBass: typeof saved.fullBass === 'boolean' ? saved.fullBass : false,
   }
 }
