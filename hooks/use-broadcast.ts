@@ -108,7 +108,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     if (!('mediaSession' in navigator) || !playing) return
     navigator.mediaSession.metadata = new MediaMetadata({
       title: 'YS FM 107.1',
-      artist: 'YS FM 107.1 · YOUR HOME OF MUSIC',
+      artist: 'YS FM 107.1 · THE BEST ONLINE RADIO MUSIC STATION IN BICOL',
       album: 'YOUR HOME OF ROMANTIC MUSIC',
       artwork: [{ src: '/ys-fm-logo.svg', sizes: '180x180', type: 'image/svg+xml' }],
     })
