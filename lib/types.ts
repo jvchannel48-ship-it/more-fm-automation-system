@@ -9,6 +9,8 @@ export interface Track {
 
 export interface StationSettings {
   broadcastEnabled: boolean
+  remixMode: boolean
+  fullBass: boolean
 }
 
 export interface NowResponse {
