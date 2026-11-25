@@ -26,16 +26,24 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
-    const res = await fetch('/api/admin/settings', {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    setBusy(false)
-    if (res.ok) mutate((await res.json()) as AdminStatus, { revalidate: false })
+    setError('')
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      if (!res.ok) throw new Error(res.status === 401 ? 'Nag-expire ang admin session. Mag-login ulit.' : 'Hindi na-save ang setting. Subukan ulit.')
+      mutate((await res.json()) as AdminStatus, { revalidate: false })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'May error sa pag-save.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -60,15 +68,36 @@ export function AdminPanel() {
           <Label htmlFor="remix-mode">Remix ON / OFF</Label>
           <span className="text-xs text-muted-foreground">ON: techno / disco remix rotation only</span>
         </div>
-        <Switch id="remix-mode" checked={data?.remixMode ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { remixMode: checked })} />
+        <button
+          id="remix-mode"
+          type="button"
+          role="switch"
+          aria-checked={data?.remixMode ?? false}
+          disabled={busy}
+          onClick={() => send('PUT', { remixMode: !(data?.remixMode ?? false) })}
+          className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${data?.remixMode ? 'bg-primary' : 'bg-muted'}`}
+        >
+          <span className={`pointer-events-none block size-6 rounded-full bg-background shadow transition-transform ${data?.remixMode ? 'translate-x-6' : 'translate-x-0'}`} />
+        </button>
       </div>
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="full-bass">Full Bass</Label>
           <span className="text-xs text-muted-foreground">Bass processing setting</span>
         </div>
-        <Switch id="full-bass" checked={data?.fullBass ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { fullBass: checked })} />
+        <button
+          id="full-bass"
+          type="button"
+          role="switch"
+          aria-checked={data?.fullBass ?? false}
+          disabled={busy}
+          onClick={() => send('PUT', { fullBass: !(data?.fullBass ?? false) })}
+          className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${data?.fullBass ? 'bg-primary' : 'bg-muted'}`}
+        >
+          <span className={`pointer-events-none block size-6 rounded-full bg-background shadow transition-transform ${data?.fullBass ? 'translate-x-6' : 'translate-x-0'}`} />
+        </button>
       </div>
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
