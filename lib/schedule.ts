@@ -274,3 +274,12 @@ export function languageForSlot(program: Program, songCount: number): Language {
   if (program.tagalogOnly) return 'tagalog'
   return Math.floor(songCount / 2) % 2 === 0 ? 'english' : 'tagalog'
 }
+
+
+/** YS FM 107.1 dynamic time-check voice script (Philippine local time). */
+export function ysFmTimeCheckPrompt(ms: number = Date.now()): string {
+  const time = new Date(ms).toLocaleTimeString('en-PH', {
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila',
+  })
+  return `107.1 YS FM TIME CHECK! IT IS NOW ${time}. YOU'RE LISTENING TO YOUR FAVORITE SONGS, HOME OF ROMANTIC MUSIC, ONLINE RADIO STREAMING.`
+}
