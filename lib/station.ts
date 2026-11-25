@@ -22,9 +22,10 @@ interface StationState {
   songCount: number
   history: HistoryEntry[]
   fillingUntil: number
+  pendingRequests?: { artist: string; title: string; createdAt: number }[]
 }
 
-const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0 }
+const EMPTY_STATE: StationState = { tracks: [], songCount: 0, history: [], fillingUntil: 0, pendingRequests: [] }
 
 interface SearchItem {
   id: string
@@ -153,6 +154,55 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   return null
 }
 
+async function findRequestedSong(request: { artist: string; title: string }) {
+  const query = `${request.artist} ${request.title}`
+  const data = await fetchJson<{ items?: SearchItem[] }>(
+    `${API_BASE}?search=${encodeURIComponent(query)}`,
+    15_000,
+  )
+  const wantedTitle = normalize(request.title)
+  const candidates = (data?.items ?? []).filter((item) => {
+    const seconds = parseDuration(item.duration ?? '')
+    const normalizedTitle = normalize(item.title ?? '')
+    if (seconds < 120 || seconds > 420) return false
+    if (!normalizedTitle.includes(wantedTitle)) return false
+    if (AI_RULE.test(item.title) || ROCK_RULE.test(item.title)) return false
+    if (QUALITY_RULE.test(item.title) || FOREIGN_RULE.test(item.title) || NON_LATIN.test(item.title)) return false
+    return true
+  })
+  for (const item of candidates.slice(0, 5)) {
+    const dl = await fetchJson<{ downloadUrl?: string }>(
+      `${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`,
+      30_000,
+    )
+    if (dl?.downloadUrl) {
+      return {
+        id: item.id,
+        key: songKey(item.title),
+        artist: request.artist,
+        src: dl.downloadUrl,
+        duration: parseDuration(item.duration),
+      }
+    }
+  }
+  return null
+}
+
+export async function queueSongRequest(artist: string, title: string) {
+  const now = Date.now()
+  const { state } = await loadState(now)
+  state.pendingRequests ??= []
+  const duplicate = state.pendingRequests.some(
+    (item) => normalize(item.artist) === normalize(artist) && normalize(item.title) === normalize(title),
+  )
+  if (duplicate) return { queued: true, duplicate: true }
+  // Keep the song currently playing. The request takes the next slot after it.
+  state.tracks = state.tracks.filter((track) => track.startAt <= now && trackEnd(track) > now)
+  state.pendingRequests.push({ artist, title, createdAt: now })
+  await writeJson(STATE_PATH, state)
+  return { queued: true, duplicate: false }
+}
+
 function trackEnd(track: Track) {
   return track.startAt + track.duration * 1000
 }
@@ -171,8 +221,12 @@ async function fill(state: StationState, now: number) {
     const program = programAt(startAt)
     const fadeIn = state.tracks.at(-1)?.fadeOut ?? 0
 
-    const song = await findSong(program, state.songCount, state.history, startAt)
+    const request = state.pendingRequests?.[0]
+    const song = request
+      ? (await findRequestedSong(request)) ?? (await findSong(program, state.songCount, state.history, startAt))
+      : await findSong(program, state.songCount, state.history, startAt)
     if (!song) break
+    if (request && song.artist === request.artist) state.pendingRequests?.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
     const songStart = Math.max(startAt, Date.now() - (state.tracks.length === 0 ? 0 : 60_000))
     state.tracks.push({
