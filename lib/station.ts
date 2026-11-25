@@ -115,7 +115,8 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   return shuffle(fresh.length >= 3 ? fresh : allowed)
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number) {
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, remixMode = false) {
+  if (remixMode) return findRemixSong(history);
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
@@ -149,6 +150,29 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
           duration: parseDuration(item.duration),
         }
       }
+    }
+  }
+  return null
+}
+
+
+async function findRemixSong(history: HistoryEntry[]) {
+  const playedIds = new Set(history.map((h) => h.id))
+  const playedKeys = new Set(history.map((h) => h.key))
+  const queries = ['techno dance remix hits', 'disco techno remix', 'Christmas dance techno remix', 'Christmas disco remix']
+  for (const query of queries) {
+    const data = await fetchJson<{ items?: SearchItem[] }>(`${API_BASE}?search=${encodeURIComponent(query)}`, 15000)
+    const candidates = shuffle((data?.items ?? []).filter((item) => {
+      const seconds = parseDuration(item.duration ?? '')
+      const title = item.title ?? ''
+      if (seconds < 120 || seconds > 480 || NON_LATIN.test(title)) return false
+      if (AI_RULE.test(title) || ROCK_RULE.test(title)) return false
+      if (!/remix|techno|dance|disco/i.test(title)) return false
+      return !playedIds.has(item.id) && !playedKeys.has(songKey(title))
+    })).slice(0, 8)
+    for (const item of candidates) {
+      const dl = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 30000)
+      if (dl?.downloadUrl) return { id:item.id, key:songKey(item.title), artist:'Remix DJ', src:dl.downloadUrl, duration:parseDuration(item.duration) }
     }
   }
   return null
@@ -213,7 +237,7 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 
-async function fill(state: StationState, now: number) {
+async function fill(state: StationState, now: number, remixMode = false) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
@@ -223,7 +247,7 @@ async function fill(state: StationState, now: number) {
 
     const request = state.pendingRequests?.[0]
     const requestedSong = request ? await findRequestedSong(request) : null
-    const song = requestedSong ?? (await findSong(program, state.songCount, state.history, startAt))
+    const song = requestedSong ?? (await findSong(program, state.songCount, state.history, startAt, remixMode))
     if (!song) break
     if (requestedSong) state.pendingRequests?.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
@@ -271,7 +295,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now)
+    await fill(state, now, settings.remixMode)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
