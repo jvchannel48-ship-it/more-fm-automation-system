@@ -55,6 +55,20 @@ export function AdminPanel() {
         />
       </div>
 
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="remix-mode">Remix ON / OFF</Label>
+          <span className="text-xs text-muted-foreground">ON: techno / disco remix rotation only</span>
+        </div>
+        <Switch id="remix-mode" checked={data?.remixMode ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { remixMode: checked })} />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="full-bass">Full Bass</Label>
+          <span className="text-xs text-muted-foreground">Bass processing setting</span>
+        </div>
+        <Switch id="full-bass" checked={data?.fullBass ?? false} disabled={!data || busy} onCheckedChange={(checked) => send('PUT', { fullBass: checked })} />
+      </div>
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
