@@ -10,12 +10,13 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; remixMode?: unknown; fullBass?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; remixMode?: unknown; fullBass?: unknown; autoPost?: unknown }
   const current = await getSettings()
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
     remixMode: typeof body.remixMode === 'boolean' ? body.remixMode : current.remixMode,
     fullBass: typeof body.fullBass === 'boolean' ? body.fullBass : current.fullBass,
+    autoPost: typeof body.autoPost === 'boolean' ? body.autoPost : current.autoPost,
   }
   await writeJson(SETTINGS_PATH, next)
   return NextResponse.json(await getAdminStatus())
