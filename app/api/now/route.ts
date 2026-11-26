@@ -13,10 +13,14 @@ export async function GET() {
     if(settings.autoPost && !data.offAir){
       const now=Date.now(); const track=data.tracks.find(t=>now>=t.startAt && now<t.startAt+t.duration*1000)
       if(track?.uid && track.title && track.artist){
-        const posts=(await getPosts()).filter(p=>!p.trackUid || Date.now()-new Date(p.createdAt).getTime() < 14*24*60*60*1000)
+        const original=await getPosts()
+        const posts=original.filter(p=>!p.trackUid || Date.now()-new Date(p.createdAt).getTime() < 14*24*60*60*1000)
+        const trimmed=posts.length!==original.length
         if(!posts.some(p=>p.trackUid===track.uid)){
           const post={id:track.uid+'ysfmPost',trackUid:track.uid,text:'🎵 Now Playing: '+track.title+' — '+track.artist,createdAt:new Date().toISOString(),reactions:{like:0,love:0,haha:0,wow:0,sad:0,angry:0},userReactions:{}}
           await savePosts([post,...posts])
+        } else if(trimmed) {
+          await savePosts(posts)
         }
       }
     }
