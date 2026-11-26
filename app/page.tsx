@@ -1,4 +1,3 @@
-import { RadioPlayer } from '@/components/station/radio-player'
 import { AdminMenu } from '@/components/station/admin-menu'
 
 export default function Home() {
@@ -11,7 +10,7 @@ export default function Home() {
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-6">
         <h1 className="sr-only">YS FM 107.1 livestream — YOUR HOME OF ROMANTIC MUSIC</h1>
-        <RadioPlayer />
+        
       </main>
       <footer className="mx-auto flex flex-col items-center gap-1 px-4 pb-8 text-center">
         <p className="text-sm font-medium">YOUR HOME OF ROMANTIC MUSIC</p>
