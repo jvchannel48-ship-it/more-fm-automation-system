@@ -1,0 +1,4 @@
+import { NextResponse } from 'next/server'
+import { getPosts, savePosts, type Reaction } from '@/lib/media-feed'
+const valid:Reaction[]=['like','love','haha','wow','sad','angry']
+export async function POST(req:Request){try{const {postId,reaction,visitorId}=await req.json();if(!valid.includes(reaction)||!visitorId)return NextResponse.json({error:'Invalid reaction'}, {status:400});const posts=await getPosts();const p=posts.find(x=>x.id===postId);if(!p)return NextResponse.json({error:'Post not found'}, {status:404});const prev=p.userReactions[visitorId];if(prev)p.reactions[prev]=Math.max(0,p.reactions[prev]-1);if(prev===reaction){delete p.userReactions[visitorId]}else{p.userReactions[visitorId]=reaction;p.reactions[reaction]++}await savePosts(posts);return NextResponse.json(p)}catch{return NextResponse.json({error:'Reaction failed'}, {status:500})}}
