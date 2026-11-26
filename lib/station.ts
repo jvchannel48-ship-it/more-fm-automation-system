@@ -257,6 +257,8 @@ async function fill(state: StationState, now: number, remixMode = false) {
     state.tracks.push({
       uid: `${song.id}-${songStart}`,
       src: song.src,
+      title: song.title,
+      artist: song.artist,
       startAt: songStart,
       duration: song.duration,
       fadeIn,
