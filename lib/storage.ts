@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   broadcastEnabled: true,
   remixMode: false,
   fullBass: false,
+  autoPost: false,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -38,5 +39,6 @@ export async function getSettings(): Promise<StationSettings> {
     broadcastEnabled: typeof saved.broadcastEnabled === 'boolean' ? saved.broadcastEnabled : true,
     remixMode: typeof saved.remixMode === 'boolean' ? saved.remixMode : false,
     fullBass: typeof saved.fullBass === 'boolean' ? saved.fullBass : false,
+    autoPost: typeof saved.autoPost === 'boolean' ? saved.autoPost : false,
   }
 }
