@@ -1,5 +1,7 @@
 export interface Track {
   uid: string
+  title?: string
+  artist?: string
   src: string
   startAt: number
   duration: number
@@ -11,6 +13,7 @@ export interface StationSettings {
   broadcastEnabled: boolean
   remixMode: boolean
   fullBass: boolean
+  autoPost?: boolean
 }
 
 export interface NowResponse {
