@@ -146,6 +146,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
           id: item.id,
           key: songKey(item.title),
           artist: artist.name,
+          title: item.title,
           src: dl.downloadUrl,
           duration: parseDuration(item.duration),
         }
@@ -172,7 +173,7 @@ async function findRemixSong(history: HistoryEntry[]) {
     })).slice(0, 8)
     for (const item of candidates) {
       const dl = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 30000)
-      if (dl?.downloadUrl) return { id:item.id, key:songKey(item.title), artist:'Remix DJ', src:dl.downloadUrl, duration:parseDuration(item.duration) }
+      if (dl?.downloadUrl) return { id:item.id, key:songKey(item.title), title:item.title, artist:'Remix DJ', src:dl.downloadUrl, duration:parseDuration(item.duration) }
     }
   }
   return null
@@ -204,6 +205,7 @@ async function findRequestedSong(request: { artist: string; title: string }) {
         id: item.id,
         key: songKey(item.title),
         artist: request.artist,
+        title: item.title,
         src: dl.downloadUrl,
         duration: parseDuration(item.duration),
       }
