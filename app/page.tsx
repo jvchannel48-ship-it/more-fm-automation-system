@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden">
       <div className="pointer-events-none absolute left-1/2 top-1/3 -z-10 size-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4">
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4"><nav className="flex items-center gap-3 text-sm"><a href="/" className="font-semibold">Home</a><a href="/media" className="text-muted-foreground hover:text-foreground">Media</a></nav>
         <span className="font-mono text-sm font-bold tracking-widest">YS FM <span className="text-primary">107.1</span></span>
         <AdminMenu />
       </header>
