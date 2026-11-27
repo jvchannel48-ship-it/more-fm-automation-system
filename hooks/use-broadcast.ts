@@ -28,6 +28,36 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
   const slots = useRef<Slot[]>([])
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false })
+  const timeCheckCount = useRef(0)
+  const lastTrackUid = useRef<string | null>(null)
+  const spokenTrackUid = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!playing || data?.offAir) return
+    const now = Date.now() + offset.current
+    const current = (data?.tracks ?? []).find(t => now >= t.startAt && now < t.startAt + t.duration * 1000)
+    if (!current) return
+    if (lastTrackUid.current !== current.uid) {
+      lastTrackUid.current = current.uid
+      timeCheckCount.current += 1
+    }
+    const remaining = current.startAt + current.duration * 1000 - now
+    if (timeCheckCount.current >= 2 && remaining <= 12_000 && remaining > 0 && spokenTrackUid.current !== current.uid) {
+      spokenTrackUid.current = current.uid
+      timeCheckCount.current = 0
+      if ('speechSynthesis' in window) {
+        const time = new Date(now).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' })
+        const utterance = new SpeechSynthesisUtterance('107.1 YS FM TIME CHECK! IT IS NOW ' + time + '.')
+        utterance.lang = 'en-US'
+        const voices = window.speechSynthesis.getVoices()
+        const voice = voices.find(v => /Christopher/i.test(v.name)) || voices.find(v => /en-US/i.test(v.lang) && /male|david|guy|christopher/i.test(v.name))
+        if (voice) utterance.voice = voice
+        utterance.rate = 1
+        window.speechSynthesis.speak(utterance)
+      }
+    }
+  }, [data, playing])
+
 
   useEffect(() => {
     if (data) offset.current = data.serverTime - Date.now()
