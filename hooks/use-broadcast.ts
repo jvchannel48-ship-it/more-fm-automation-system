@@ -3,157 +3,77 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { NowResponse, Track } from '@/lib/types'
 
-const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
-const PRELOAD_AHEAD_MS = 25_000
+const PRELOAD_AHEAD_MS = 25000
 const DRIFT_TOLERANCE_S = 4
-
-interface Slot {
-  el: HTMLAudioElement
-  uid: string | null
-  synced: boolean
+type Slot = { el: HTMLAudioElement; uid: string | null; synced: boolean }
+const clamp = (n:number) => Math.min(1, Math.max(0,n))
+const curve = (n:number) => Math.sin(clamp(n) * Math.PI / 2)
+function trackGain(track:Track, now:number) {
+  const elapsed=(now-track.startAt)/1000, remaining=track.duration-elapsed
+  return Math.min(track.fadeIn>0?curve(elapsed/track.fadeIn):1, track.fadeOut>0?curve(remaining/track.fadeOut):1)
 }
 
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
-const curve = (n: number) => Math.sin((clamp01(n) * Math.PI) / 2)
+export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume:number, compressorOn=true, levelingOn=true, fmStyle=true) {
+  const slots=useRef<Slot[]>([])
+  const offset=useRef(0)
+  const [state,setState]=useState({onAir:false,buffering:false})
+  const timeCheckCount=useRef(0), lastTrackUid=useRef<string|null>(null), spokenTrackUid=useRef<string|null>(null)
 
-function trackGain(track: Track, now: number) {
-  const elapsed = (now - track.startAt) / 1000
-  const remaining = track.duration - elapsed
-  const fadeIn = track.fadeIn > 0 ? curve(elapsed / track.fadeIn) : 1
-  const fadeOut = track.fadeOut > 0 ? curve(remaining / track.fadeOut) : 1
-  return Math.min(fadeIn, fadeOut)
-}
+  useEffect(()=>{ if(data) offset.current=data.serverTime-Date.now() },[data])
 
-export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, compressorOn = true, levelingOn = true, fmStyle = true) {\n  const audioContext = useRef<AudioContext | null>(null)
-  const slots = useRef<Slot[]>([])
-  const offset = useRef(0)
-  const [state, setState] = useState({ onAir: false, buffering: false })
-  const timeCheckCount = useRef(0)
-  const lastTrackUid = useRef<string | null>(null)
-  const spokenTrackUid = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!playing || data?.offAir) return
-    const now = Date.now() + offset.current
-    const current = (data?.tracks ?? []).find(t => now >= t.startAt && now < t.startAt + t.duration * 1000)
-    if (!current) return
-    if (lastTrackUid.current !== current.uid) {
-      lastTrackUid.current = current.uid
-      timeCheckCount.current += 1
-    }
-    const remaining = current.startAt + current.duration * 1000 - now
-    if (timeCheckCount.current >= 2 && remaining <= 12_000 && remaining > 0 && spokenTrackUid.current !== current.uid) {
-      spokenTrackUid.current = current.uid
-      timeCheckCount.current = 0
-      if ('speechSynthesis' in window) {
-        const time = new Date(now).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' })
-        const utterance = new SpeechSynthesisUtterance('107.1 YS FM TIME CHECK! IT IS NOW ' + time + '.')
-        utterance.lang = 'en-US'
-        const voices = window.speechSynthesis.getVoices()
-        const voice = voices.find(v => /Christopher/i.test(v.name)) || voices.find(v => /en-US/i.test(v.lang) && /male|david|guy|christopher/i.test(v.name))
-        if (voice) utterance.voice = voice
-        utterance.rate = 1
-        window.speechSynthesis.speak(utterance)
+  useEffect(()=>{
+    if(!playing||data?.offAir)return
+    const now=Date.now()+offset.current
+    const current=(data?.tracks??[]).find(t=>now>=t.startAt&&now<t.startAt+t.duration*1000)
+    if(!current)return
+    if(lastTrackUid.current!==current.uid){lastTrackUid.current=current.uid;timeCheckCount.current++}
+    const remaining=current.startAt+current.duration*1000-now
+    if(timeCheckCount.current>=2&&remaining<=12000&&remaining>0&&spokenTrackUid.current!==current.uid){
+      spokenTrackUid.current=current.uid;timeCheckCount.current=0
+      if('speechSynthesis'in window){
+        const time=new Date(now).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'})
+        const utterance=new SpeechSynthesisUtterance('107.1 YS FM TIME CHECK! IT IS NOW '+time+'.');utterance.lang='en-US'
+        const voice=window.speechSynthesis.getVoices().find(v=>/Christopher/i.test(v.name))||window.speechSynthesis.getVoices().find(v=>/en-US/i.test(v.lang)&&/male|david|guy/i.test(v.name))
+        if(voice)utterance.voice=voice;utterance.rate=1;window.speechSynthesis.speak(utterance)
       }
     }
-  }, [data, playing])
+  },[data,playing])
 
+  const unlock=useCallback(()=>{
+    if(slots.current.length)return
+    slots.current=Array.from({length:3},()=>{const el=new Audio();el.preload='auto';return {el,uid:null,synced:false}})
+  },[])
 
-  useEffect(() => {
-    if (data) offset.current = data.serverTime - Date.now()
-  }, [data])
-
-  const unlock = useCallback(() => {
-    if (slots.current.length > 0) return
-    slots.current = Array.from({ length: 3 }, () => {
-      const el = new Audio()
-      el.preload = 'auto'
-      el.src = SILENT_WAV
-      el.play().catch(() => undefined)
-      return { el, uid: null, synced: false }
-    })
-  }, [])
-
-  useEffect(() => {
-    const tick = () => {
-      const now = Date.now() + offset.current
-      const tracks = data?.tracks ?? []
-      const active = tracks.filter((t) => now >= t.startAt && now < t.startAt + t.duration * 1000)
-      const upcoming = tracks.filter((t) => t.startAt > now && t.startAt - now < PRELOAD_AHEAD_MS)
-      const wanted = [...active, ...upcoming].slice(0, slots.current.length)
-      const wantedIds = new Set(wanted.map((t) => t.uid))
-
-      for (const slot of slots.current) {
-        if (slot.uid && !wantedIds.has(slot.uid)) {
-          slot.el.pause()
-          slot.uid = null
-          slot.synced = false
-        }
+  useEffect(()=>{
+    const tick=()=>{
+      const now=Date.now()+offset.current, tracks=data?.tracks??[]
+      const active=tracks.filter(t=>now>=t.startAt&&now<t.startAt+t.duration*1000)
+      const upcoming=tracks.filter(t=>t.startAt>now&&t.startAt-now<PRELOAD_AHEAD_MS)
+      const wanted=[...active,...upcoming].slice(0,slots.current.length), wantedIds=new Set(wanted.map(t=>t.uid))
+      for(const slot of slots.current)if(slot.uid&&!wantedIds.has(slot.uid)){slot.el.pause();slot.el.removeAttribute('src');slot.uid=null;slot.synced=false}
+      let buffering=false
+      for(const track of wanted){
+        let slot=slots.current.find(s=>s.uid===track.uid)
+        if(!slot){slot=slots.current.find(s=>s.uid===null);if(!slot)continue;slot.uid=track.uid;slot.synced=false;slot.el.src=track.src;slot.el.load()}
+        const el=slot.el,isActive=active.includes(track)
+        if(!playing||!isActive){if(!el.paused)el.pause();continue}
+        const expected=Math.max(0,(now-track.startAt)/1000)
+        if(el.readyState>=1&&(!slot.synced||Math.abs(el.currentTime-expected)>DRIFT_TOLERANCE_S)){try{if(!el.duration||expected<el.duration-1)el.currentTime=expected;slot.synced=true}catch{}}
+        if(el.readyState<3&&!el.ended)buffering=true
+        el.volume=clamp(trackGain(track,now)*volume*(levelingOn?1:1))
+        if(el.paused&&!el.ended)el.play().catch(()=>{buffering=true})
       }
-
-      let buffering = false
-      for (const track of wanted) {
-        let slot = slots.current.find((s) => s.uid === track.uid)
-        if (!slot) {
-          slot = slots.current.find((s) => s.uid === null)
-          if (!slot) continue
-          slot.uid = track.uid
-          slot.synced = false
-          slot.el.src = track.src
-          slot.el.load()
-        }
-        const isActive = active.includes(track)
-        const el = slot.el
-
-        if (!playing || !isActive) {
-          if (!el.paused) el.pause()
-          continue
-        }
-
-        const expected = (now - track.startAt) / 1000
-        if (el.readyState >= 1) {
-          if (!slot.synced || Math.abs(el.currentTime - expected) > DRIFT_TOLERANCE_S) {
-            if (!el.duration || expected < el.duration - 1) el.currentTime = Math.max(0, expected)
-            slot.synced = true
-          }
-        }
-        if (el.readyState < 3 && !el.ended) buffering = true
-        el.volume = 1\n        if (slot.gain) {\n          const base = clamp01(trackGain(track, now) * volume)\n          slot.gain.gain.setTargetAtTime(base * (levelingOn ? 1.12 : 1), slot.gain.context.currentTime, 0.08)\n        }\n        if (slot.compressor) slot.compressor.threshold.value = compressorOn ? (fmStyle ? -18 : -24) : 0\n        if (slot.compressor) slot.compressor.ratio.value = compressorOn ? (fmStyle ? 4 : 3) : 1\n        if (slot.compressor) slot.compressor.knee.value = compressorOn ? (fmStyle ? 20 : 12) : 0
-        if (el.paused && !el.ended) el.play().catch(() => undefined)
-      }
-
-      const onAir = active.length > 0
-      setState((prev) => {
-        const next = { onAir, buffering: playing && (buffering || !onAir) }
-        return prev.onAir === next.onAir && prev.buffering === next.buffering ? prev : next
-      })
+      const onAir=active.length>0
+      setState(prev=>{const next={onAir,buffering:playing&&(buffering||!onAir)};return prev.onAir===next.onAir&&prev.buffering===next.buffering?prev:next})
     }
+    tick();const id=window.setInterval(tick,300);return()=>window.clearInterval(id)
+  },[data,playing,volume,compressorOn,levelingOn,fmStyle])
 
-    tick()
-    const id = window.setInterval(tick, 250)
-    return () => window.clearInterval(id)
-  }, [data, playing, volume, compressorOn, levelingOn, fmStyle])
+  useEffect(()=>{
+    if(!('mediaSession'in navigator)||!playing)return
+    navigator.mediaSession.metadata=new MediaMetadata({title:'YS FM 107.1',artist:'YS FM 107.1 · THE BEST ONLINE RADIO MUSIC STATION IN BICOL',album:'YOUR HOME OF ROMANTIC MUSIC',artwork:[{src:'/ys-fm-logo.svg',sizes:'180x180',type:'image/svg+xml'}]})
+  },[playing])
 
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !playing) return
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'YS FM 107.1',
-      artist: 'YS FM 107.1 · THE BEST ONLINE RADIO MUSIC STATION IN BICOL',
-      album: 'YOUR HOME OF ROMANTIC MUSIC',
-      artwork: [{ src: '/ys-fm-logo.svg', sizes: '180x180', type: 'image/svg+xml' }],
-    })
-  }, [playing])
-
-  useEffect(
-    () => () => {
-      for (const slot of slots.current) {
-        slot.el.pause()
-        slot.el.removeAttribute('src')\n        slot.source?.disconnect()\n        slot.gain?.disconnect()\n        slot.compressor?.disconnect()\n        slot.limiter?.disconnect()
-      }
-      slots.current = []
-    },
-    [],
-  )
-
-  return { ...state, unlock }
+  useEffect(()=>()=>{for(const s of slots.current){s.el.pause();s.el.removeAttribute('src')}slots.current=[]},[])
+  return {...state,unlock}
 }
