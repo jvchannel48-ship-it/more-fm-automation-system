@@ -24,7 +24,7 @@ function trackGain(track: Track, now: number) {
   return Math.min(fadeIn, fadeOut)
 }
 
-export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number) {
+export function useBroadcast(data: NowResponse | undefined, playing: boolean, volume: number, compressorOn = true, levelingOn = true, fmStyle = true) {\n  const audioContext = useRef<AudioContext | null>(null)
   const slots = useRef<Slot[]>([])
   const offset = useRef(0)
   const [state, setState] = useState({ onAir: false, buffering: false })
@@ -118,7 +118,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
           }
         }
         if (el.readyState < 3 && !el.ended) buffering = true
-        el.volume = clamp01(trackGain(track, now) * volume)
+        el.volume = 1\n        if (slot.gain) {\n          const base = clamp01(trackGain(track, now) * volume)\n          slot.gain.gain.setTargetAtTime(base * (levelingOn ? 1.12 : 1), slot.gain.context.currentTime, 0.08)\n        }\n        if (slot.compressor) slot.compressor.threshold.value = compressorOn ? (fmStyle ? -18 : -24) : 0\n        if (slot.compressor) slot.compressor.ratio.value = compressorOn ? (fmStyle ? 4 : 3) : 1\n        if (slot.compressor) slot.compressor.knee.value = compressorOn ? (fmStyle ? 20 : 12) : 0
         if (el.paused && !el.ended) el.play().catch(() => undefined)
       }
 
@@ -132,7 +132,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     tick()
     const id = window.setInterval(tick, 250)
     return () => window.clearInterval(id)
-  }, [data, playing, volume])
+  }, [data, playing, volume, compressorOn, levelingOn, fmStyle])
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !playing) return
@@ -148,7 +148,7 @@ export function useBroadcast(data: NowResponse | undefined, playing: boolean, vo
     () => () => {
       for (const slot of slots.current) {
         slot.el.pause()
-        slot.el.removeAttribute('src')
+        slot.el.removeAttribute('src')\n        slot.source?.disconnect()\n        slot.gain?.disconnect()\n        slot.compressor?.disconnect()\n        slot.limiter?.disconnect()
       }
       slots.current = []
     },
