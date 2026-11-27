@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
+import { Textarea } from '@/components/ui/textarea'
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => {
@@ -27,6 +28,7 @@ export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [whatsNewDraft, setWhatsNewDraft] = useState<string | null>(null)
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -39,6 +41,7 @@ export function AdminPanel() {
       })
       if (!res.ok) throw new Error(res.status === 401 ? 'Nag-expire ang admin session. Mag-login ulit.' : 'Hindi na-save ang setting. Subukan ulit.')
       mutate((await res.json()) as AdminStatus, { revalidate: false })
+      if (body && 'whatsNew' in body) setWhatsNewDraft(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'May error sa pag-save.')
     } finally {
@@ -108,6 +111,8 @@ export function AdminPanel() {
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
         <Stat label="Queued" value={data?.queued ?? '–'} />
       </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-4"><Label htmlFor="whats-new-editor">What's New (public announcement)</Label><Textarea id="whats-new-editor" rows={5} maxLength={5000} placeholder="Write an announcement here..." value={whatsNewDraft ?? data?.whatsNew ?? ''} disabled={!data || busy} onChange={(e) => setWhatsNewDraft(e.target.value)} /><Button disabled={busy || whatsNewDraft === null || whatsNewDraft === data?.whatsNew} onClick={() => send('PUT', { whatsNew: whatsNewDraft })}>Save What's New</Button><span className="text-xs text-muted-foreground">Saved announcements appear on the public homepage.</span></div>
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
         <RefreshCw className={busy ? 'animate-spin' : undefined} aria-hidden="true" />
