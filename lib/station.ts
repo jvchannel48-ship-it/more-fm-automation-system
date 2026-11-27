@@ -5,7 +5,6 @@ import type { AdminStatus, NowResponse, Track } from './types'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
-const SONG_REPEAT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
 const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
@@ -63,13 +62,13 @@ function normalize(text: string) {
     .trim()
 }
 
-function songKey(title: string) {
+function songKey(title: string, artist = '') {
   return normalize(title.replace(/\(.*?\)|\[.*?\]/g, ' '))
     .replace(/\b(official|music|video|lyric|lyrics|audio|remastered|remaster|hd|hq|4k|with|mv)\b/g, ' ')
     .split(' ')
     .filter(Boolean)
     .sort()
-    .join(' ')
+    .join(' ') + (artist ? `::${normalize(artist)}` : '')
 }
 
 /** Strict gatekeeper: original recording by the scheduled artist, English/Tagalog only, no AI, no rock. */
@@ -133,7 +132,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       const seconds = parseDuration(item.duration ?? '')
       if (seconds < 120 || seconds > 420) return false
       if (!isAllowed(item.title, artist)) return false
-      return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title))
+      return !playedIds.has(item.id) && !playedKeys.has(songKey(item.title, artist.name))
     })
 
     for (const item of shuffle(candidates.slice(0, 10)).slice(0, 2)) {
@@ -144,7 +143,7 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
       if (dl?.downloadUrl) {
         return {
           id: item.id,
-          key: songKey(item.title),
+          key: songKey(item.title, artist.name),
           artist: artist.name,
           title: item.title,
           src: dl.downloadUrl,
@@ -169,11 +168,11 @@ async function findRemixSong(history: HistoryEntry[]) {
       if (seconds < 120 || seconds > 480 || NON_LATIN.test(title)) return false
       if (AI_RULE.test(title) || ROCK_RULE.test(title)) return false
       if (!/remix|techno|dance|disco/i.test(title)) return false
-      return !playedIds.has(item.id) && !playedKeys.has(songKey(title))
+      return !playedIds.has(item.id) && !playedKeys.has(songKey(title, 'Remix DJ'))
     })).slice(0, 8)
     for (const item of candidates) {
       const dl = await fetchJson<{ downloadUrl?: string }>(`${API_BASE}?download=${encodeURIComponent(item.url)}&type=mp3`, 30000)
-      if (dl?.downloadUrl) return { id:item.id, key:songKey(item.title), title:item.title, artist:'Remix DJ', src:dl.downloadUrl, duration:parseDuration(item.duration) }
+      if (dl?.downloadUrl) return { id:item.id, key:songKey(item.title, 'Remix DJ'), title:item.title, artist:'Remix DJ', src:dl.downloadUrl, duration:parseDuration(item.duration) }
     }
   }
   return null
@@ -203,7 +202,7 @@ async function findRequestedSong(request: { artist: string; title: string }) {
     if (dl?.downloadUrl) {
       return {
         id: item.id,
-        key: songKey(item.title),
+        key: songKey(item.title, request.artist),
         artist: request.artist,
         title: item.title,
         src: dl.downloadUrl,
@@ -273,7 +272,7 @@ async function loadState(now: number) {
   const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
-  state.history = state.history.filter((h) => h.t > now - SONG_REPEAT_WINDOW_MS)
+  state.history = state.history.slice(-5000)
   return { state, changed: state.tracks.length !== before }
 }
 
