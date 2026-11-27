@@ -272,7 +272,7 @@ async function loadState(now: number) {
   const state: StationState = { ...EMPTY_STATE, ...(await readJson<Partial<StationState>>(STATE_PATH, {})) }
   const before = state.tracks.length
   state.tracks = state.tracks.filter((t) => trackEnd(t) >= now - 1000)
-  state.history = state.history.slice(-5000)
+  state.history = state.history.slice(-50)
   return { state, changed: state.tracks.length !== before }
 }
 
