@@ -13,7 +13,7 @@ function trackGain(track:Track, now:number) {
   return Math.min(track.fadeIn>0?curve(elapsed/track.fadeIn):1, track.fadeOut>0?curve(remaining/track.fadeOut):1)
 }
 
-export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume:number, compressorOn=true, levelingOn=true, fmStyle=true) {
+export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume:number) {
   const slots=useRef<Slot[]>([])
   const offset=useRef(0)
   const [state,setState]=useState({onAir:false,buffering:false})
@@ -60,14 +60,14 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
         const expected=Math.max(0,(now-track.startAt)/1000)
         if(el.readyState>=1&&(!slot.synced||Math.abs(el.currentTime-expected)>DRIFT_TOLERANCE_S)){try{if(!el.duration||expected<el.duration-1)el.currentTime=expected;slot.synced=true}catch{}}
         if(el.readyState<3&&!el.ended)buffering=true
-        el.volume=clamp(trackGain(track,now)*volume*(levelingOn?1:1))
+        el.volume=clamp(trackGain(track,now)*volume)
         if(el.paused&&!el.ended)el.play().catch(()=>{buffering=true})
       }
       const onAir=active.length>0
       setState(prev=>{const next={onAir,buffering:playing&&(buffering||!onAir)};return prev.onAir===next.onAir&&prev.buffering===next.buffering?prev:next})
     }
     tick();const id=window.setInterval(tick,300);return()=>window.clearInterval(id)
-  },[data,playing,volume,compressorOn,levelingOn,fmStyle])
+  },[data,playing,volume])
 
   useEffect(()=>{
     if(!('mediaSession'in navigator)||!playing)return
