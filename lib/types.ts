@@ -14,6 +14,7 @@ export interface StationSettings {
   remixMode: boolean
   fullBass: boolean
   autoPost?: boolean
+  whatsNew?: string
 }
 
 export interface NowResponse {
