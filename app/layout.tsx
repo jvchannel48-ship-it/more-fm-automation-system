@@ -8,8 +8,8 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'YS FM 107.1 — YOUR HOME OF ROMANTIC MUSIC',
-  description: 'YS FM 107.1 livestream. YOUR HOME OF ROMANTIC MUSIC.',
+  title: "YS FM 107.1 — V9 It's Showtime",
+  description: "YS FM 107.1 online radio. YOUR HOME OF ROMANTIC MUSIC.",
   generator: 'v0.app',
   icons: {
     icon: '/ys-fm-logo.svg',
