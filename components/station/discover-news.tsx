@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useState} from 'react'
 import {RefreshCw,Newspaper,Heart,Copy,Share2,MoreVertical,Download,X,ExternalLink} from 'lucide-react'
 type Article={title?:string;description?:string;image_url?:string;creator?:string|string[];source_id?:string;link?:string;pubDate?:string}
-function cleanText(value?:string){if(!value)return '';return value.replace(/<\\/?(?:ol|ul|li|a|p|div|span|font|br)[^>]*>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/g,"'").replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/\\s+/g,' ').trim()}
+function cleanText(value?:string){if(!value)return '';return value.replace(/<\/?(?:ol|ul|li|a|p|div|span|font|br)[^>]*>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/\s+/g,' ').trim()}
 export function DiscoverNews(){
  const [items,setItems]=useState<Article[]>([]);const [loading,setLoading]=useState(false);const [error,setError]=useState('')
  const [selected,setSelected]=useState<Article|null>(null);const [menu,setMenu]=useState(false);const [liked,setLiked]=useState<Record<string,boolean>>({})
