@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 export const dynamic='force-dynamic'
-function decode(s:string){return s.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1')}
-function tag(item:string,name:string){const re=new RegExp('<'+name+'[^>]*>([\\s\\S]*?)</'+name+'>','i');const m=item.match(re);return m?decode(m[1].trim()):''}
+function decode(s:string){return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n)))}
+function tag(item:string,name:string){const re=new RegExp('<'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)</'+name+'>','i');const m=item.match(re);return m?decode(m[1].trim()):''}
 async function fallback(){
  const r=await fetch('https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',{cache:'no-store',signal:AbortSignal.timeout(12000)})
  if(!r.ok)throw new Error('RSS unavailable')
  const xml=await r.text()
- const results=xml.split('<item>').slice(1).map(part=>{const item=part.split('</item>')[0]||'';return {title:tag(item,'title'),description:tag(item,'description'),link:tag(item,'link'),pubDate:tag(item,'pubDate'),source_id:tag(item,'source')}}).filter(x=>x.title&&x.link).slice(0,30)
+ const results=xml.split(/<item\s*>/i).slice(1).map(part=>{const item=part.split(/<\/item>/i)[0]||'';const source=tag(item,'source');return {title:tag(item,'title'),description:tag(item,'description'),link:tag(item,'link'),pubDate:tag(item,'pubDate'),source_id:source||'Google News'}}).filter(x=>x.title&&x.link).slice(0,30)
+ if(!results.length)throw new Error('No RSS articles found')
  return results
 }
 export async function GET(){
