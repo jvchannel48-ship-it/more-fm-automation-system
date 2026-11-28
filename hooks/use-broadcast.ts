@@ -17,7 +17,7 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
   const slots=useRef<Slot[]>([])
   const offset=useRef(0)
   const [state,setState]=useState({onAir:false,buffering:false})
-  const timeCheckCount=useRef(0), lastTrackUid=useRef<string|null>(null), spokenTrackUid=useRef<string|null>(null)
+  const timeCheckCount=useRef(0), lastTrackUid=useRef<string|null>(null), spokenTrackUid=useRef<string|null>(null), voiceDuck=useRef(false)
 
   useEffect(()=>{ if(data) offset.current=data.serverTime-Date.now() },[data])
 
@@ -34,7 +34,7 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
         const time=new Date(now).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'})
         const utterance=new SpeechSynthesisUtterance('107.1 YS FM TIME CHECK! IT IS NOW '+time+'.');utterance.lang='en-US'
         const voice=window.speechSynthesis.getVoices().find(v=>/Christopher/i.test(v.name))||window.speechSynthesis.getVoices().find(v=>/en-US/i.test(v.lang)&&/male|david|guy/i.test(v.name))
-        if(voice)utterance.voice=voice;utterance.rate=1;window.speechSynthesis.speak(utterance)
+        if(voice)utterance.voice=voice;utterance.rate=0.96;utterance.pitch=0.95;utterance.onstart=()=>{voiceDuck.current=true};utterance.onend=()=>{voiceDuck.current=false};utterance.onerror=()=>{voiceDuck.current=false};window.speechSynthesis.cancel();window.speechSynthesis.speak(utterance)
       }
     }
   },[data,playing])
@@ -60,7 +60,7 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
         const expected=Math.max(0,(now-track.startAt)/1000)
         if(el.readyState>=1&&(!slot.synced||Math.abs(el.currentTime-expected)>DRIFT_TOLERANCE_S)){try{if(!el.duration||expected<el.duration-1)el.currentTime=expected;slot.synced=true}catch{}}
         if(el.readyState<3&&!el.ended)buffering=true
-        el.volume=clamp(trackGain(track,now)*volume)
+        el.volume=clamp(trackGain(track,now)*volume*(voiceDuck.current?0.22:1))
         if(el.paused&&!el.ended)el.play().catch(()=>{buffering=true})
       }
       const onAir=active.length>0
