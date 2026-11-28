@@ -6,7 +6,6 @@ import type { AdminStatus, NowResponse, Track } from './types'
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
 const ARTIST_WINDOW_MS = 60 * 60 * 1000
-const MAX_ARTIST_PLAYS_PER_HOUR = 2
 const FILL_LOCK_MS = 45_000
 
 interface HistoryEntry {
@@ -99,19 +98,8 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T | null> {
 }
 
 function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
-  const unique = [...new Map(pool.map((a) => [a.name, a])).values()]
-  const lastArtist = history.at(-1)?.artist
-  const hourCounts = new Map<string, number>()
-  for (const h of history) {
-    if (h.t > now - ARTIST_WINDOW_MS) hourCounts.set(h.artist, (hourCounts.get(h.artist) ?? 0) + 1)
-  }
-  const allowed = unique.filter(
-    (a) => a.name !== lastArtist && (hourCounts.get(a.name) ?? 0) < MAX_ARTIST_PLAYS_PER_HOUR,
-  )
-  // Prefer artists not heard recently so the rotation keeps changing.
-  const recent = new Set(history.slice(-12).map((h) => h.artist))
-  const fresh = allowed.filter((a) => !recent.has(a.name))
-  return shuffle(fresh.length >= 3 ? fresh : allowed)
+  // Use the complete configured artist pool without hourly/recent artist caps.
+  return shuffle([...new Map(pool.map((a) => [a.name, a])).values()])
 }
 
 async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, remixMode = false) {
