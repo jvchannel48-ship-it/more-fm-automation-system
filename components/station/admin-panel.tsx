@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw,ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -30,7 +30,7 @@ export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [whatsNewDraft, setWhatsNewDraft] = useState<string | null>(null)
+  const [whatsNewDraft, setWhatsNewDraft] = useState<string | null>(null)\n  const [artistDraft,setArtistDraft]=useState<string|null>(null)\n  const [scanResult,setScanResult]=useState<string[]>([])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
@@ -116,6 +116,8 @@ export function AdminPanel() {
 
       <div className="flex flex-col gap-2 border-t border-border pt-4"><Label htmlFor="whats-new-editor">What's New (public announcement)</Label><Textarea id="whats-new-editor" rows={5} maxLength={5000} placeholder="Write an announcement here..." value={whatsNewDraft ?? data?.whatsNew ?? ''} disabled={!data || busy} onChange={(e) => setWhatsNewDraft(e.target.value)} /><Button disabled={busy || whatsNewDraft === null || whatsNewDraft === data?.whatsNew} onClick={() => send('PUT', { whatsNew: whatsNewDraft })}>Save What's New</Button><span className="text-xs text-muted-foreground">Saved announcements appear on the public homepage.</span></div>
 
+      <section className="space-y-3 border-t pt-4"><h3 className="font-semibold flex items-center gap-2"><ShieldCheck/>Advanced Security</h3><div className="flex items-center justify-between gap-2"><div><Label>Cloudflare Verification toggle</Label><p className="text-xs text-muted-foreground">Requires Turnstile site and secret keys configured in Vercel environment.</p></div><Switch checked={data?.cloudflareVerification??false} disabled={!data||busy} onCheckedChange={(v)=>send('PUT',{cloudflareVerification:v})}/></div><Button variant="outline" onClick={()=>setScanResult(['Admin API checks: admin-session gate is present on settings endpoint (source-reviewed).','Image and JSON storage are hosted via Vercel Blob.','Cloudflare Turnstile is not verified until Turnstile keys and server validation are configured.','Security scan is a basic configuration review, not a penetration test.'])}>Run security scan</Button>{scanResult.map((x,i)=><p key={i} className="text-xs">{x}</p>)}</section>
+      <section className="space-y-3 border-t pt-4"><h3 className="font-semibold">Add Artist / Genre to rotation</h3><p className="text-xs text-muted-foreground">Format one per line: Artist Name | Genre | english or tagalog. This saves a list for custom rotation integration.</p><Textarea rows={5} placeholder="Artist Name | Pop | english" value={artistDraft??(data?.customArtists??[]).map((a:any)=>a.name+' | '+a.genre+' | '+a.language).join('\n')} onChange={e=>setArtistDraft(e.target.value)} disabled={!data||busy}/><Button disabled={busy||artistDraft===null} onClick={()=>{const parsed=artistDraft.split('\n').map(line=>line.split('|').map(v=>v.trim())).filter(a=>a.length>=3&&a[0]&&a[1]&&(a[2]==='english'||a[2]==='tagalog')).map(a=>({name:a[0],genre:a[1],language:a[2] as 'english'|'tagalog'}));send('PUT',{customArtists:parsed});setArtistDraft(null)}}>Save Artist & Genre list</Button></section>
       <ScreenBannerAdmin />
       <DailyTriviaAdmin />
 
