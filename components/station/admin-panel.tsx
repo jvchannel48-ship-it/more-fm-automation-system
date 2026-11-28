@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import type { AdminStatus } from '@/lib/types'
 import { Textarea } from '@/components/ui/textarea'
 import { DailyTriviaAdmin } from './daily-trivia-admin'
+import { ScreenBannerAdmin } from './screen-banner-admin'
 
 const fetcher = (url: string) =>
   fetch(url).then((r) => {
@@ -115,6 +116,7 @@ export function AdminPanel() {
 
       <div className="flex flex-col gap-2 border-t border-border pt-4"><Label htmlFor="whats-new-editor">What's New (public announcement)</Label><Textarea id="whats-new-editor" rows={5} maxLength={5000} placeholder="Write an announcement here..." value={whatsNewDraft ?? data?.whatsNew ?? ''} disabled={!data || busy} onChange={(e) => setWhatsNewDraft(e.target.value)} /><Button disabled={busy || whatsNewDraft === null || whatsNewDraft === data?.whatsNew} onClick={() => send('PUT', { whatsNew: whatsNewDraft })}>Save What's New</Button><span className="text-xs text-muted-foreground">Saved announcements appear on the public homepage.</span></div>
 
+      <ScreenBannerAdmin />
       <DailyTriviaAdmin />
 
       <Button variant="secondary" disabled={busy} onClick={() => send('POST')}>
