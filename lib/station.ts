@@ -1,7 +1,7 @@
 import 'server-only'
 import { getSettings, readJson, STATE_PATH, writeJson } from './storage'
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
-import type { AdminStatus, NowResponse, Track } from './types'
+import type { AdminStatus, NowResponse, Track, StationSettings } from './types'
 
 const API_BASE = 'https://betadash-api-swordslush-production.up.railway.app/mp3juice/api'
 const CROSSFADE_SECONDS = 8
