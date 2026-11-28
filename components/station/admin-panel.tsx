@@ -30,7 +30,9 @@ export function AdminPanel() {
   const { data, mutate } = useSWR('/api/admin/settings', fetcher, { refreshInterval: 15000 })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [whatsNewDraft, setWhatsNewDraft] = useState<string | null>(null)\n  const [artistDraft,setArtistDraft]=useState<string|null>(null)\n  const [scanResult,setScanResult]=useState<string[]>([])
+  const [whatsNewDraft, setWhatsNewDraft] = useState<string | null>(null)
+  const [artistDraft,setArtistDraft]=useState<string|null>(null)
+  const [scanResult,setScanResult]=useState<string[]>([])
 
   const send = async (method: 'PUT' | 'POST', body?: object) => {
     setBusy(true)
