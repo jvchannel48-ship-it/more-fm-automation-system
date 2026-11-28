@@ -18,7 +18,7 @@ export interface StationSettings {
   screenBannerEnabled?: boolean
   screenBanners?: string[]
   customArtists?: {name:string;genre:string;language:'english'|'tagalog'}[]
-  cloudflareVerification?: boolean
+  cloudflareVerification?: boolean\n  autoAddArtistNames?: boolean
 }
 
 export interface NowResponse {
