@@ -102,12 +102,12 @@ function eligibleArtists(pool: Artist[], history: HistoryEntry[], now: number) {
   return shuffle([...new Map(pool.map((a) => [a.name, a])).values()])
 }
 
-async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, remixMode = false) {
+async function findSong(program: Program, songCount: number, history: HistoryEntry[], now: number, remixMode = false, customArtists: StationSettings['customArtists'] = []) {
   if (remixMode) return findRemixSong(history);
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const candidatesArtists = eligibleArtists(program.pools[language], history, now)
+  const customPool=(customArtists??[]).filter(a=>a.language===language).map(a=>({name:a.name,match:a.name.toLowerCase(),language:a.language}))\n  const candidatesArtists = eligibleArtists([...program.pools[language],...customPool], history, now)
   const variants = program.variants[language]
 
   for (const artist of candidatesArtists.slice(0, 5)) {
@@ -226,7 +226,7 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 
-async function fill(state: StationState, now: number, remixMode = false) {
+async function fill(state: StationState, now: number, remixMode = false, customArtists: StationSettings['customArtists'] = []) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
@@ -236,7 +236,7 @@ async function fill(state: StationState, now: number, remixMode = false) {
 
     const request = state.pendingRequests?.[0]
     const requestedSong = request ? await findRequestedSong(request) : null
-    const song = requestedSong ?? (await findSong(program, state.songCount, state.history, startAt, remixMode))
+    const song = requestedSong ?? (await findSong(program, state.songCount, state.history, startAt, remixMode, customArtists))
     if (!song) break
     if (requestedSong) state.pendingRequests?.shift()
     // Song lookup can take several seconds; never schedule a fresh start in the past.
@@ -286,7 +286,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.remixMode)
+    await fill(state, now, settings.remixMode, settings.customArtists)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
