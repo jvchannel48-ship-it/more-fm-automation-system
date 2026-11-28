@@ -3,14 +3,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
 
 export const ADMIN_COOKIE = 'morefm_admin'
-const SESSION_DAYS = 30
+const SESSION_DAYS = 7
 
 function adminPassword() {
-  return process.env.ADMIN_PASSWORD ?? '09485054936'
+  return process.env.ADMIN_PASSWORD ?? ''
 }
 
 function secret() {
-  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.BLOB_READ_WRITE_TOKEN ?? 'morefm'}`
+  return process.env.ADMIN_SECRET ?? `${adminPassword()}:${process.env.BLOB_READ_WRITE_TOKEN ?? ''}`
 }
 
 function sign(payload: string) {
