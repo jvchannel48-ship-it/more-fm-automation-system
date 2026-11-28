@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: StationSettings = {
   autoPost: false,
   whatsNew: '',
   screenBannerEnabled: true,
-  screenBanners: [],
+  screenBanners: [],\n  autoAddArtistNames: false,
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -47,6 +47,6 @@ export async function getSettings(): Promise<StationSettings> {
     screenBannerEnabled: typeof saved.screenBannerEnabled === 'boolean' ? saved.screenBannerEnabled : true,
     screenBanners: Array.isArray(saved.screenBanners) ? saved.screenBanners.filter((v): v is string => typeof v === 'string').slice(0, 3) : [],
     customArtists: Array.isArray(saved.customArtists) ? saved.customArtists.filter((a:any)=>a&&typeof a.name==='string'&&typeof a.genre==='string'&&(a.language==='english'||a.language==='tagalog')).slice(0,100) : [],
-    cloudflareVerification: typeof saved.cloudflareVerification==='boolean' ? saved.cloudflareVerification : false,
+    cloudflareVerification: typeof saved.cloudflareVerification==='boolean' ? saved.cloudflareVerification : false,\n    autoAddArtistNames: typeof saved.autoAddArtistNames==='boolean' ? saved.autoAddArtistNames : false,
   }
 }
