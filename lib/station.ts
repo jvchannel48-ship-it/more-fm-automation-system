@@ -107,7 +107,8 @@ async function findSong(program: Program, songCount: number, history: HistoryEnt
   const language = languageForSlot(program, songCount)
   const playedIds = new Set(history.map((h) => h.id))
   const playedKeys = new Set(history.map((h) => h.key))
-  const customPool=(customArtists??[]).filter(a=>a.language===language).map(a=>({name:a.name,match:a.name.toLowerCase(),language:a.language}))\n  const candidatesArtists = eligibleArtists([...program.pools[language],...customPool], history, now)
+  const customPool=(customArtists??[]).filter(a=>a.language===language).map(a=>({name:a.name,match:a.name.toLowerCase(),language:a.language}))
+  const candidatesArtists = eligibleArtists([...program.pools[language],...customPool], history, now)
   const variants = program.variants[language]
 
   for (const artist of candidatesArtists.slice(0, 5)) {
