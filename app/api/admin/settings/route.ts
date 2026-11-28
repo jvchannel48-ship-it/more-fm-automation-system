@@ -21,7 +21,8 @@ export async function PUT(request: NextRequest) {
     screenBannerEnabled: typeof body.screenBannerEnabled === 'boolean' ? body.screenBannerEnabled : current.screenBannerEnabled ?? true,
     screenBanners: Array.isArray(body.screenBanners) ? body.screenBanners.filter((v): v is string => typeof v === 'string' && v.startsWith('data:image/')).slice(0,3) : current.screenBanners ?? [],
     customArtists: Array.isArray(body.customArtists) ? body.customArtists.filter((a:any)=>a&&typeof a.name==='string'&&typeof a.genre==='string'&&(a.language==='english'||a.language==='tagalog')).slice(0,100) : current.customArtists ?? [],
-    cloudflareVerification: typeof body.cloudflareVerification==='boolean' ? body.cloudflareVerification : current.cloudflareVerification ?? false,\n    autoAddArtistNames: typeof body.autoAddArtistNames==='boolean' ? body.autoAddArtistNames : current.autoAddArtistNames ?? false,
+    cloudflareVerification: typeof body.cloudflareVerification==='boolean' ? body.cloudflareVerification : current.cloudflareVerification ?? false,
+    autoAddArtistNames: typeof body.autoAddArtistNames==='boolean' ? body.autoAddArtistNames : current.autoAddArtistNames ?? false,
   }
   await writeJson(SETTINGS_PATH, next)
   return NextResponse.json(await getAdminStatus())
