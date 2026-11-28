@@ -10,7 +10,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; remixMode?: unknown; fullBass?: unknown; autoPost?: unknown; whatsNew?: unknown; screenBannerEnabled?: unknown; screenBanners?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { broadcastEnabled?: unknown; remixMode?: unknown; fullBass?: unknown; autoPost?: unknown; whatsNew?: unknown; screenBannerEnabled?: unknown; screenBanners?: unknown; customArtists?: unknown; cloudflareVerification?: unknown }
   const current = await getSettings()
   const next = {
     broadcastEnabled: typeof body.broadcastEnabled === 'boolean' ? body.broadcastEnabled : current.broadcastEnabled,
@@ -20,6 +20,8 @@ export async function PUT(request: NextRequest) {
     whatsNew: typeof body.whatsNew === 'string' ? body.whatsNew.slice(0, 5000) : current.whatsNew ?? '',
     screenBannerEnabled: typeof body.screenBannerEnabled === 'boolean' ? body.screenBannerEnabled : current.screenBannerEnabled ?? true,
     screenBanners: Array.isArray(body.screenBanners) ? body.screenBanners.filter((v): v is string => typeof v === 'string' && v.startsWith('data:image/')).slice(0,3) : current.screenBanners ?? [],
+    customArtists: Array.isArray(body.customArtists) ? body.customArtists.filter((a:any)=>a&&typeof a.name==='string'&&typeof a.genre==='string'&&(a.language==='english'||a.language==='tagalog')).slice(0,100) : current.customArtists ?? [],
+    cloudflareVerification: typeof body.cloudflareVerification==='boolean' ? body.cloudflareVerification : current.cloudflareVerification ?? false,
   }
   await writeJson(SETTINGS_PATH, next)
   return NextResponse.json(await getAdminStatus())
