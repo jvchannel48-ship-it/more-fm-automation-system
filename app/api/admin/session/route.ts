@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   }
   const { token, maxAge } = createSessionToken()
   const store = await cookies()
-  store.set(ADMIN_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge })
+  store.set(ADMIN_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge })
   return NextResponse.json({ admin: true })
 }
 
