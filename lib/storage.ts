@@ -46,5 +46,7 @@ export async function getSettings(): Promise<StationSettings> {
     whatsNew: typeof saved.whatsNew === 'string' ? saved.whatsNew : '',
     screenBannerEnabled: typeof saved.screenBannerEnabled === 'boolean' ? saved.screenBannerEnabled : true,
     screenBanners: Array.isArray(saved.screenBanners) ? saved.screenBanners.filter((v): v is string => typeof v === 'string').slice(0, 3) : [],
+    customArtists: Array.isArray(saved.customArtists) ? saved.customArtists.filter((a:any)=>a&&typeof a.name==='string'&&typeof a.genre==='string'&&(a.language==='english'||a.language==='tagalog')).slice(0,100) : [],
+    cloudflareVerification: typeof saved.cloudflareVerification==='boolean' ? saved.cloudflareVerification : false,
   }
 }
