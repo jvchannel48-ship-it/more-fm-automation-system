@@ -5,7 +5,7 @@ import type { NowResponse, Track } from '@/lib/types'
 
 const PRELOAD_AHEAD_MS = 25000
 const DRIFT_TOLERANCE_S = 4
-type Slot = { el: HTMLAudioElement; uid: string | null; synced: boolean }
+type Slot = { el: HTMLAudioElement; uid: string | null; synced: boolean; retryAt: number; retries: number }
 const clamp = (n:number) => Math.min(1, Math.max(0,n))
 const curve = (n:number) => Math.sin(clamp(n) * Math.PI / 2)
 function trackGain(track:Track, now:number) {
@@ -41,7 +41,7 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
 
   const unlock=useCallback(()=>{
     if(slots.current.length)return
-    slots.current=Array.from({length:3},()=>{const el=new Audio();el.preload='auto';return {el,uid:null,synced:false}})
+    slots.current=Array.from({length:3},()=>{const el=new Audio();el.preload='auto';return {el,uid:null,synced:false,retryAt:0,retries:0}})
   },[])
 
   useEffect(()=>{
@@ -54,14 +54,14 @@ export function useBroadcast(data:NowResponse|undefined, playing:boolean, volume
       let buffering=false
       for(const track of wanted){
         let slot=slots.current.find(s=>s.uid===track.uid)
-        if(!slot){slot=slots.current.find(s=>s.uid===null);if(!slot)continue;slot.uid=track.uid;slot.synced=false;slot.el.src=track.src;slot.el.load()}
+        if(!slot){slot=slots.current.find(s=>s.uid===null);if(!slot)continue;slot.uid=track.uid;slot.synced=false;slot.retryAt=0;slot.retries=0;slot.el.src=track.src;slot.el.load()}
         const el=slot.el,isActive=active.includes(track)
         if(!playing||!isActive){if(!el.paused)el.pause();continue}
         const expected=Math.max(0,(now-track.startAt)/1000)
         if(el.readyState>=1&&(!slot.synced||Math.abs(el.currentTime-expected)>DRIFT_TOLERANCE_S)){try{if(!el.duration||expected<el.duration-1)el.currentTime=expected;slot.synced=true}catch{}}
         if(el.readyState<3&&!el.ended)buffering=true
         el.volume=clamp(trackGain(track,now)*volume*(voiceDuck.current?0.22:1))
-        if(el.paused&&!el.ended)el.play().catch(()=>{buffering=true})
+        if(el.paused&&!el.ended&&now>=slot.retryAt){el.play().then(()=>{slot.retries=0}).catch(()=>{buffering=true;slot.retries++;slot.retryAt=now+Math.min(8000,1000*slot.retries);if(slot.retries>=3){try{el.load()}catch{};slot.retries=0;slot.retryAt=now+2500}})}
       }
       const onAir=active.length>0
       setState(prev=>{const next={onAir,buffering:playing&&(buffering||!onAir)};return prev.onAir===next.onAir&&prev.buffering===next.buffering?prev:next})
