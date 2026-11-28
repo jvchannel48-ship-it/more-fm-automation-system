@@ -254,8 +254,13 @@ async function fill(state: StationState, now: number, remixMode = false, customA
     })
     state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
     if (autoAddArtistNames && song.artist && song.artist !== 'Remix DJ') {
-      const list = customArtists ?? []\n      if (!list.some(a => normalize(a.name) === normalize(song.artist))) {
-        const language = languageForSlot(program, state.songCount)\n        list.push({ name: song.artist, genre: 'Auto-added', language })\n        customArtists = list.slice(-100)\n        await writeJson(SETTINGS_PATH, { ...(await getSettings()), customArtists })\n      }
+      const list = customArtists ?? []
+      if (!list.some(a => normalize(a.name) === normalize(song.artist))) {
+        const language = languageForSlot(program, state.songCount)
+        list.push({ name: song.artist, genre: 'Auto-added', language })
+        customArtists = list.slice(-100)
+        await writeJson(SETTINGS_PATH, { ...(await getSettings()), customArtists })
+      }
     }
     state.songCount++
   }
