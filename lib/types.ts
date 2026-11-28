@@ -15,6 +15,8 @@ export interface StationSettings {
   fullBass: boolean
   autoPost?: boolean
   whatsNew?: string
+  screenBannerEnabled?: boolean
+  screenBanners?: string[]
 }
 
 export interface NowResponse {
