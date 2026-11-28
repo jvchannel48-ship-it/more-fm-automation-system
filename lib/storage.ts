@@ -32,6 +32,8 @@ export const DEFAULT_SETTINGS: StationSettings = {
   fullBass: false,
   autoPost: false,
   whatsNew: '',
+  screenBannerEnabled: true,
+  screenBanners: [],
 }
 
 export async function getSettings(): Promise<StationSettings> {
@@ -42,5 +44,7 @@ export async function getSettings(): Promise<StationSettings> {
     fullBass: typeof saved.fullBass === 'boolean' ? saved.fullBass : false,
     autoPost: typeof saved.autoPost === 'boolean' ? saved.autoPost : false,
     whatsNew: typeof saved.whatsNew === 'string' ? saved.whatsNew : '',
+    screenBannerEnabled: typeof saved.screenBannerEnabled === 'boolean' ? saved.screenBannerEnabled : true,
+    screenBanners: Array.isArray(saved.screenBanners) ? saved.screenBanners.filter((v): v is string => typeof v === 'string').slice(0, 3) : [],
   }
 }
