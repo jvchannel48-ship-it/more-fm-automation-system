@@ -1,0 +1,5 @@
+import {NextRequest,NextResponse} from 'next/server'
+import {readJson,writeJson} from '@/lib/storage'
+import type {TriviaPost} from '@/lib/daily-trivia'
+const PATH='station/daily-trivia.json'
+export async function POST(req:NextRequest){const body=await req.json().catch(()=>({})) as {postId?:string;deviceId?:string;name?:string;comment?:string;like?:boolean};if(!body.postId||!body.deviceId)return NextResponse.json({error:'Missing identifiers'},{status:400});const posts=await readJson<TriviaPost[]>(PATH,[]);const p=posts.find(x=>x.id===body.postId);if(!p)return NextResponse.json({error:'Post not found'},{status:404});if(body.like){p.likes=p.likes||[];p.likes=p.likes.includes(body.deviceId)?p.likes.filter(x=>x!==body.deviceId):[...p.likes,body.deviceId]}else if(body.comment?.trim()){p.comments=p.comments||[];p.comments.push({id:crypto.randomUUID(),name:(body.name||'Listener').slice(0,40),text:body.comment.trim().slice(0,1000),createdAt:Date.now(),deviceId:body.deviceId})}else return NextResponse.json({error:'Invalid action'},{status:400});await writeJson(PATH,posts);return NextResponse.json({likes:p.likes.length,comments:p.comments})}
