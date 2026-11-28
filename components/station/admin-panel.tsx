@@ -110,6 +110,7 @@ export function AdminPanel() {
         <div className="flex flex-col gap-0.5"><Label htmlFor="auto-post">Auto Post Now Playing</Label><span className="text-xs text-muted-foreground">Automatically publish song title and artist to Media Feed while ON.</span></div>
         <button id="auto-post" type="button" role="switch" aria-checked={data?.autoPost??false} disabled={busy} onClick={() => send('PUT',{autoPost:!(data?.autoPost??false)})} className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 border-transparent transition-colors disabled:opacity-60 ${data?.autoPost?'bg-primary':'bg-muted'}`}><span className={`pointer-events-none block size-6 rounded-full bg-background shadow transition-transform ${data?.autoPost?'translate-x-6':'translate-x-0'}`} /></button>
       </div>
+      <div className="flex items-center justify-between gap-3"><div className="flex flex-col gap-0.5"><Label htmlFor="auto-add-artist">Auto Add Artist Names</Label><span className="text-xs text-muted-foreground">Automatically add artists from played songs to the custom artist list.</span></div><Switch id="auto-add-artist" checked={data?.autoAddArtistNames??false} disabled={!data||busy} onCheckedChange={(v)=>send('PUT',{autoAddArtistNames:v})}/></div>
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Songs / 7 days" value={data?.songsThisWeek ?? '–'} />
         <Stat label="Artists / hour" value={data?.artistsThisHour ?? '–'} />
