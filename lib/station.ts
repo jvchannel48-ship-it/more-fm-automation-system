@@ -1,5 +1,5 @@
 import 'server-only'
-import { getSettings, readJson, STATE_PATH, writeJson } from './storage'
+import { getSettings, readJson, SETTINGS_PATH, STATE_PATH, writeJson } from './storage'
 import { isOffAir, languageForSlot, nextSignOn, programAt, type Artist, type Program } from './schedule'
 import type { AdminStatus, NowResponse, Track, StationSettings } from './types'
 
@@ -227,7 +227,7 @@ function nextStart(state: StationState, now: number) {
   return Math.max(now, trackEnd(last) - last.fadeOut * 1000)
 }
 
-async function fill(state: StationState, now: number, remixMode = false, customArtists: StationSettings['customArtists'] = []) {
+async function fill(state: StationState, now: number, remixMode = false, customArtists: StationSettings['customArtists'] = [], autoAddArtistNames = false) {
   let guard = 0
   while (state.tracks.filter((t) => t.startAt > now).length < 1 && guard++ < 3) {
     const startAt = nextStart(state, now)
@@ -252,7 +252,7 @@ async function fill(state: StationState, now: number, remixMode = false, customA
       fadeIn,
       fadeOut: CROSSFADE_SECONDS,
     })
-    state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })
+    state.history.push({ id: song.id, key: song.key, artist: song.artist, t: songStart })\n    if (autoAddArtistNames && song.artist && song.artist !== 'Remix DJ') {\n      const list = customArtists ?? []\n      if (!list.some(a => normalize(a.name) === normalize(song.artist))) {\n        const language = languageForSlot(program, state.songCount)\n        list.push({ name: song.artist, genre: 'Auto-added', language })\n        customArtists = list.slice(-100)\n        await writeJson(SETTINGS_PATH, { ...(await getSettings()), customArtists })\n      }\n    }
     state.songCount++
   }
 }
@@ -287,7 +287,7 @@ export async function getNowPlaying(): Promise<NowResponse> {
   if (needsFill && state.fillingUntil < now) {
     state.fillingUntil = now + FILL_LOCK_MS
     await writeJson(STATE_PATH, state)
-    await fill(state, now, settings.remixMode, settings.customArtists)
+    await fill(state, now, settings.remixMode, settings.customArtists, settings.autoAddArtistNames)
     state.fillingUntil = 0
     await writeJson(STATE_PATH, state)
   } else if (changed) {
